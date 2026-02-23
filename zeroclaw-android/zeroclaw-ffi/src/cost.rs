@@ -138,15 +138,68 @@ pub(crate) fn get_monthly_cost_inner(year: i32, month: u32) -> Result<f64, FfiEr
 
 /// Checks the budget for an estimated cost.
 ///
-/// Budget checking is not exposed by the gateway API, so we derive a
-/// basic check from the cost summary and the config's budget limits.
-/// Returns [`FfiBudgetStatus::Allowed`] when no budget data is available.
+/// Derives a client-side budget check from the cost summary (via the
+/// gateway `/api/cost` endpoint) and the config's budget limits
+/// (`daily_limit_usd`, `monthly_limit_usd`, `warn_at_percent`).
+///
+/// Returns [`FfiBudgetStatus::Allowed`] when cost tracking is disabled
+/// in the config or spending is within limits. Returns
+/// [`FfiBudgetStatus::Warning`] when spending plus the estimated cost
+/// exceeds the warning threshold. Returns [`FfiBudgetStatus::Exceeded`]
+/// when spending plus the estimated cost exceeds the hard limit.
 pub(crate) fn check_budget_inner(estimated_cost_usd: f64) -> Result<FfiBudgetStatus, FfiError> {
-    let _ = estimated_cost_usd;
-    // Without access to the upstream CostTracker or budget config via
-    // the gateway API, we return Allowed. The gateway's internal cost
-    // tracking still enforces budgets on the server side.
-    let _ = crate::runtime::get_gateway_port()?;
+    let (cost_enabled, daily_limit, monthly_limit, warn_percent) =
+        crate::runtime::with_daemon_config(|config| {
+            (
+                config.cost.enabled,
+                config.cost.daily_limit_usd,
+                config.cost.monthly_limit_usd,
+                config.cost.warn_at_percent,
+            )
+        })?;
+
+    if !cost_enabled {
+        return Ok(FfiBudgetStatus::Allowed);
+    }
+
+    let summary = get_cost_summary_inner()?;
+
+    let warn_threshold = f64::from(warn_percent) / 100.0;
+
+    let daily_projected = summary.daily_cost_usd + estimated_cost_usd;
+    if daily_projected > daily_limit {
+        return Ok(FfiBudgetStatus::Exceeded {
+            current_usd: summary.daily_cost_usd,
+            limit_usd: daily_limit,
+            period: "day".into(),
+        });
+    }
+
+    let monthly_projected = summary.monthly_cost_usd + estimated_cost_usd;
+    if monthly_projected > monthly_limit {
+        return Ok(FfiBudgetStatus::Exceeded {
+            current_usd: summary.monthly_cost_usd,
+            limit_usd: monthly_limit,
+            period: "month".into(),
+        });
+    }
+
+    if daily_projected > daily_limit * warn_threshold {
+        return Ok(FfiBudgetStatus::Warning {
+            current_usd: summary.daily_cost_usd,
+            limit_usd: daily_limit,
+            period: "day".into(),
+        });
+    }
+
+    if monthly_projected > monthly_limit * warn_threshold {
+        return Ok(FfiBudgetStatus::Warning {
+            current_usd: summary.monthly_cost_usd,
+            limit_usd: monthly_limit,
+            period: "month".into(),
+        });
+    }
+
     Ok(FfiBudgetStatus::Allowed)
 }
 
