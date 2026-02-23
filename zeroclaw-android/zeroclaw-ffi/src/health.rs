@@ -5,6 +5,9 @@
  */
 
 //! Structured health detail for the Android dashboard.
+//!
+//! Uses [`crate::ffi_health`] for local component tracking since
+//! the upstream `zeroclaw::health` module is `pub(crate)` in v0.1.6.
 
 use crate::error::FfiError;
 
@@ -38,7 +41,7 @@ pub struct FfiHealthDetail {
 pub(crate) fn get_health_detail_inner() -> Result<FfiHealthDetail, FfiError> {
     let daemon_running = crate::runtime::is_daemon_running()?;
 
-    let snapshot = zeroclaw::health::snapshot();
+    let snapshot = crate::ffi_health::snapshot();
     let components = snapshot
         .components
         .into_iter()
@@ -60,7 +63,7 @@ pub(crate) fn get_health_detail_inner() -> Result<FfiHealthDetail, FfiError> {
 
 /// Returns health for a single named component.
 pub(crate) fn get_component_health_inner(name: String) -> Option<FfiComponentHealth> {
-    let snapshot = zeroclaw::health::snapshot();
+    let snapshot = crate::ffi_health::snapshot();
     snapshot.components.get(&name).map(|ch| FfiComponentHealth {
         name,
         status: ch.status.clone(),
@@ -84,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_get_component_health_missing() {
-        let result = get_component_health_inner("nonexistent".into());
+        let result = get_component_health_inner("nonexistent_health_test".into());
         assert!(result.is_none());
     }
 }

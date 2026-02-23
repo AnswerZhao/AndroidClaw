@@ -18,6 +18,8 @@ mod cost;
 mod cron;
 mod error;
 mod events;
+mod ffi_health;
+mod gateway_client;
 mod health;
 mod memory_browse;
 mod provider_info;

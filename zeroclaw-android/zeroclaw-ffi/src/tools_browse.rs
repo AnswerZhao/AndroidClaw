@@ -161,9 +161,9 @@ pub(crate) fn list_tools_inner() -> Result<Vec<FfiToolSpec>, FfiError> {
         specs.push(builtin_to_spec(&DELEGATE_TOOL));
     }
 
-    let skills = zeroclaw::skills::load_skills(&workspace_dir);
-    for skill in &skills {
-        for tool in &skill.tools {
+    let skills = crate::skills::load_skills_from_workspace(&workspace_dir);
+    for (skill, tools) in &skills {
+        for tool in tools {
             specs.push(FfiToolSpec {
                 name: tool.name.clone(),
                 description: tool.description.clone(),

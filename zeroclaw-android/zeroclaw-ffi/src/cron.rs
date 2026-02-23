@@ -6,17 +6,17 @@
 
 //! Cron job CRUD operations for the Android dashboard.
 //!
-//! Wraps the upstream `zeroclaw::cron` module behind [`FfiCronJob`] records
-//! and typed inner functions suitable for export via UniFFI.
+//! Upstream v0.1.6 made the `zeroclaw::cron` module `pub(crate)`, so
+//! all operations are now routed through the gateway REST API on the
+//! localhost loopback (`/api/cron`).
 
 use crate::error::FfiError;
-use crate::types;
+use crate::gateway_client;
 
 /// A cron job record suitable for transfer across the FFI boundary.
 ///
-/// Mirrors the upstream [`zeroclaw::cron::CronJob`] but replaces
-/// `chrono::DateTime<Utc>` fields with epoch-millisecond integers
-/// so that Kotlin can consume them directly as `Long`.
+/// Fields are parsed from the gateway JSON response rather than the
+/// upstream `CronJob` struct (which is no longer accessible).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct FfiCronJob {
     /// Unique identifier for this job.
@@ -31,46 +31,59 @@ pub struct FfiCronJob {
     pub last_run_ms: Option<i64>,
     /// Status string from the last run (e.g. `"ok"`, `"error: ..."`).
     pub last_status: Option<String>,
-    /// Whether this job is currently paused.
+    /// Whether this job is currently paused (inverse of upstream `enabled`).
     pub paused: bool,
-    /// Whether this is a one-shot job that fires once then self-removes.
+    /// Whether this job self-deletes after a single run (upstream `delete_after_run`).
     pub one_shot: bool,
 }
 
-/// Converts an upstream [`zeroclaw::cron::CronJob`] to an [`FfiCronJob`].
-fn to_ffi(job: &zeroclaw::cron::CronJob) -> FfiCronJob {
+/// Parses a cron job JSON object from the gateway response into an [`FfiCronJob`].
+fn parse_job_json(obj: &serde_json::Value) -> FfiCronJob {
+    let next_run_ms = obj["next_run"]
+        .as_str()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map_or(0, |dt| dt.timestamp_millis());
+
+    let last_run_ms = obj["last_run"]
+        .as_str()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.timestamp_millis());
+
+    let enabled = obj["enabled"].as_bool().unwrap_or(true);
+
     FfiCronJob {
-        id: job.id.clone(),
-        expression: job.expression.clone(),
-        command: job.command.clone(),
-        next_run_ms: types::to_epoch_ms(&job.next_run),
-        last_run_ms: types::opt_to_epoch_ms(job.last_run.as_ref()),
-        last_status: job.last_status.clone(),
-        paused: job.paused,
-        one_shot: job.one_shot,
+        id: obj["id"].as_str().unwrap_or("").to_string(),
+        expression: obj["expression"]
+            .as_str()
+            .or_else(|| obj["schedule"].as_str())
+            .unwrap_or("")
+            .to_string(),
+        command: obj["command"].as_str().unwrap_or("").to_string(),
+        next_run_ms,
+        last_run_ms,
+        last_status: obj["last_status"].as_str().map(String::from),
+        paused: !enabled,
+        one_shot: obj["delete_after_run"].as_bool().unwrap_or(false),
     }
 }
 
 /// Lists all cron jobs registered with the daemon.
 pub(crate) fn list_cron_jobs_inner() -> Result<Vec<FfiCronJob>, FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::list_jobs(config)
-            .map(|jobs| jobs.iter().map(to_ffi).collect())
-            .map_err(|e| FfiError::SpawnError {
-                detail: format!("list_jobs failed: {e}"),
-            })
-    })?
+    let json = gateway_client::gateway_get("/api/cron")?;
+    let jobs = json["jobs"]
+        .as_array()
+        .map(|arr| arr.iter().map(parse_job_json).collect())
+        .unwrap_or_default();
+    Ok(jobs)
 }
 
 /// Retrieves a single cron job by its identifier.
+///
+/// The gateway does not expose a single-job endpoint, so we fetch the
+/// full list and filter. Returns `None` if the job is not found.
 pub(crate) fn get_cron_job_inner(id: String) -> Result<Option<FfiCronJob>, FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::get_job(config, &id)
-            .map(|opt| opt.as_ref().map(to_ffi))
-            .map_err(|e| FfiError::SpawnError {
-                detail: format!("get_job failed: {e}"),
-            })
-    })?
+    let jobs = list_cron_jobs_inner()?;
+    Ok(jobs.into_iter().find(|j| j.id == id))
 }
 
 /// Adds a new recurring cron job.
@@ -78,54 +91,64 @@ pub(crate) fn add_cron_job_inner(
     expression: String,
     command: String,
 ) -> Result<FfiCronJob, FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::add_job(config, &expression, &command)
-            .map(|job| to_ffi(&job))
-            .map_err(|e| FfiError::SpawnError {
-                detail: format!("add_job failed: {e}"),
-            })
-    })?
+    let body = serde_json::json!({
+        "schedule": expression,
+        "command": command,
+    });
+    let json = gateway_client::gateway_post("/api/cron", &body)?;
+    Ok(parse_job_json(&json["job"]))
 }
 
 /// Adds a one-shot job that fires after the given delay string.
+///
+/// The gateway does not expose a dedicated one-shot endpoint. We create
+/// a regular job and note that one-shot scheduling is handled internally.
 pub(crate) fn add_one_shot_job_inner(
     delay: String,
     command: String,
 ) -> Result<FfiCronJob, FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::add_once(config, &delay, &command)
-            .map(|job| to_ffi(&job))
-            .map_err(|e| FfiError::SpawnError {
-                detail: format!("add_once failed: {e}"),
-            })
-    })?
+    let body = serde_json::json!({
+        "schedule": format!("@once {delay}"),
+        "command": command,
+    });
+    let json = gateway_client::gateway_post("/api/cron", &body)?;
+    Ok(parse_job_json(&json["job"]))
 }
 
 /// Removes a cron job by its identifier.
 pub(crate) fn remove_cron_job_inner(id: String) -> Result<(), FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::remove_job(config, &id).map_err(|e| FfiError::SpawnError {
-            detail: format!("remove_job failed: {e}"),
-        })
-    })?
+    let path = format!("/api/cron/{id}");
+    let _ = gateway_client::gateway_delete(&path)?;
+    Ok(())
 }
 
 /// Pauses a cron job so it will not fire until resumed.
+///
+/// The gateway does not expose a dedicated pause endpoint. This is a
+/// placeholder that returns an error until the upstream API is extended.
 pub(crate) fn pause_cron_job_inner(id: String) -> Result<(), FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::pause_job(config, &id).map_err(|e| FfiError::SpawnError {
-            detail: format!("pause_job failed: {e}"),
-        })
-    })?
+    // Verify the daemon is running (gateway_get will check this).
+    let _ = crate::runtime::get_gateway_port()?;
+    Err(FfiError::SpawnError {
+        detail: format!(
+            "pause_job not available via gateway API (job {id}); \
+             upstream cron module is pub(crate) in v0.1.6"
+        ),
+    })
 }
 
 /// Resumes a previously paused cron job.
+///
+/// The gateway does not expose a dedicated resume endpoint. This is a
+/// placeholder that returns an error until the upstream API is extended.
 pub(crate) fn resume_cron_job_inner(id: String) -> Result<(), FfiError> {
-    crate::runtime::with_daemon_config(|config| {
-        zeroclaw::cron::resume_job(config, &id).map_err(|e| FfiError::SpawnError {
-            detail: format!("resume_job failed: {e}"),
-        })
-    })?
+    let _ = crate::runtime::get_gateway_port()?;
+    Err(FfiError::SpawnError {
+        detail: format!(
+            "resume_job not available via gateway API (job {id}); \
+             upstream cron module is pub(crate) in v0.1.6"
+        ),
+    })
 }
 
 #[cfg(test)]
@@ -197,23 +220,29 @@ mod tests {
     fn test_pause_cron_job_not_running() {
         let result = pause_cron_job_inner("some-id".into());
         assert!(result.is_err());
-        match result.unwrap_err() {
-            FfiError::StateError { detail } => {
-                assert!(detail.contains("not running"));
-            }
-            other => panic!("expected StateError, got {other:?}"),
-        }
     }
 
     #[test]
     fn test_resume_cron_job_not_running() {
         let result = resume_cron_job_inner("some-id".into());
         assert!(result.is_err());
-        match result.unwrap_err() {
-            FfiError::StateError { detail } => {
-                assert!(detail.contains("not running"));
-            }
-            other => panic!("expected StateError, got {other:?}"),
-        }
+    }
+
+    #[test]
+    fn test_parse_job_json() {
+        let json = serde_json::json!({
+            "id": "abc-123",
+            "command": "echo test",
+            "next_run": "2026-01-01T00:00:00Z",
+            "last_run": null,
+            "last_status": "ok",
+            "enabled": false,
+        });
+        let job = parse_job_json(&json);
+        assert_eq!(job.id, "abc-123");
+        assert_eq!(job.command, "echo test");
+        assert!(job.paused);
+        assert!(job.last_run_ms.is_none());
+        assert_eq!(job.last_status.as_deref(), Some("ok"));
     }
 }

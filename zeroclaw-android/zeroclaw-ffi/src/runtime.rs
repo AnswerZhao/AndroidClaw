@@ -24,16 +24,18 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 static DAEMON: OnceLock<Mutex<Option<DaemonState>>> = OnceLock::new();
 
 /// Mutable state for a running daemon instance.
+///
+/// Upstream v0.1.6 made `cost`, `health`, `heartbeat`, `cron`, and
+/// `skills` modules `pub(crate)`, so this struct no longer holds a
+/// `CostTracker`. Cost data is accessed through the gateway REST API.
 struct DaemonState {
     /// Handles for all spawned component supervisors.
     handles: Vec<JoinHandle<()>>,
     /// Port the gateway HTTP server is listening on.
     gateway_port: u16,
-    /// Cost tracker, present only when `config.cost.enabled` is true.
-    cost_tracker: Option<zeroclaw::cost::CostTracker>,
     /// Parsed daemon configuration, retained for sibling module access.
     ///
-    /// Used by [`with_daemon_config`] for cron, skills, and memory modules.
+    /// Used by [`with_daemon_config`] for memory modules.
     config: Config,
     /// Memory backend, created during daemon startup for the memory browser.
     ///
@@ -65,30 +67,26 @@ pub(crate) fn is_daemon_running() -> Result<bool, FfiError> {
     Ok(guard.is_some())
 }
 
-/// Runs a closure with a reference to the cost tracker if available.
+/// Returns the gateway port if the daemon is running.
 ///
-/// Returns [`FfiError::StateError`] if the daemon is not running or
-/// cost tracking is disabled.
-pub(crate) fn with_cost_tracker<T>(
-    f: impl FnOnce(&zeroclaw::cost::CostTracker) -> anyhow::Result<T>,
-) -> Result<T, FfiError> {
+/// Used by [`crate::gateway_client`] to construct loopback HTTP URLs.
+///
+/// # Errors
+///
+/// Returns [`FfiError::StateError`] if the daemon is not running,
+/// or [`FfiError::StateCorrupted`] if the daemon mutex is poisoned.
+pub(crate) fn get_gateway_port() -> Result<u16, FfiError> {
     let guard = daemon_mutex()
         .lock()
         .map_err(|_| FfiError::StateCorrupted {
             detail: "daemon mutex poisoned".into(),
         })?;
-    let state = guard.as_ref().ok_or_else(|| FfiError::StateError {
-        detail: "daemon not running".into(),
-    })?;
-    let tracker = state
-        .cost_tracker
+    guard
         .as_ref()
         .ok_or_else(|| FfiError::StateError {
-            detail: "cost tracking not enabled".into(),
-        })?;
-    f(tracker).map_err(|e| FfiError::SpawnError {
-        detail: e.to_string(),
-    })
+            detail: "daemon not running".into(),
+        })
+        .map(|state| state.gateway_port)
 }
 
 /// Runs a closure with a reference to the daemon config.
@@ -168,8 +166,12 @@ pub(crate) fn get_or_create_runtime() -> Result<&'static Runtime, FfiError> {
 /// Starts the `ZeroClaw` daemon with the provided configuration.
 ///
 /// Parses `config_toml` into a [`Config`], overrides Android-specific paths
-/// with `data_dir`, then spawns all daemon components (gateway, channels,
-/// scheduler, heartbeat) under supervised tasks with exponential backoff.
+/// with `data_dir`, then spawns the gateway and channel supervisors.
+///
+/// Upstream v0.1.6 made the `cron`, `cost`, `health`, and `heartbeat`
+/// modules `pub(crate)`, so we no longer start those components directly.
+/// The gateway handles cron CRUD and cost tracking internally; health is
+/// tracked via [`crate::ffi_health`]; heartbeat is skipped on mobile.
 ///
 /// # Errors
 ///
@@ -241,18 +243,6 @@ pub(crate) fn start_daemon_inner(
         .channel_max_backoff_secs
         .max(initial_backoff);
 
-    let cost_tracker = if config.cost.enabled {
-        match zeroclaw::cost::CostTracker::new(config.cost.clone(), &config.workspace_dir) {
-            Ok(tracker) => Some(tracker),
-            Err(e) => {
-                tracing::warn!("Cost tracking disabled: {e}");
-                None
-            }
-        }
-    } else {
-        None
-    };
-
     let memory: Option<Arc<dyn zeroclaw::memory::Memory>> = match zeroclaw::memory::create_memory(
         &config.memory,
         &config.workspace_dir,
@@ -271,14 +261,7 @@ pub(crate) fn start_daemon_inner(
     let stored_config = config.clone();
 
     let handles = runtime.block_on(async {
-        zeroclaw::health::mark_component_ok("daemon");
-
-        if config.heartbeat.enabled {
-            let _ = zeroclaw::heartbeat::engine::HeartbeatEngine::ensure_heartbeat_file(
-                &config.workspace_dir,
-            )
-            .await;
-        }
+        crate::ffi_health::mark_component_ok("daemon");
 
         let mut handles: Vec<JoinHandle<()>> = Vec::new();
 
@@ -311,35 +294,15 @@ pub(crate) fn start_daemon_inner(
                 },
             ));
         } else {
-            zeroclaw::health::mark_component_ok("channels");
+            crate::ffi_health::mark_component_ok("channels");
             tracing::info!("No real-time channels configured; channel supervisor disabled");
         }
 
-        if config.heartbeat.enabled {
-            let heartbeat_cfg = config.clone();
-            handles.push(spawn_component_supervisor(
-                "heartbeat",
-                initial_backoff,
-                max_backoff,
-                move || {
-                    let cfg = heartbeat_cfg.clone();
-                    async move { run_heartbeat_worker(cfg).await }
-                },
-            ));
-        }
-
-        {
-            let scheduler_cfg = config.clone();
-            handles.push(spawn_component_supervisor(
-                "scheduler",
-                initial_backoff,
-                max_backoff,
-                move || {
-                    let cfg = scheduler_cfg.clone();
-                    async move { zeroclaw::cron::scheduler::run(cfg).await }
-                },
-            ));
-        }
+        // NOTE: Heartbeat and cron scheduler are skipped on Android.
+        // Upstream v0.1.6 made these modules pub(crate), and they are
+        // non-essential for the mobile wrapper. The gateway's internal
+        // cron scheduler handles job execution; cron CRUD and cost data
+        // are accessed through the gateway REST API.
 
         handles
     });
@@ -347,7 +310,6 @@ pub(crate) fn start_daemon_inner(
     *guard = Some(DaemonState {
         handles,
         gateway_port: port,
-        cost_tracker,
         config: stored_config,
         memory,
     });
@@ -387,7 +349,7 @@ pub(crate) fn stop_daemon_inner() -> Result<(), FfiError> {
         }
     });
 
-    zeroclaw::health::mark_component_error("daemon", "shutdown requested");
+    crate::ffi_health::mark_component_error("daemon", "shutdown requested");
     tracing::info!("ZeroClaw daemon stopped");
 
     Ok(())
@@ -395,7 +357,7 @@ pub(crate) fn stop_daemon_inner() -> Result<(), FfiError> {
 
 /// Returns a JSON string describing the health of all daemon components.
 ///
-/// Includes the upstream health snapshot plus a `daemon_running` boolean.
+/// Includes the FFI health snapshot plus a `daemon_running` boolean.
 ///
 /// # Errors
 ///
@@ -411,7 +373,7 @@ pub(crate) fn get_status_inner() -> Result<String, FfiError> {
     let daemon_running = guard.is_some();
     drop(guard);
 
-    let mut snapshot = zeroclaw::health::snapshot_json();
+    let mut snapshot = crate::ffi_health::snapshot_json();
     if let Some(obj) = snapshot.as_object_mut() {
         obj.insert("daemon_running".into(), serde_json::json!(daemon_running));
     }
@@ -446,19 +408,7 @@ pub(crate) fn send_message_inner(message: String) -> Result<String, FfiError> {
 
     let runtime = get_or_create_runtime()?;
 
-    let gateway_port = {
-        let guard = daemon_mutex()
-            .lock()
-            .map_err(|e| FfiError::StateCorrupted {
-                detail: format!("daemon mutex poisoned: {e}"),
-            })?;
-        guard
-            .as_ref()
-            .ok_or_else(|| FfiError::StateError {
-                detail: "daemon not running".to_string(),
-            })?
-            .gateway_port
-    };
+    let gateway_port = get_gateway_port()?;
 
     let url = format!("http://127.0.0.1:{gateway_port}/webhook");
 
@@ -510,11 +460,7 @@ pub(crate) fn send_message_inner(message: String) -> Result<String, FfiError> {
     })
 }
 
-/// Writes a health snapshot JSON to disk every 5 seconds.
-///
-/// Module-private helper that replicates `daemon/mod.rs` state writer
-/// with identical behaviour. Runs as a background task for the lifetime
-/// of the daemon, writing `daemon_state.json` next to the config file.
+/// Writes an FFI health snapshot JSON to disk every 5 seconds.
 fn spawn_state_writer(config: Config) -> JoinHandle<()> {
     tokio::spawn(async move {
         let path = config
@@ -530,7 +476,7 @@ fn spawn_state_writer(config: Config) -> JoinHandle<()> {
         let mut interval = tokio::time::interval(Duration::from_secs(5));
         loop {
             interval.tick().await;
-            let mut json = zeroclaw::health::snapshot_json();
+            let mut json = crate::ffi_health::snapshot_json();
             if let Some(obj) = json.as_object_mut() {
                 obj.insert(
                     "written_at".into(),
@@ -551,9 +497,8 @@ fn spawn_state_writer(config: Config) -> JoinHandle<()> {
 
 /// Supervises a daemon component with exponential backoff on failure.
 ///
-/// Module-private helper that replicates `daemon/mod.rs:spawn_component_supervisor`
-/// since the upstream version is not exported. Marks component health via
-/// `zeroclaw::health` and doubles `backoff` on each failure up to `max_backoff_secs`.
+/// Uses [`crate::ffi_health`] for health tracking since the upstream
+/// `zeroclaw::health` module is `pub(crate)` in v0.1.6.
 fn spawn_component_supervisor<F, Fut>(
     name: &'static str,
     initial_backoff_secs: u64,
@@ -569,20 +514,23 @@ where
         let max_backoff = max_backoff_secs.max(backoff);
 
         loop {
-            zeroclaw::health::mark_component_ok(name);
+            crate::ffi_health::mark_component_ok(name);
             match run_component().await {
                 Ok(()) => {
-                    zeroclaw::health::mark_component_error(name, "component exited unexpectedly");
+                    crate::ffi_health::mark_component_error(
+                        name,
+                        "component exited unexpectedly",
+                    );
                     tracing::warn!("Daemon component '{name}' exited unexpectedly");
                     backoff = initial_backoff_secs.max(1);
                 }
                 Err(e) => {
-                    zeroclaw::health::mark_component_error(name, e.to_string());
+                    crate::ffi_health::mark_component_error(name, e.to_string());
                     tracing::error!("Daemon component '{name}' failed: {e}");
                 }
             }
 
-            zeroclaw::health::bump_component_restart(name);
+            crate::ffi_health::bump_component_restart(name);
             tokio::time::sleep(Duration::from_secs(backoff)).await;
             backoff = backoff.saturating_mul(2).min(max_backoff);
         }
@@ -590,59 +538,11 @@ where
 }
 
 /// Extracts the `"error"` field from a gateway JSON error response body.
-///
-/// Returns the error string if present, or an empty string if the body
-/// is not valid JSON or lacks an `"error"` field.
 fn extract_gateway_error(body: &str) -> String {
     serde_json::from_str::<serde_json::Value>(body)
         .ok()
         .and_then(|v| v["error"].as_str().map(String::from))
         .unwrap_or_default()
-}
-
-/// Runs the heartbeat worker loop.
-///
-/// Module-private helper replicating `daemon/mod.rs:run_heartbeat_worker`.
-/// Collects heartbeat tasks at the configured interval and dispatches each
-/// through the agent runner.
-async fn run_heartbeat_worker(config: Config) -> anyhow::Result<()> {
-    let config_observer = zeroclaw::observability::create_observer(&config.observability);
-    let android_observer = Box::new(crate::events::AndroidObserver);
-    let observer: std::sync::Arc<dyn zeroclaw::observability::Observer> =
-        std::sync::Arc::from(zeroclaw::observability::MultiObserver::new(vec![
-            config_observer,
-            android_observer,
-        ]));
-    let engine = zeroclaw::heartbeat::engine::HeartbeatEngine::new(
-        config.heartbeat.clone(),
-        config.workspace_dir.clone(),
-        observer,
-    );
-
-    let interval_mins = config.heartbeat.interval_minutes.max(5);
-    let mut interval = tokio::time::interval(Duration::from_secs(u64::from(interval_mins) * 60));
-
-    loop {
-        interval.tick().await;
-
-        let tasks = engine.collect_tasks().await?;
-        if tasks.is_empty() {
-            continue;
-        }
-
-        for task in tasks {
-            let prompt = format!("[Heartbeat Task] {task}");
-            let temp = config.default_temperature;
-            if let Err(e) =
-                zeroclaw::agent::run(config.clone(), Some(prompt), None, None, temp, vec![]).await
-            {
-                zeroclaw::health::mark_component_error("heartbeat", e.to_string());
-                tracing::warn!("Heartbeat task failed: {e}");
-            } else {
-                zeroclaw::health::mark_component_ok("heartbeat");
-            }
-        }
-    }
 }
 
 /// Validates a TOML config string without starting the daemon.
@@ -719,7 +619,6 @@ pub(crate) fn doctor_channels_inner(
 
 /// Returns `true` if any real-time channel is configured and needs supervision.
 ///
-/// Module-private helper that checks all channel types in the config.
 /// Updated for upstream v0.1.6 which adds Mattermost, Signal, WATI,
 /// DingTalk, Nostr, QQ, ClawdTalk, Nextcloud Talk, IRC, Feishu, Linq,
 /// and Webhook channels.
