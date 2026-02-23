@@ -719,14 +719,28 @@ pub(crate) fn doctor_channels_inner(
 
 /// Returns `true` if any real-time channel is configured and needs supervision.
 ///
-/// Module-private helper that checks all channel types (Telegram, Discord,
-/// Slack, iMessage, Matrix, `WhatsApp`, Email) in the config.
+/// Module-private helper that checks all channel types in the config.
+/// Updated for upstream v0.1.6 which adds Mattermost, Signal, WATI,
+/// DingTalk, Nostr, QQ, ClawdTalk, Nextcloud Talk, IRC, Feishu, Linq,
+/// and Webhook channels.
 fn has_supervised_channels(config: &Config) -> bool {
     config.channels_config.telegram.is_some()
         || config.channels_config.discord.is_some()
         || config.channels_config.slack.is_some()
+        || config.channels_config.mattermost.is_some()
         || config.channels_config.imessage.is_some()
         || config.channels_config.matrix.is_some()
+        || config.channels_config.signal.is_some()
         || config.channels_config.whatsapp.is_some()
+        || config.channels_config.wati.is_some()
+        || config.channels_config.nextcloud_talk.is_some()
         || config.channels_config.email.is_some()
+        || config.channels_config.irc.is_some()
+        || config.channels_config.feishu.is_some()
+        || config.channels_config.dingtalk.is_some()
+        || config.channels_config.qq.is_some()
+        || config.channels_config.nostr.is_some()
+        || config.channels_config.clawdtalk.is_some()
+        || config.channels_config.linq.is_some()
+        || config.channels_config.webhook.is_some()
 }
