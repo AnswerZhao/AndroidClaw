@@ -1,14 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+LM_STUDIO_HOST="${LM_STUDIO_HOST:-localhost:1234}"
+
 echo "=== Real Daemon E2E Tests ==="
-echo "Requires LM Studio running at http://192.168.1.197:1234"
+echo "Requires LM Studio running at http://$LM_STUDIO_HOST"
 echo ""
 
 # Verify LM Studio is reachable
-if ! curl -sf http://192.168.1.197:1234/v1/models > /dev/null 2>&1; then
-    echo "ERROR: LM Studio not reachable at 192.168.1.197:1234"
+if ! curl -sf "http://$LM_STUDIO_HOST/v1/models" > /dev/null 2>&1; then
+    echo "ERROR: LM Studio not reachable at $LM_STUDIO_HOST"
     echo "Start LM Studio and load a Qwen model first."
+    echo "Override with: LM_STUDIO_HOST=<ip>:<port> $0"
     exit 1
 fi
 echo "LM Studio: OK"

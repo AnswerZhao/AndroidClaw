@@ -14,6 +14,9 @@ export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot"
 export ANDROID_HOME="/c/Users/Natal/AppData/Local/Android/Sdk"
 export PATH="$HOME/.cargo/bin:$JAVA_HOME/bin:$PATH"
 
+LM_STUDIO_HOST="${LM_STUDIO_HOST:-localhost:1234}"
+export LM_STUDIO_HOST
+
 FAILED=0
 
 run_suite() {
@@ -48,7 +51,7 @@ else
 fi
 
 # Real daemon tests (optional, needs LM Studio)
-if curl -sf http://192.168.1.197:1234/v1/models > /dev/null 2>&1; then
+if curl -sf "http://$LM_STUDIO_HOST/v1/models" > /dev/null 2>&1; then
     run_suite "Real daemon E2E" "$SCRIPT_DIR/test-real-daemon.sh"
 else
     echo "SKIP: Real daemon tests (LM Studio not available)"
