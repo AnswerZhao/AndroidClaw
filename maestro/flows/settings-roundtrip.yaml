@@ -1,0 +1,13 @@
+appId: com.zeroclaw.android
+tags:
+  - journey
+  - settings
+---
+- runFlow: ../subflows/complete-onboarding.yaml
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      tab: "Settings"
+- assertVisible: "Daemon"
+- assertVisible: "Security"
+- assertVisible: "About"

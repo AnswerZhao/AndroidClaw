@@ -1,0 +1,14 @@
+appId: com.zeroclaw.android
+tags:
+  - journey
+  - daemon
+---
+- runFlow: ../subflows/complete-onboarding.yaml
+- tapOn: "Start Daemon"
+- assertVisible:
+    text: "Running"
+    timeout: 10000
+- tapOn: "Stop Daemon"
+- assertVisible:
+    text: "Stopped"
+    timeout: 5000

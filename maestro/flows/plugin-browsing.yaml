@@ -1,0 +1,15 @@
+appId: com.zeroclaw.android
+tags:
+  - journey
+  - plugins
+---
+- runFlow: ../subflows/complete-onboarding.yaml
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      tab: "Plugins"
+- assertVisible: "Installed"
+- tapOn: "Available"
+- assertVisible: "Available"
+- tapOn: "Skills"
+- assertVisible: "Skills"

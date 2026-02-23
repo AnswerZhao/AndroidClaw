@@ -1,0 +1,13 @@
+appId: com.zeroclaw.android
+tags:
+  - journey
+  - agents
+---
+- runFlow: ../subflows/complete-onboarding.yaml
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      tab: "Connections"
+- assertVisible: "Search connections"
+- tapOn:
+    id: "Add new connection"

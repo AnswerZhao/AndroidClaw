@@ -1,0 +1,6 @@
+appId: com.zeroclaw.android
+---
+- tapOn: "Start Daemon"
+- assertVisible:
+    text: "Running"
+    timeout: 10000
