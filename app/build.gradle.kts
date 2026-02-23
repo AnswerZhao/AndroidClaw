@@ -80,6 +80,20 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        managedDevices {
+            devices {
+                create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel7Api35") {
+                    device = "Pixel 7"
+                    apiLevel = 35
+                    systemImageSource = "google"
+                }
+            }
+            groups {
+                create("ci") {
+                    targetDevices.add(devices.getByName("pixel7Api35"))
+                }
+            }
+        }
     }
 
     buildFeatures {
@@ -155,8 +169,12 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.json)
 
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.test.core)
     androidTestImplementation(libs.test.ext.junit)
+    androidTestImplementation(libs.test.runner)
+    androidTestImplementation(libs.test.rules)
     androidTestImplementation(libs.room.testing)
 }
 
