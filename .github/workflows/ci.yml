@@ -28,7 +28,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
         working-directory: .
 
       - uses: dtolnay/rust-toolchain@stable
@@ -55,7 +55,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: actions/setup-java@v4
         with:
@@ -82,7 +82,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
@@ -99,7 +99,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: actions/setup-java@v4
         with:
@@ -145,7 +145,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: actions/setup-java@v4
         with:
@@ -206,7 +206,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: actions/setup-java@v4
         with:
@@ -251,7 +251,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: actions/setup-java@v4
         with:
@@ -293,7 +293,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - name: Check version consistency
         run: |
@@ -324,7 +324,7 @@ jobs:
           submodules: recursive
 
       - name: Apply submodule patches
-        run: cd zeroclaw && git am ../patches/*.patch
+        run: cd zeroclaw && git apply ../patches/*.patch
 
       - uses: actions/setup-java@v4
         with:
