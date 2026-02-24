@@ -309,7 +309,7 @@ class ApiKeysViewModel(
      *
      * The key is automatically hidden after [REVEAL_TIMEOUT_MS] milliseconds.
      * Any previous reveal timer is cancelled before starting a new one.
-     * Callers should gate this behind biometric authentication.
+     * Callers should gate this behind PIN authentication.
      *
      * @param id Unique identifier of the key to reveal.
      */

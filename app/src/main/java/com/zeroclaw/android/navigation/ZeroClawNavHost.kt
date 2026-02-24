@@ -12,11 +12,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -26,6 +28,8 @@ import androidx.navigation.toRoute
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ServiceState
 import com.zeroclaw.android.service.ZeroClawDaemonService
+import com.zeroclaw.android.ui.component.PinEntryMode
+import com.zeroclaw.android.ui.component.PinEntrySheet
 import com.zeroclaw.android.ui.screen.agents.AddAgentScreen
 import com.zeroclaw.android.ui.screen.agents.AgentDetailScreen
 import com.zeroclaw.android.ui.screen.agents.AgentsScreen
@@ -64,8 +68,6 @@ import com.zeroclaw.android.ui.screen.settings.gateway.QrScannerScreen
 import com.zeroclaw.android.ui.screen.settings.logs.LogViewerScreen
 import com.zeroclaw.android.ui.screen.settings.memory.MemoryBrowserScreen
 import com.zeroclaw.android.ui.screen.settings.tools.ToolsBrowserScreen
-import com.zeroclaw.android.util.AuthResult
-import com.zeroclaw.android.util.BiometricGatekeeper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -268,7 +270,14 @@ fun ZeroClawNavHost(
 
         composable<ApiKeysRoute> {
             val context = LocalContext.current
+            val app = context.applicationContext as ZeroClawApplication
             val apiKeysViewModel: ApiKeysViewModel = viewModel()
+            val settings by app.settingsRepository.settings.collectAsStateWithLifecycle(
+                initialValue =
+                    com.zeroclaw.android.model
+                        .AppSettings(),
+            )
+            var pendingRevealKeyId by remember { mutableStateOf<String?>(null) }
             val credentialsLauncher =
                 rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.OpenDocument(),
@@ -280,18 +289,8 @@ fun ZeroClawNavHost(
                     navController.navigate(ApiKeyDetailRoute(keyId = keyId))
                 },
                 onRequestBiometric = { keyId ->
-                    val activity = context as? FragmentActivity
-                    if (activity != null) {
-                        BiometricGatekeeper.authenticate(
-                            activity = activity,
-                            title = "Reveal API Key",
-                            subtitle = "Authenticate to view the full key",
-                            negativeButtonText = "Cancel",
-                        ) { result ->
-                            if (result is AuthResult.Success) {
-                                apiKeysViewModel.revealKey(keyId)
-                            }
-                        }
+                    if (settings.pinHash.isNotEmpty()) {
+                        pendingRevealKeyId = keyId
                     } else {
                         apiKeysViewModel.revealKey(keyId)
                     }
@@ -319,6 +318,18 @@ fun ZeroClawNavHost(
                 edgeMargin = edgeMargin,
                 apiKeysViewModel = apiKeysViewModel,
             )
+
+            pendingRevealKeyId?.let { keyId ->
+                PinEntrySheet(
+                    mode = PinEntryMode.VERIFY,
+                    currentPinHash = settings.pinHash,
+                    onPinSet = {
+                        apiKeysViewModel.revealKey(keyId)
+                        pendingRevealKeyId = null
+                    },
+                    onDismiss = { pendingRevealKeyId = null },
+                )
+            }
         }
 
         composable<ApiKeyDetailRoute> { backStackEntry ->

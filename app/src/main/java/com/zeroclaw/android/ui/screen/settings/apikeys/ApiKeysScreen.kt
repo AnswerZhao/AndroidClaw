@@ -96,7 +96,7 @@ data class ApiKeysState(
  * rendering to [ApiKeysContent].
  *
  * @param onNavigateToDetail Navigate to the key detail/add screen.
- * @param onRequestBiometric Callback to request biometric authentication
+ * @param onRequestBiometric Callback to request PIN authentication
  *   for revealing a key.
  * @param onExportResult Callback invoked with the encrypted export payload
  *   so the caller can share or save it.
@@ -163,7 +163,7 @@ fun ApiKeysScreen(
  * @param snackbarHostState Snackbar host state for messages.
  * @param edgeMargin Horizontal padding based on window width size class.
  * @param onNavigateToDetail Navigate to key detail screen.
- * @param onRequestBiometric Request biometric auth for a key.
+ * @param onRequestBiometric Request PIN auth for a key.
  * @param onHideRevealedKey Callback to hide the currently revealed key.
  * @param onDeleteKey Callback to delete a key by ID.
  * @param onRotateKey Callback to rotate a key with a new value.

@@ -69,7 +69,7 @@ fun GatewayScreen(
 }
 
 /**
- * Inner content of the gateway screen, separated for biometric gating.
+ * Inner content of the gateway screen.
  *
  * @param settings Current application settings snapshot.
  * @param onNavigateToQrScanner Callback to navigate to the QR code scanner.

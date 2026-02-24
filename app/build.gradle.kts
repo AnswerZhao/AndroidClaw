@@ -149,7 +149,6 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.datastore.preferences)
-    implementation(libs.biometric)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

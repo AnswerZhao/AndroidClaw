@@ -37,15 +37,18 @@ import androidx.compose.ui.unit.dp
 import com.zeroclaw.android.util.PinHasher
 
 /**
- * Modal bottom sheet for PIN setup or change.
+ * Modal bottom sheet for PIN setup, change, or verification.
  *
  * In [PinEntryMode.SETUP], the user enters a PIN (4-6 digits) then
  * confirms it. In [PinEntryMode.CHANGE], the user first enters their
- * current PIN for verification.
+ * current PIN for verification. In [PinEntryMode.VERIFY], the user
+ * enters their current PIN and the sheet dismisses on success.
  *
- * @param mode Whether this is a first-time setup or a PIN change.
- * @param currentPinHash Existing hash for verification in [PinEntryMode.CHANGE].
- * @param onPinSet Callback with the new PIN hash on success.
+ * @param mode Whether this is a first-time setup, PIN change, or verification.
+ * @param currentPinHash Existing hash for verification in [PinEntryMode.CHANGE]
+ *   and [PinEntryMode.VERIFY].
+ * @param onPinSet Callback with the new PIN hash on success (for SETUP/CHANGE),
+ *   or with the existing hash on successful verification (for VERIFY).
  * @param onDismiss Callback when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +62,13 @@ fun PinEntrySheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var phase by remember {
-        mutableStateOf(if (mode == PinEntryMode.CHANGE) Phase.CURRENT else Phase.ENTER)
+        mutableStateOf(
+            if (mode == PinEntryMode.CHANGE || mode == PinEntryMode.VERIFY) {
+                Phase.CURRENT
+            } else {
+                Phase.ENTER
+            },
+        )
     }
     var enteredPin by remember { mutableStateOf("") }
     var firstPin by remember { mutableStateOf("") }
@@ -67,7 +76,8 @@ fun PinEntrySheet(
 
     val title =
         when (phase) {
-            Phase.CURRENT -> "Enter current PIN"
+            Phase.CURRENT ->
+                if (mode == PinEntryMode.VERIFY) "Enter PIN" else "Enter current PIN"
             Phase.ENTER -> if (mode == PinEntryMode.SETUP) "Create a PIN" else "Enter new PIN"
             Phase.CONFIRM -> "Confirm PIN"
         }
@@ -127,6 +137,7 @@ fun PinEntrySheet(
                         if (phase != Phase.ENTER && enteredPin.length >= MIN_PIN_LENGTH) {
                             handlePinEntry(
                                 phase = phase,
+                                mode = mode,
                                 enteredPin = enteredPin,
                                 firstPin = firstPin,
                                 currentPinHash = currentPinHash,
@@ -158,6 +169,7 @@ fun PinEntrySheet(
                     onClick = {
                         handlePinEntry(
                             phase = phase,
+                            mode = mode,
                             enteredPin = enteredPin,
                             firstPin = firstPin,
                             currentPinHash = currentPinHash,
@@ -230,6 +242,7 @@ private enum class Phase {
 @Suppress("LongParameterList")
 private fun handlePinEntry(
     phase: Phase,
+    mode: PinEntryMode,
     enteredPin: String,
     firstPin: String,
     currentPinHash: String,
@@ -240,7 +253,11 @@ private fun handlePinEntry(
     when (phase) {
         Phase.CURRENT -> {
             if (PinHasher.verify(enteredPin, currentPinHash)) {
-                onAdvance(Phase.ENTER, "")
+                if (mode == PinEntryMode.VERIFY) {
+                    onComplete(currentPinHash)
+                } else {
+                    onAdvance(Phase.ENTER, "")
+                }
             } else {
                 onError("Wrong PIN")
             }
@@ -268,6 +285,9 @@ enum class PinEntryMode {
 
     /** Change existing PIN: enter current, then new, then confirm. */
     CHANGE,
+
+    /** Verify current PIN only (no new PIN). Used for gated actions like key reveal. */
+    VERIFY,
 }
 
 private const val MIN_PIN_LENGTH = 4

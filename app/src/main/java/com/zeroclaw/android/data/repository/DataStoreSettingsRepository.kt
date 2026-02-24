@@ -157,14 +157,11 @@ class DataStoreSettingsRepository(
             browserAllowedDomains = prefs[KEY_BROWSER_DOMAINS] ?: "",
             httpRequestEnabled = prefs[KEY_HTTP_REQ_ENABLED] ?: false,
             httpRequestAllowedDomains = prefs[KEY_HTTP_REQ_DOMAINS] ?: "",
-            biometricForService = prefs[KEY_BIOMETRIC_SERVICE] ?: false,
-            biometricForSettings = prefs[KEY_BIOMETRIC_SETTINGS] ?: false,
             lockEnabled = prefs[KEY_LOCK_ENABLED] ?: false,
             lockTimeoutMinutes =
                 prefs[KEY_LOCK_TIMEOUT]
                     ?: AppSettings.DEFAULT_LOCK_TIMEOUT,
             pinHash = prefs[KEY_PIN_HASH] ?: "",
-            biometricUnlockEnabled = prefs[KEY_BIOMETRIC_UNLOCK] ?: false,
             pluginRegistryUrl =
                 prefs[KEY_PLUGIN_REGISTRY_URL]
                     ?: AppSettings.DEFAULT_PLUGIN_REGISTRY_URL,
@@ -309,8 +306,6 @@ class DataStoreSettingsRepository(
     override suspend fun setLockTimeoutMinutes(minutes: Int) = edit { it[KEY_LOCK_TIMEOUT] = minutes }
 
     override suspend fun setPinHash(hash: String) = edit { it[KEY_PIN_HASH] = hash }
-
-    override suspend fun setBiometricUnlockEnabled(enabled: Boolean) = edit { it[KEY_BIOMETRIC_UNLOCK] = enabled }
 
     override suspend fun setPluginRegistryUrl(url: String) = edit { it[KEY_PLUGIN_REGISTRY_URL] = url }
 
