@@ -1,13 +1,17 @@
 appId: com.zeroclaw.android
 ---
-- stopApp
-- clearState
-- launchApp
+- retry:
+    maxRetries: 2
+    commands:
+      - stopApp
+      - launchApp:
+          clearState: true
+          clearKeychain: true
+      - extendedWaitUntil:
+          visible: "Permissions"
+          timeout: 15000
 
 # Step 1: Permissions
-- extendedWaitUntil:
-    visible: "Permissions"
-    timeout: 30000
 - assertVisible: "Step 1 of 5"
 - tapOn: "Next"
 
