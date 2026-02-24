@@ -192,9 +192,22 @@ jobs:
           profile: pixel_7
           heap-size: 512M
           ram-size: 4096M
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
           script: |
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
             adb install app/build/outputs/apk/debug/app-debug.apk
-            $HOME/.maestro/bin/maestro test maestro/flows/ --exclude-tags real-daemon
+            $HOME/.maestro/bin/maestro test maestro/flows/ --exclude-tags real-daemon --debug-output maestro-output/
+
+      - name: Upload Maestro debug output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug-output
+          path: maestro-output/
+          retention-days: 7
 
   build:
     name: Build

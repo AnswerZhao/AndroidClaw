@@ -4,10 +4,11 @@ tags:
   - onboarding
 ---
 - retry:
-    maxRetries: 1
+    maxRetries: 2
     commands:
       - stopApp
       - clearState
+      - stopApp
       - launchApp
       - extendedWaitUntil:
           visible: "Permissions"
