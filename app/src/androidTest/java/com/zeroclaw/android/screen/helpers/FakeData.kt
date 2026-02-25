@@ -226,6 +226,7 @@ internal fun fakeApiKeysState(): ApiKeysState =
         revealedKeyId = null,
         corruptCount = 0,
         unusedKeyIds = emptySet(),
+        unreachableKeyIds = emptySet(),
         storageHealth = StorageHealth.Healthy,
     )
 

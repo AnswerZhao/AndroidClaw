@@ -17,6 +17,7 @@ import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.CredentialsJsonParser
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.data.StorageHealth
+import com.zeroclaw.android.data.remote.ConnectionProber
 import com.zeroclaw.android.data.remote.ModelFetcher
 import com.zeroclaw.android.model.ApiKey
 import com.zeroclaw.android.model.KeyStatus
@@ -155,6 +156,16 @@ class ApiKeysViewModel(
 
     /** Result of the most recent connection probe, or [ConnectionTestState.Idle] if none. */
     val connectionTestState: StateFlow<ConnectionTestState> = _connectionTestState.asStateFlow()
+
+    private val _unreachableKeyIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Set of API key identifiers whose [ApiKey.baseUrl] failed a reachability probe.
+     *
+     * Only keys with a non-empty base URL (self-hosted/local servers) are probed.
+     * Cloud-only keys are never included. Updated by [probeStoredConnections].
+     */
+    val unreachableKeyIds: StateFlow<Set<String>> = _unreachableKeyIds.asStateFlow()
 
     /**
      * Coroutine job for the auto-hide timer that clears the revealed key
@@ -492,6 +503,28 @@ class ApiKeysViewModel(
                 }
                 _snackbarMessage.value = "Import failed: ${safeErrorMessage(e)}"
             }
+        }
+    }
+
+    /**
+     * Probes stored keys with non-empty [ApiKey.baseUrl] for reachability.
+     *
+     * Iterates all stored keys, sending a lightweight HEAD request to each
+     * base URL via [ConnectionProber]. Keys whose server does not respond
+     * within the probe timeout are added to [unreachableKeyIds].
+     *
+     * Safe to call from the UI layer; work is dispatched to IO internally.
+     */
+    fun probeStoredConnections() {
+        viewModelScope.launch {
+            val currentKeys = keys.value
+            val unreachable = mutableSetOf<String>()
+            for (key in currentKeys) {
+                if (key.baseUrl.isNotBlank() && !ConnectionProber.isReachable(key.baseUrl)) {
+                    unreachable.add(key.id)
+                }
+            }
+            _unreachableKeyIds.value = unreachable
         }
     }
 

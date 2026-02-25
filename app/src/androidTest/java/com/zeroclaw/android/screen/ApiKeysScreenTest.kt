@@ -88,6 +88,7 @@ class ApiKeysScreenTest {
                         revealedKeyId = null,
                         corruptCount = 0,
                         unusedKeyIds = emptySet(),
+                        unreachableKeyIds = emptySet(),
                         storageHealth = StorageHealth.Healthy,
                     ),
                 snackbarHostState = remember { SnackbarHostState() },

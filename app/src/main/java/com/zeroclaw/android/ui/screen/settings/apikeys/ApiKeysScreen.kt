@@ -79,6 +79,7 @@ private const val MIN_PASSPHRASE_LENGTH = 8
  * @property revealedKeyId ID of the currently revealed key, or null.
  * @property corruptCount Number of corrupted keys detected.
  * @property unusedKeyIds Set of key IDs not used by any agent.
+ * @property unreachableKeyIds Set of key IDs whose base URL failed a reachability probe.
  * @property storageHealth Current encrypted storage health status.
  */
 data class ApiKeysState(
@@ -86,6 +87,7 @@ data class ApiKeysState(
     val revealedKeyId: String?,
     val corruptCount: Int,
     val unusedKeyIds: Set<String>,
+    val unreachableKeyIds: Set<String>,
     val storageHealth: StorageHealth,
 )
 
@@ -122,7 +124,12 @@ fun ApiKeysScreen(
     val snackbarMessage by apiKeysViewModel.snackbarMessage.collectAsStateWithLifecycle()
     val corruptCount by apiKeysViewModel.corruptKeyCount.collectAsStateWithLifecycle()
     val unusedKeyIds by apiKeysViewModel.unusedKeyIds.collectAsStateWithLifecycle()
+    val unreachableKeyIds by apiKeysViewModel.unreachableKeyIds.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        apiKeysViewModel.probeStoredConnections()
+    }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { message ->
@@ -138,6 +145,7 @@ fun ApiKeysScreen(
                 revealedKeyId = revealedKeyId,
                 corruptCount = corruptCount,
                 unusedKeyIds = unusedKeyIds,
+                unreachableKeyIds = unreachableKeyIds,
                 storageHealth = apiKeysViewModel.storageHealth,
             ),
         snackbarHostState = snackbarHostState,
@@ -345,6 +353,7 @@ internal fun ApiKeysContent(
                         apiKey = apiKey,
                         isRevealed = state.revealedKeyId == apiKey.id,
                         isUnused = apiKey.id in state.unusedKeyIds,
+                        isUnreachable = apiKey.id in state.unreachableKeyIds,
                         onRevealToggle = {
                             if (state.revealedKeyId == apiKey.id) {
                                 onHideRevealedKey()
@@ -598,13 +607,15 @@ private fun ImportPassphraseDialog(
 /**
  * Single API key list item with masked value and action buttons.
  *
- * Shows a warning icon when the key status is [KeyStatus.INVALID]
- * and an amber "Unused" label when no configured agent references
- * the key's provider.
+ * Shows a warning icon when the key status is [KeyStatus.INVALID],
+ * an amber "Unused" label when no configured agent references the
+ * key's provider, and an error-colored "Offline" label when the
+ * key's base URL failed a reachability probe.
  *
  * @param apiKey The key to display.
  * @param isRevealed Whether the key value is currently unmasked.
  * @param isUnused Whether no agent currently uses this key's provider.
+ * @param isUnreachable Whether the key's base URL failed a reachability probe.
  * @param onRevealToggle Callback to toggle reveal state.
  * @param onEdit Callback to navigate to edit screen.
  * @param onRotate Callback to open the key rotation dialog.
@@ -615,6 +626,7 @@ private fun ApiKeyItem(
     apiKey: ApiKey,
     isRevealed: Boolean,
     isUnused: Boolean,
+    isUnreachable: Boolean,
     onRevealToggle: () -> Unit,
     onEdit: () -> Unit,
     onRotate: () -> Unit,
@@ -655,6 +667,13 @@ private fun ApiKeyItem(
                             imageVector = Icons.Filled.Warning,
                             contentDescription = "Key may be invalid",
                             tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    if (isUnreachable) {
+                        Text(
+                            text = "Offline",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                     if (isUnused) {

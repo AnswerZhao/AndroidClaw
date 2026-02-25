@@ -191,7 +191,7 @@ class PluginsViewModel(
         viewModelScope.launch {
             try {
                 val settings = settingsRepository.settings.first()
-                val client = OkHttpPluginRegistryClient()
+                val client = OkHttpPluginRegistryClient(app.sharedHttpClient)
                 val remotePlugins = client.fetchPlugins(settings.pluginRegistryUrl)
                 repository.mergeRemotePlugins(remotePlugins)
                 settingsRepository.setLastPluginSyncTimestamp(System.currentTimeMillis())

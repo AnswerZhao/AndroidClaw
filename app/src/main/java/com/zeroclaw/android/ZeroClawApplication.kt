@@ -61,6 +61,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
 
 /**
  * Application subclass that initialises the native ZeroClaw library and
@@ -161,6 +163,27 @@ class ZeroClawApplication :
     /** App-wide session lock manager observing the process lifecycle. */
     lateinit var sessionLockManager: SessionLockManager
         private set
+
+    /**
+     * Shared [OkHttpClient] for all HTTP callers within the app.
+     *
+     * Uses a bounded connection pool to prevent thread and socket leaks.
+     * Callers should reference this instance rather than creating their own.
+     * Cleaned up in [onTerminate].
+     */
+    val sharedHttpClient: OkHttpClient by lazy {
+        OkHttpClient
+            .Builder()
+            .connectionPool(
+                ConnectionPool(
+                    MAX_IDLE_CONNECTIONS,
+                    KEEP_ALIVE_DURATION_SECONDS.toLong(),
+                    TimeUnit.SECONDS,
+                ),
+            ).connectTimeout(HTTP_CONNECT_TIMEOUT_SECONDS.toLong(), TimeUnit.SECONDS)
+            .readTimeout(HTTP_READ_TIMEOUT_SECONDS.toLong(), TimeUnit.SECONDS)
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -324,11 +347,27 @@ class ZeroClawApplication :
                     .build()
             }.build()
 
+    /**
+     * Shuts down the shared [OkHttpClient] connection pool and dispatcher.
+     *
+     * Called when the application process is terminating. Releases thread
+     * pools and idle connections to prevent resource leaks.
+     */
+    override fun onTerminate() {
+        sharedHttpClient.connectionPool.evictAll()
+        sharedHttpClient.dispatcher.executorService.shutdown()
+        super.onTerminate()
+    }
+
     /** Constants for [ZeroClawApplication]. */
     companion object {
         private const val TAG = "ZeroClawApp"
         private const val CHANNEL_SECRETS_PREFS = "zeroclaw_channel_secrets"
         private const val MEMORY_CACHE_PERCENT = 0.15
         private const val DISK_CACHE_MAX_BYTES = 64L * 1024 * 1024
+        private const val MAX_IDLE_CONNECTIONS = 5
+        private const val KEEP_ALIVE_DURATION_SECONDS = 30
+        private const val HTTP_CONNECT_TIMEOUT_SECONDS = 10
+        private const val HTTP_READ_TIMEOUT_SECONDS = 15
     }
 }

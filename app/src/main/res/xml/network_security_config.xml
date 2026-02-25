@@ -1,20 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cleartext HTTP is restricted to localhost and private network ranges
-  where local AI servers (Ollama, vLLM, LM Studio, LocalAI) run.
-  All cloud provider APIs use HTTPS exclusively.
+  Cleartext HTTP must be globally permitted because the network scanner
+  probes arbitrary private IPs (e.g. 192.168.1.50:1234) for local AI
+  servers. Android's <domain-config> element uses DNS hostname matching,
+  NOT IP subnet/CIDR matching, so entries like "192.168.0.0" with
+  includeSubdomains="true" do NOT match actual hosts in the subnet.
+  All cloud provider APIs use HTTPS exclusively via the Rust layer.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="true">10.0.0.0</domain>
-        <domain includeSubdomains="true">192.168.0.0</domain>
-        <domain includeSubdomains="true">172.16.0.0</domain>
-    </domain-config>
 </network-security-config>

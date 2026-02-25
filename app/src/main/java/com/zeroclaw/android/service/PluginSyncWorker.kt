@@ -42,7 +42,7 @@ class PluginSyncWorker(
         val registryUrl = settings.pluginRegistryUrl
 
         return try {
-            val client = OkHttpPluginRegistryClient()
+            val client = OkHttpPluginRegistryClient(app.sharedHttpClient)
             val remotePlugins = client.fetchPlugins(registryUrl)
             app.pluginRepository.mergeRemotePlugins(remotePlugins)
             app.settingsRepository.setLastPluginSyncTimestamp(System.currentTimeMillis())
