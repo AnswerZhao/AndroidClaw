@@ -6,7 +6,6 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,9 +45,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -69,6 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zeroclaw.android.model.AppSettings
 import com.zeroclaw.android.model.ThemeMode
 import com.zeroclaw.android.navigation.SettingsNavAction
+import com.zeroclaw.android.ui.component.RestartRequiredBanner
 import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.SettingsListItem
 
@@ -426,48 +423,6 @@ private fun ThemePickerDialog(
             }
         },
     )
-}
-
-/**
- * Banner shown when daemon-affecting settings have changed and a restart is required.
- *
- * @param edgeMargin Horizontal padding based on window width size class.
- * @param onRestartDaemon Callback invoked when the user taps the restart button.
- */
-@Composable
-private fun RestartRequiredBanner(
-    edgeMargin: Dp,
-    onRestartDaemon: () -> Unit,
-) {
-    Card(
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            ),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = edgeMargin, vertical = 8.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Restart daemon to apply changes",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.weight(1f),
-            )
-            FilledTonalButton(onClick = onRestartDaemon) {
-                Text("Restart")
-            }
-        }
-    }
 }
 
 /**

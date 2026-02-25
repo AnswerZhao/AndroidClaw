@@ -89,6 +89,36 @@ fun ZeroClawNavHost(
     modifier: Modifier = Modifier,
 ) {
     val pluginsViewModel: PluginsViewModel = viewModel()
+    val context = LocalContext.current
+    val app = remember(context) { context.applicationContext as ZeroClawApplication }
+    val restartRequired by app.daemonBridge.restartRequired
+        .collectAsStateWithLifecycle()
+    val restartScope = rememberCoroutineScope()
+    val onRestartDaemon: () -> Unit =
+        remember(app, navController, restartScope) {
+            {
+                val stopIntent =
+                    Intent(context, ZeroClawDaemonService::class.java).apply {
+                        action = ZeroClawDaemonService.ACTION_STOP
+                    }
+                context.startService(stopIntent)
+                app.chatMessageRepository.clear()
+                navController.navigate(DashboardRoute) {
+                    popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                    launchSingleTop = true
+                }
+                restartScope.launch {
+                    app.daemonBridge.serviceState.first {
+                        it == ServiceState.STOPPED || it == ServiceState.ERROR
+                    }
+                    val startIntent =
+                        Intent(context, ZeroClawDaemonService::class.java).apply {
+                            action = ZeroClawDaemonService.ACTION_START
+                        }
+                    context.startForegroundService(startIntent)
+                }
+            }
+        }
 
     NavHost(
         navController = navController,
@@ -123,6 +153,8 @@ fun ZeroClawNavHost(
                     navController.navigate(ApiKeyDetailRoute(keyId = null))
                 },
                 edgeMargin = edgeMargin,
+                restartRequired = restartRequired,
+                onRestartDaemon = onRestartDaemon,
             )
         }
 
@@ -161,10 +193,6 @@ fun ZeroClawNavHost(
 
         composable<SettingsRoute> {
             val settingsViewModel: SettingsViewModel = viewModel()
-            val restartRequired by settingsViewModel.restartRequired
-                .collectAsStateWithLifecycle()
-            val context = LocalContext.current
-            val restartScope = rememberCoroutineScope()
 
             SettingsScreen(
                 onNavigate = { action ->
@@ -226,37 +254,7 @@ fun ZeroClawNavHost(
                     }
                 },
                 restartRequired = restartRequired,
-                onRestartDaemon = {
-                    val app = context.applicationContext as ZeroClawApplication
-                    val stopIntent =
-                        Intent(
-                            context,
-                            ZeroClawDaemonService::class.java,
-                        ).apply {
-                            action = ZeroClawDaemonService.ACTION_STOP
-                        }
-                    context.startService(stopIntent)
-                    app.chatMessageRepository.clear()
-                    navController.navigate(DashboardRoute) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            inclusive = false
-                        }
-                        launchSingleTop = true
-                    }
-                    restartScope.launch {
-                        app.daemonBridge.serviceState.first {
-                            it == ServiceState.STOPPED || it == ServiceState.ERROR
-                        }
-                        val startIntent =
-                            Intent(
-                                context,
-                                ZeroClawDaemonService::class.java,
-                            ).apply {
-                                action = ZeroClawDaemonService.ACTION_START
-                            }
-                        context.startForegroundService(startIntent)
-                    }
-                },
+                onRestartDaemon = onRestartDaemon,
                 edgeMargin = edgeMargin,
                 settingsViewModel = settingsViewModel,
             )

@@ -32,6 +32,7 @@ class AgentDetailViewModel(
     private val app = application as ZeroClawApplication
     private val repository = app.agentRepository
     private val apiKeyRepository = app.apiKeyRepository
+    private val daemonBridge = app.daemonBridge
 
     private val _agent = MutableStateFlow<Agent?>(null)
 
@@ -65,6 +66,7 @@ class AgentDetailViewModel(
     fun saveAgent(agent: Agent) {
         viewModelScope.launch {
             repository.save(agent)
+            daemonBridge.markRestartRequired()
         }
     }
 
@@ -76,6 +78,7 @@ class AgentDetailViewModel(
     fun deleteAgent(agentId: String) {
         viewModelScope.launch {
             repository.delete(agentId)
+            daemonBridge.markRestartRequired()
         }
     }
 

@@ -50,6 +50,7 @@ import com.zeroclaw.android.model.ProviderAuthType
 import com.zeroclaw.android.ui.component.CollapsibleSection
 import com.zeroclaw.android.ui.component.ConnectionPickerSection
 import com.zeroclaw.android.ui.component.ModelSuggestionField
+import com.zeroclaw.android.ui.component.RestartRequiredBanner
 
 /** Spacing between form fields. */
 private const val FIELD_SPACING_DP = 12
@@ -89,6 +90,8 @@ private const val DEFAULT_DETAIL_TEMPERATURE = 0.7f
  * @param onDeleted Callback invoked after deleting the agent.
  * @param onNavigateToAddConnection Callback to navigate to the API key add screen.
  * @param edgeMargin Horizontal padding based on window width size class.
+ * @param restartRequired Whether the daemon needs a restart to apply changes.
+ * @param onRestartDaemon Callback invoked when the user taps the restart button.
  * @param detailViewModel The [AgentDetailViewModel] for agent state.
  * @param modifier Modifier applied to the root layout.
  */
@@ -99,6 +102,8 @@ fun AgentDetailScreen(
     onDeleted: () -> Unit,
     onNavigateToAddConnection: () -> Unit,
     edgeMargin: Dp,
+    restartRequired: Boolean = false,
+    onRestartDaemon: () -> Unit = {},
     detailViewModel: AgentDetailViewModel = viewModel(),
     modifier: Modifier = Modifier,
 ) {
@@ -184,6 +189,14 @@ fun AgentDetailScreen(
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(HEADING_SPACING_DP.dp))
+
+        if (restartRequired) {
+            RestartRequiredBanner(
+                edgeMargin = edgeMargin,
+                onRestartDaemon = onRestartDaemon,
+            )
+            Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
+        }
 
         OutlinedTextField(
             value = name,

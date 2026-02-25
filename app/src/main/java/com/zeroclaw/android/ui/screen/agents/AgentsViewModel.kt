@@ -31,6 +31,7 @@ class AgentsViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
     private val repository = (application as ZeroClawApplication).agentRepository
+    private val daemonBridge = (application as ZeroClawApplication).daemonBridge
 
     private val _searchQuery = MutableStateFlow("")
 
@@ -67,6 +68,7 @@ class AgentsViewModel(
     fun toggleAgent(agentId: String) {
         viewModelScope.launch {
             repository.toggleEnabled(agentId)
+            daemonBridge.markRestartRequired()
         }
     }
 }

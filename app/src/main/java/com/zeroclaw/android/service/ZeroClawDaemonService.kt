@@ -215,10 +215,11 @@ class ZeroClawDaemonService : Service() {
 
         serviceScope.launch(ioDispatcher) {
             val settings = settingsRepository.settings.first()
-            val apiKey = apiKeyRepository.getByProviderFresh(settings.defaultProvider)
+            val effectiveSettings = resolveEffectiveDefaults(settings)
+            val apiKey = apiKeyRepository.getByProviderFresh(effectiveSettings.defaultProvider)
 
             val globalConfig =
-                buildGlobalTomlConfig(settings, apiKey)
+                buildGlobalTomlConfig(effectiveSettings, apiKey)
             val baseToml = ConfigTomlBuilder.build(globalConfig)
             val channelsToml =
                 ConfigTomlBuilder.buildChannelsToml(
@@ -240,6 +241,32 @@ class ZeroClawDaemonService : Service() {
                 port = validPort.toUShort(),
             )
         }
+    }
+
+    /**
+     * Derives effective default provider and model from the agent list.
+     *
+     * The first enabled agent with a non-blank provider and model name
+     * overrides the DataStore values in [settings]. This ensures that
+     * edits or deletions in the Connections tab take effect immediately
+     * on the next daemon start, without requiring the DataStore
+     * `defaultProvider` / `defaultModel` keys to be kept in sync with
+     * every agent mutation.
+     *
+     * @param settings Current application settings (may have stale defaults).
+     * @return A copy of [settings] with provider and model overridden by the
+     *   primary agent, or unchanged if no qualifying agent exists.
+     */
+    private suspend fun resolveEffectiveDefaults(settings: AppSettings): AppSettings {
+        val agents = agentRepository.agents.first()
+        val primary =
+            agents.firstOrNull {
+                it.isEnabled && it.provider.isNotBlank() && it.modelName.isNotBlank()
+            } ?: return settings
+        return settings.copy(
+            defaultProvider = primary.provider,
+            defaultModel = primary.modelName,
+        )
     }
 
     /**
