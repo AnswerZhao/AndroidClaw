@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Psychology
@@ -220,6 +221,12 @@ internal fun SettingsContent(
             title = "Tunnel",
             subtitle = settings.tunnelProvider,
             onClick = { onNavigate(SettingsNavAction.Tunnel) },
+        )
+        SettingsListItem(
+            icon = Icons.Outlined.Language,
+            title = "Web Access",
+            subtitle = buildWebAccessSubtitle(settings),
+            onClick = { onNavigate(SettingsNavAction.WebAccess) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Sync,
@@ -457,4 +464,19 @@ private fun RerunWizardDialog(
             }
         },
     )
+}
+
+/**
+ * Builds a concise subtitle for the Web Access settings item showing
+ * which web tools are currently enabled.
+ *
+ * @param settings Current application settings.
+ * @return A summary string listing enabled web tools, or "All disabled".
+ */
+private fun buildWebAccessSubtitle(settings: AppSettings): String {
+    val parts = mutableListOf<String>()
+    if (settings.webFetchEnabled) parts += "Fetch"
+    if (settings.webSearchEnabled) parts += "Search"
+    if (settings.httpRequestEnabled) parts += "HTTP"
+    return if (parts.isEmpty()) "All disabled" else parts.joinToString(", ")
 }

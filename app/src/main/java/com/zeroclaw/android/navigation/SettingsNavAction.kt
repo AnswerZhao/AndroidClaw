@@ -85,4 +85,7 @@ sealed interface SettingsNavAction {
 
     /** Navigate to the embedding routes configuration screen. */
     data object EmbeddingRoutes : SettingsNavAction
+
+    /** Navigate to the web access configuration screen. */
+    data object WebAccess : SettingsNavAction
 }

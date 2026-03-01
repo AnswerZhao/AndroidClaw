@@ -179,6 +179,10 @@ data object SecurityAdvancedRoute
 @Serializable
 data object EmbeddingRoutesRoute
 
+/** Web access configuration screen (web fetch, web search, HTTP request). */
+@Serializable
+data object WebAccessRoute
+
 /** First-run onboarding wizard. */
 @Serializable
 data object OnboardingRoute

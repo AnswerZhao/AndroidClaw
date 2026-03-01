@@ -69,6 +69,7 @@ import com.zeroclaw.android.ui.screen.settings.gateway.QrScannerScreen
 import com.zeroclaw.android.ui.screen.settings.logs.LogViewerScreen
 import com.zeroclaw.android.ui.screen.settings.memory.MemoryBrowserScreen
 import com.zeroclaw.android.ui.screen.settings.tools.ToolsBrowserScreen
+import com.zeroclaw.android.ui.screen.settings.web.WebAccessScreen
 import com.zeroclaw.android.ui.screen.setup.SetupScreen
 import com.zeroclaw.android.ui.screen.terminal.TerminalScreen
 import kotlinx.coroutines.flow.first
@@ -247,6 +248,8 @@ fun ZeroClawNavHost(
                             navController.navigate(SecurityAdvancedRoute)
                         SettingsNavAction.EmbeddingRoutes ->
                             navController.navigate(EmbeddingRoutesRoute)
+                        SettingsNavAction.WebAccess ->
+                            navController.navigate(WebAccessRoute)
                     }
                 },
                 onRerunWizard = {
@@ -512,6 +515,10 @@ fun ZeroClawNavHost(
 
         composable<EmbeddingRoutesRoute> {
             EmbeddingRoutesScreen(edgeMargin = edgeMargin)
+        }
+
+        composable<WebAccessRoute> {
+            WebAccessScreen(edgeMargin = edgeMargin)
         }
 
         composable<ToolsBrowserRoute> {
