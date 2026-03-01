@@ -21,7 +21,8 @@ use rhai::{Array, Dynamic, Engine, EvalAltResult};
 
 use crate::error::FfiError;
 use crate::{
-    auth_profiles, cost, cron, events, health, memory_browse, runtime, skills, tools_browse, vision,
+    auth_profiles, cost, cron, events, health, memory_browse, models, runtime, skills,
+    tools_browse, vision,
 };
 
 /// Lazily initialised Rhai engine with all gateway functions registered.
@@ -404,6 +405,37 @@ fn build_engine() -> Engine {
         },
     );
 
+    // ── Model Discovery ──────────────────────────────────────────
+
+    engine.register_fn(
+        "models",
+        |provider: String| -> Result<String, Box<EvalAltResult>> {
+            models::discover_models_inner(provider, String::new(), None).map_err(ffi_err)
+        },
+    );
+
+    engine.register_fn(
+        "models_with_key",
+        |provider: String, api_key: String| -> Result<String, Box<EvalAltResult>> {
+            models::discover_models_inner(provider, api_key, None).map_err(ffi_err)
+        },
+    );
+
+    engine.register_fn(
+        "models_full",
+        |provider: String,
+         api_key: String,
+         base_url: String|
+         -> Result<String, Box<EvalAltResult>> {
+            let url = if base_url.is_empty() {
+                None
+            } else {
+                Some(base_url)
+            };
+            models::discover_models_inner(provider, api_key, url).map_err(ffi_err)
+        },
+    );
+
     engine
 }
 
@@ -618,5 +650,19 @@ mod tests {
     fn test_repl_auth_remove_no_daemon() {
         let result = eval_repl_inner(r#"auth_remove("openai", "default")"#.into());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_repl_models_anthropic() {
+        let result = eval_repl_inner(r#"models("anthropic")"#.into()).unwrap();
+        let parsed: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert!(!parsed.is_empty());
+    }
+
+    #[test]
+    fn test_repl_models_with_key_anthropic() {
+        let result = eval_repl_inner(r#"models_with_key("anthropic", "")"#.into()).unwrap();
+        let parsed: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert!(!parsed.is_empty());
     }
 }

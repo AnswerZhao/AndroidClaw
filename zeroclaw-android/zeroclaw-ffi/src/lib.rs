@@ -24,6 +24,7 @@ mod ffi_health;
 mod gateway_client;
 mod health;
 mod memory_browse;
+mod models;
 mod repl;
 mod runtime;
 mod session;
@@ -1198,6 +1199,36 @@ pub fn session_history() -> Result<Vec<session::SessionMessage>, FfiError> {
     })
 }
 
+/// Discovers available models from a provider's API.
+///
+/// Returns a JSON array of `{"id": "model-id", "name": "display-name"}` objects.
+/// For Anthropic, returns a hardcoded list of known models. For Ollama, queries
+/// the local `/api/tags` endpoint. All other providers use the `OpenAI`-compatible
+/// `/v1/models` endpoint.
+///
+/// This function does NOT require the daemon to be running. It creates its own
+/// HTTP client and queries the provider API directly.
+///
+/// # Errors
+///
+/// Returns [`FfiError::SpawnError`] on HTTP client, network, or parse errors,
+/// or [`FfiError::InternalPanic`] if native code panics.
+#[uniffi::export]
+pub fn discover_models(
+    provider: String,
+    api_key: String,
+    base_url: Option<String>,
+) -> Result<String, FfiError> {
+    catch_unwind(AssertUnwindSafe(|| {
+        models::discover_models_inner(provider, api_key, base_url)
+    }))
+    .unwrap_or_else(|e| {
+        Err(FfiError::InternalPanic {
+            detail: panic_detail(&e),
+        })
+    })
+}
+
 /// Destroys the active session and releases all resources.
 ///
 /// Cancels any in-flight send, drops the tools registry, and clears
@@ -1458,5 +1489,14 @@ mod tests {
             FfiError::StateError { detail } => assert!(detail.contains("not running")),
             other => panic!("unexpected: {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_discover_models_anthropic() {
+        let result = discover_models("anthropic".into(), String::new(), None).unwrap();
+        let parsed: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert!(!parsed.is_empty());
+        assert!(parsed[0].get("id").is_some());
+        assert!(parsed[0].get("name").is_some());
     }
 }
