@@ -843,6 +843,11 @@ pub fn send_vision_message(
     mime_types: Vec<String>,
 ) -> Result<String, FfiError> {
     catch_unwind(AssertUnwindSafe(|| {
+        if estop::is_engaged() {
+            return Err(FfiError::EstopEngaged {
+                detail: "Emergency stop is engaged. Resume before sending messages.".into(),
+            });
+        }
         vision::send_vision_message_inner(text, image_data, mime_types)
     }))
     .unwrap_or_else(|e| {

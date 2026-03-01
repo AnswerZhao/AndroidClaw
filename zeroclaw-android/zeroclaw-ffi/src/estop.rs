@@ -159,8 +159,15 @@ fn get_data_dir() -> Result<PathBuf, FfiError> {
 /// Writes the estop state to disk as pretty-printed JSON.
 fn persist_state(data_dir: &Path, state: &EstopStateFile) {
     let path = state_path(data_dir);
-    if let Ok(json) = serde_json::to_string_pretty(state) {
-        let _ = std::fs::write(&path, json);
+    match serde_json::to_string_pretty(state) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&path, json) {
+                tracing::error!("Failed to persist estop state to {}: {e}", path.display());
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to serialize estop state: {e}");
+        }
     }
 }
 
