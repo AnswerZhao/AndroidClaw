@@ -4,8 +4,13 @@
 
 package com.zeroclaw.android.ui.screen.dashboard
 
+import android.app.Activity
+import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +31,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -36,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +58,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ActivityEvent
 import com.zeroclaw.android.model.ComponentHealth
 import com.zeroclaw.android.model.CostSummary
@@ -64,6 +73,7 @@ import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.util.BatteryOptimization
 import com.zeroclaw.android.viewmodel.DaemonUiState
 import com.zeroclaw.android.viewmodel.DaemonViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Aggregated state for the dashboard content composable.
@@ -79,6 +89,7 @@ import com.zeroclaw.android.viewmodel.DaemonViewModel
  * @property daemonStatus Latest daemon status snapshot, if available.
  * @property activityEvents Recent activity feed events.
  * @property memoryHealthWarning Warning from failed memory health check, if any.
+ * @property estopEngaged Whether the emergency stop is currently active.
  */
 data class DashboardState(
     val serviceState: ServiceState,
@@ -92,6 +103,7 @@ data class DashboardState(
     val daemonStatus: DaemonStatus?,
     val activityEvents: List<ActivityEvent>,
     val memoryHealthWarning: String? = null,
+    val estopEngaged: Boolean = false,
 )
 
 /**
@@ -128,6 +140,11 @@ fun DashboardScreen(
     val memoryConflict by viewModel.memoryConflict.collectAsStateWithLifecycle()
     val memoryHealthWarning by viewModel.memoryHealthWarning.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val app = context.applicationContext as ZeroClawApplication
+    val estopEngaged by app.estopRepository.engaged.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+
     val conflictData = memoryConflict
     if (conflictData is MemoryConflict.StaleData) {
         MemoryConflictDialog(
@@ -151,6 +168,7 @@ fun DashboardScreen(
                 daemonStatus = daemonStatus,
                 activityEvents = activityEvents,
                 memoryHealthWarning = memoryHealthWarning,
+                estopEngaged = estopEngaged,
             ),
         edgeMargin = edgeMargin,
         onNavigateToCostDetail = onNavigateToCostDetail,
@@ -159,6 +177,8 @@ fun DashboardScreen(
         onStopDaemon = viewModel::requestStop,
         onDismissKeyRejection = viewModel::dismissKeyRejection,
         onDismissMemoryHealthWarning = viewModel::dismissMemoryHealthWarning,
+        onEngageEstop = { coroutineScope.launch { app.estopRepository.engage() } },
+        onResumeEstop = { coroutineScope.launch { app.estopRepository.resume() } },
         modifier = modifier,
     )
 }
@@ -177,6 +197,8 @@ fun DashboardScreen(
  * @param onStopDaemon Callback to stop the daemon.
  * @param onDismissKeyRejection Callback to dismiss the key rejection banner.
  * @param onDismissMemoryHealthWarning Callback to dismiss the memory health warning.
+ * @param onEngageEstop Callback to engage the emergency stop.
+ * @param onResumeEstop Callback to resume from the emergency stop.
  * @param modifier Modifier applied to the root layout.
  */
 @Composable
@@ -189,6 +211,8 @@ internal fun DashboardContent(
     onStopDaemon: () -> Unit,
     onDismissKeyRejection: () -> Unit,
     onDismissMemoryHealthWarning: () -> Unit = {},
+    onEngageEstop: () -> Unit = {},
+    onResumeEstop: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -229,6 +253,12 @@ internal fun DashboardContent(
                 onDismiss = onDismissMemoryHealthWarning,
             )
         }
+
+        EstopSection(
+            engaged = state.estopEngaged,
+            onEngage = onEngageEstop,
+            onResume = onResumeEstop,
+        )
 
         StatusHeroCard(
             serviceState = state.serviceState,
@@ -784,6 +814,201 @@ private fun MemoryHealthWarningBanner(
                 Text("Dismiss")
             }
         }
+    }
+}
+
+/**
+ * Emergency stop section displayed at the top of the dashboard.
+ *
+ * When not engaged, shows a red button to activate the kill-all flag.
+ * When engaged, shows a full-width error banner with a resume button
+ * that requires device credential confirmation if a lock screen is set.
+ *
+ * @param engaged Whether the emergency stop is currently active.
+ * @param onEngage Callback to engage the emergency stop.
+ * @param onResume Callback to resume from the emergency stop.
+ */
+@Composable
+private fun EstopSection(
+    engaged: Boolean,
+    onEngage: () -> Unit,
+    onResume: () -> Unit,
+) {
+    if (engaged) {
+        EstopActiveBanner(onResume = onResume)
+    } else {
+        EstopButton(onEngage = onEngage)
+    }
+}
+
+/**
+ * Red tonal button for engaging the emergency stop.
+ *
+ * Uses [MaterialTheme.colorScheme.error] for visual urgency and meets
+ * the 48dp minimum touch target requirement.
+ *
+ * @param onEngage Callback invoked when the user taps the button.
+ */
+@Composable
+private fun EstopButton(onEngage: () -> Unit) {
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
+    Button(
+        onClick = { showConfirmDialog = true },
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            ),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 48.dp)
+                .semantics {
+                    contentDescription = "Emergency stop: halt all agent execution"
+                },
+    ) {
+        Text(text = "Emergency Stop")
+    }
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Engage Emergency Stop?") },
+            text = {
+                Text(
+                    "This will immediately halt all agent execution and " +
+                        "cancel any active sessions. The daemon will remain " +
+                        "running but no actions will be processed.",
+                )
+            },
+            confirmButton = {
+                FilledTonalButton(
+                    onClick = {
+                        showConfirmDialog = false
+                        onEngage()
+                    },
+                ) {
+                    Text("Engage")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Full-width error banner shown when the emergency stop is active.
+ *
+ * Displays a warning message and a resume button. If the device has
+ * a lock screen configured, tapping resume launches the device credential
+ * confirmation screen (PIN, pattern, or fingerprint). If no lock screen
+ * is set, a simple confirmation dialog is shown instead.
+ *
+ * @param onResume Callback invoked after the user successfully confirms resume.
+ */
+@Composable
+private fun EstopActiveBanner(onResume: () -> Unit) {
+    val context = LocalContext.current
+    val keyguardManager =
+        remember { context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager }
+    val isDeviceSecure = remember { keyguardManager.isDeviceSecure }
+    var showResumeDialog by remember { mutableStateOf(false) }
+
+    val credentialLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult(),
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                onResume()
+            }
+        }
+
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .semantics { liveRegion = LiveRegionMode.Polite },
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+            ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Emergency stop active",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text =
+                    "All agent execution is halted. No actions will be " +
+                        "processed until the emergency stop is released.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FilledTonalButton(
+                onClick = {
+                    if (isDeviceSecure) {
+                        @Suppress("DEPRECATION")
+                        val intent =
+                            keyguardManager.createConfirmDeviceCredentialIntent(
+                                "Resume Emergency Stop",
+                                "Confirm your identity to resume agent execution",
+                            )
+                        if (intent != null) {
+                            credentialLauncher.launch(intent)
+                        } else {
+                            onResume()
+                        }
+                    } else {
+                        showResumeDialog = true
+                    }
+                },
+                modifier =
+                    Modifier
+                        .defaultMinSize(minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = "Resume from emergency stop"
+                        },
+            ) {
+                Text("Resume")
+            }
+        }
+    }
+
+    if (showResumeDialog) {
+        AlertDialog(
+            onDismissRequest = { showResumeDialog = false },
+            title = { Text("Resume Agent Execution?") },
+            text = {
+                Text(
+                    "This will lift the emergency stop and allow agents " +
+                        "to process actions again.",
+                )
+            },
+            confirmButton = {
+                FilledTonalButton(
+                    onClick = {
+                        showResumeDialog = false
+                        onResume()
+                    },
+                ) {
+                    Text("Resume")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResumeDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

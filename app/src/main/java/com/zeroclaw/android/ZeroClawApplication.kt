@@ -32,6 +32,7 @@ import com.zeroclaw.android.data.repository.ChannelConfigRepository
 import com.zeroclaw.android.data.repository.DataStoreOnboardingRepository
 import com.zeroclaw.android.data.repository.DataStoreSettingsRepository
 import com.zeroclaw.android.data.repository.EncryptedApiKeyRepository
+import com.zeroclaw.android.data.repository.EstopRepository
 import com.zeroclaw.android.data.repository.InMemoryApiKeyRepository
 import com.zeroclaw.android.data.repository.LogRepository
 import com.zeroclaw.android.data.repository.OnboardingRepository
@@ -134,6 +135,10 @@ class ZeroClawApplication :
     lateinit var terminalEntryRepository: TerminalEntryRepository
         private set
 
+    /** Emergency stop state repository. */
+    lateinit var estopRepository: EstopRepository
+        private set
+
     /** Bridge for structured health detail FFI calls. */
     lateinit var healthBridge: HealthBridge
         private set
@@ -225,6 +230,7 @@ class ZeroClawApplication :
         channelConfigRepository = createChannelConfigRepository()
         terminalEntryRepository =
             RoomTerminalEntryRepository(database.terminalEntryDao(), ioScope)
+        estopRepository = EstopRepository(scope = ioScope)
         healthBridge = HealthBridge()
         costBridge = CostBridge()
         cronBridge = CronBridge()
