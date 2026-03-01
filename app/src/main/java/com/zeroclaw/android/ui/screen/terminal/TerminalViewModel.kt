@@ -774,10 +774,20 @@ class TerminalViewModel(
             "No chat provider configured \u2014 use /help to see admin commands, " +
                 "or add a provider in Settings > API Keys."
 
-        /** Pattern matching common chain-of-thought tag variants across models. */
+        /**
+         * Pattern matching chain-of-thought and internal reasoning tags
+         * across models.
+         *
+         * Covers `<think>`, `<thinking>`, `<commentary>`, `<tool_output>`,
+         * `<analysis>`, `<reflection>`, and `<inner_monologue>` tag pairs.
+         */
         private val THINKING_TAG_REGEX =
             Regex(
-                "<(?:think|thinking)>[\\s\\S]*?</(?:think|thinking)>",
+                "<(?:think|thinking|commentary|tool_output|analysis" +
+                    "|reflection|inner_monologue)>" +
+                    "[\\s\\S]*?" +
+                    "</(?:think|thinking|commentary|tool_output|analysis" +
+                    "|reflection|inner_monologue)>",
                 RegexOption.IGNORE_CASE,
             )
 
@@ -803,13 +813,14 @@ class TerminalViewModel(
             Regex("""Bound (.+) to (\w+) \((\w+)\)\. Restart daemon to apply\.""")
 
         /**
-         * Removes chain-of-thought thinking tags from a model response.
+         * Removes chain-of-thought and internal reasoning tags from a model response.
          *
-         * Strips `<think>...</think>` and `<thinking>...</thinking>` blocks
-         * emitted by reasoning models (Gemma, DeepSeek-R1, QwQ, etc.).
+         * Strips `<think>`, `<thinking>`, `<commentary>`, `<tool_output>`,
+         * `<analysis>`, `<reflection>`, and `<inner_monologue>` blocks
+         * emitted by reasoning models.
          *
          * @param text Raw model response.
-         * @return Response with thinking blocks removed and whitespace trimmed.
+         * @return Response with reasoning blocks removed and whitespace trimmed.
          */
         fun stripThinkingTags(text: String): String = text.replace(THINKING_TAG_REGEX, "").trim()
 

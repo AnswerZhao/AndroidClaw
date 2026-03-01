@@ -173,6 +173,30 @@ class TerminalViewModelTest {
         }
 
         @Test
+        @DisplayName("removes commentary tags from response")
+        fun `removes commentary tags from response`() {
+            val input = "<commentary>Internal notes.</commentary>The answer."
+            val result = TerminalViewModel.stripThinkingTags(input)
+            assertEquals("The answer.", result)
+        }
+
+        @Test
+        @DisplayName("removes tool_output tags from response")
+        fun `removes tool_output tags from response`() {
+            val input = "<tool_output>curl result here</tool_output>Summary."
+            val result = TerminalViewModel.stripThinkingTags(input)
+            assertEquals("Summary.", result)
+        }
+
+        @Test
+        @DisplayName("removes analysis tags from response")
+        fun `removes analysis tags from response`() {
+            val input = "<analysis>We have curl and can reach...</analysis>Yes, I can."
+            val result = TerminalViewModel.stripThinkingTags(input)
+            assertEquals("Yes, I can.", result)
+        }
+
+        @Test
         @DisplayName("passes through text without thinking tags")
         fun `passes through text without thinking tags`() {
             val input = "Plain response text"
