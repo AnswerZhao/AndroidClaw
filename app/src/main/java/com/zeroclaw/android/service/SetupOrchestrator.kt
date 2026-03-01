@@ -58,6 +58,11 @@ class SetupOrchestrator(
      * step fails, subsequent steps are skipped and progress reflects the
      * failure point.
      *
+     * When [onDisableChannel] and [onRebuildToml] are provided, channel
+     * failures trigger a resilient recovery path: failed channels are disabled
+     * in Room, the TOML is rebuilt without them, and the daemon is restarted
+     * so that healthy channels can still operate.
+     *
      * Safe to call from the main thread; blocking FFI calls are dispatched
      * internally to [Dispatchers.IO].
      *
@@ -71,6 +76,11 @@ class SetupOrchestrator(
      * @param expectedChannels List of channel names expected to become healthy.
      * @param host Gateway bind address.
      * @param port Gateway bind port.
+     * @param onDisableChannel Callback to disable a failed channel in Room by
+     *   its TOML key. When null, failed channels are only marked as timed out.
+     * @param onRebuildToml Callback that rebuilds the TOML config from current
+     *   Room state (after channels have been disabled). When null, no restart
+     *   is attempted after channel failures.
      * @throws CancellationException if the calling coroutine is cancelled.
      */
     @Suppress("LongParameterList", "TooGenericExceptionCaught")
@@ -84,6 +94,8 @@ class SetupOrchestrator(
         expectedChannels: List<String>,
         host: String = "127.0.0.1",
         port: UShort,
+        onDisableChannel: (suspend (channelTomlKey: String) -> Unit)? = null,
+        onRebuildToml: (suspend () -> String)? = null,
     ) {
         _progress.value =
             SetupProgress(
@@ -95,7 +107,14 @@ class SetupOrchestrator(
         stopDaemonIfRunning()
         if (!stepStartDaemon(context, configToml, host, port)) return
         if (!stepAwaitDaemonHealth()) return
-        stepAwaitChannels(expectedChannels)
+        stepAwaitChannelsResilient(
+            expectedChannels = expectedChannels,
+            context = context,
+            host = host,
+            port = port,
+            onDisableChannel = onDisableChannel,
+            onRebuildToml = onRebuildToml,
+        )
     }
 
     /**
@@ -142,7 +161,14 @@ class SetupOrchestrator(
 
         if (!stepStartDaemon(context, configToml, host, port)) return
         if (!stepAwaitDaemonHealth()) return
-        stepAwaitChannels(expectedChannels)
+        stepAwaitChannelsResilient(
+            expectedChannels = expectedChannels,
+            context = context,
+            host = host,
+            port = port,
+            onDisableChannel = null,
+            onRebuildToml = null,
+        )
     }
 
     /**
@@ -343,17 +369,34 @@ class SetupOrchestrator(
     }
 
     /**
-     * Polls structured health detail until all expected channels report healthy.
+     * Awaits channel health with optional resilient recovery.
      *
-     * Marks each channel as [SetupStepStatus.Running] at the start, then
-     * transitions to [SetupStepStatus.Success] or [SetupStepStatus.Failed]
-     * based on the "channels" component status in the health detail response.
-     * Channels that are still pending at timeout are marked as failed.
+     * First polls channels with the normal timeout. If all channels resolve
+     * to [SetupStepStatus.Success], the method returns immediately. If
+     * channels fail or timeout and the recovery callbacks are provided, the
+     * method disables the failed channels via [onDisableChannel], rebuilds
+     * the TOML via [onRebuildToml], restarts the daemon, and re-polls only
+     * the surviving channels.
+     *
+     * When the callbacks are null, falls back to marking timed-out channels
+     * as [SetupStepStatus.Failed] without attempting recovery.
      *
      * @param expectedChannels Channel names to wait for.
+     * @param context Application context for restarting the foreground service.
+     * @param host Gateway bind address for daemon restart.
+     * @param port Gateway bind port for daemon restart.
+     * @param onDisableChannel Callback to disable a channel in Room by TOML key.
+     * @param onRebuildToml Callback to rebuild TOML from current Room state.
      */
-    @Suppress("TooGenericExceptionCaught")
-    private suspend fun stepAwaitChannels(expectedChannels: List<String>) {
+    @Suppress("TooGenericExceptionCaught", "LongParameterList", "LongMethod")
+    private suspend fun stepAwaitChannelsResilient(
+        expectedChannels: List<String>,
+        context: Context,
+        host: String,
+        port: UShort,
+        onDisableChannel: (suspend (channelTomlKey: String) -> Unit)?,
+        onRebuildToml: (suspend () -> String)?,
+    ) {
         if (expectedChannels.isEmpty()) return
 
         _progress.value =
@@ -361,22 +404,195 @@ class SetupOrchestrator(
                 channels = expectedChannels.associateWith { SetupStepStatus.Running },
             )
 
-        val resolved =
-            pollWithBackoff(
-                timeoutMs = CHANNEL_HEALTH_TIMEOUT_MS,
-                label = "channel health",
-            ) {
-                try {
-                    pollChannelHealth(expectedChannels)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w(TAG, "Channel health poll failed: ${e.message}")
-                    false
+        val resolved = pollChannelsWithTimeout(expectedChannels)
+        if (resolved) return
+
+        val allSuccess =
+            _progress.value.channels.values
+                .all { it is SetupStepStatus.Success }
+        if (allSuccess) return
+
+        if (onDisableChannel == null || onRebuildToml == null) {
+            markChannelsTimedOut()
+            return
+        }
+
+        purgeAndRestartForFailedChannels(
+            expectedChannels = expectedChannels,
+            context = context,
+            host = host,
+            port = port,
+            onDisableChannel = onDisableChannel,
+            onRebuildToml = onRebuildToml,
+        )
+    }
+
+    /**
+     * Polls channel health with the standard timeout.
+     *
+     * @param expectedChannels Channel names to check.
+     * @return `true` if all channels resolved before timeout, `false` otherwise.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun pollChannelsWithTimeout(
+        expectedChannels: List<String>,
+    ): Boolean =
+        pollWithBackoff(
+            timeoutMs = CHANNEL_HEALTH_TIMEOUT_MS,
+            label = "channel health",
+        ) {
+            try {
+                pollChannelHealth(expectedChannels)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Channel health poll failed: ${e.message}")
+                false
+            }
+        }
+
+    /**
+     * Disables failed channels, rebuilds TOML, restarts the daemon, and
+     * re-polls the surviving channels.
+     *
+     * Any channel whose current status is not [SetupStepStatus.Success] is
+     * considered failed. Each failed channel is disabled via [onDisableChannel],
+     * its status is set to [SetupStepStatus.Failed], and it is added to the
+     * [SetupProgress.purgedChannels] list. If surviving channels remain, the
+     * daemon is restarted with a rebuilt TOML and the survivors are re-polled.
+     *
+     * @param expectedChannels Original list of channel names.
+     * @param context Application context for the foreground service restart.
+     * @param host Gateway bind address for daemon restart.
+     * @param port Gateway bind port for daemon restart.
+     * @param onDisableChannel Callback to disable a channel in Room.
+     * @param onRebuildToml Callback to rebuild TOML from Room state.
+     */
+    @Suppress("LongParameterList")
+    private suspend fun purgeAndRestartForFailedChannels(
+        expectedChannels: List<String>,
+        context: Context,
+        host: String,
+        port: UShort,
+        onDisableChannel: suspend (channelTomlKey: String) -> Unit,
+        onRebuildToml: suspend () -> String,
+    ) {
+        val currentChannels = _progress.value.channels
+        val failed =
+            expectedChannels.filter { key ->
+                currentChannels[key] !is SetupStepStatus.Success
+            }
+        val surviving = expectedChannels - failed.toSet()
+
+        disableFailedChannels(failed, onDisableChannel)
+        updateProgressAfterPurge(currentChannels, failed, surviving)
+
+        Log.w(TAG, "Purged ${failed.size} failed channel(s): $failed")
+
+        if (surviving.isEmpty()) {
+            Log.w(TAG, "All channels purged; daemon running without channels")
+            return
+        }
+
+        restartDaemonWithSurvivors(context, host, port, surviving, onRebuildToml)
+    }
+
+    /**
+     * Calls [onDisableChannel] for each failed channel TOML key.
+     *
+     * Failures to disable individual channels are logged but do not abort
+     * the overall purge operation.
+     *
+     * @param failed TOML keys of channels that failed to start.
+     * @param onDisableChannel Callback to disable a single channel in Room.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun disableFailedChannels(
+        failed: List<String>,
+        onDisableChannel: suspend (channelTomlKey: String) -> Unit,
+    ) {
+        for (key in failed) {
+            try {
+                onDisableChannel(key)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to disable channel $key: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Updates [_progress] to reflect purged and surviving channels.
+     *
+     * Failed channels are marked with [SetupStepStatus.Failed] and surviving
+     * channels are reset to [SetupStepStatus.Running] for the re-poll phase.
+     *
+     * @param currentChannels Snapshot of channel statuses before purging.
+     * @param failed TOML keys of channels that failed.
+     * @param surviving TOML keys of channels that remain active.
+     */
+    private fun updateProgressAfterPurge(
+        currentChannels: Map<String, SetupStepStatus>,
+        failed: List<String>,
+        surviving: List<String>,
+    ) {
+        val updatedChannels =
+            currentChannels.toMutableMap().apply {
+                for (key in failed) {
+                    put(
+                        key,
+                        SetupStepStatus.Failed(
+                            error = "Disabled: channel failed to start",
+                            canRetry = false,
+                        ),
+                    )
+                }
+                for (key in surviving) {
+                    put(key, SetupStepStatus.Running)
                 }
             }
+        _progress.value =
+            _progress.value.copy(
+                channels = updatedChannels,
+                purgedChannels = failed,
+            )
+    }
 
-        if (!resolved) {
+    /**
+     * Rebuilds TOML, restarts the daemon, and re-polls surviving channels.
+     *
+     * If the daemon restart or re-poll fails, remaining channels are marked
+     * as timed out rather than crashing the setup pipeline.
+     *
+     * @param context Application context for starting the foreground service.
+     * @param host Gateway bind address.
+     * @param port Gateway bind port.
+     * @param surviving TOML keys of channels to re-poll after restart.
+     * @param onRebuildToml Callback to rebuild TOML from Room state.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun restartDaemonWithSurvivors(
+        context: Context,
+        host: String,
+        port: UShort,
+        surviving: List<String>,
+        onRebuildToml: suspend () -> String,
+    ) {
+        try {
+            val newToml = onRebuildToml()
+            stopDaemonIfRunning()
+            if (!stepStartDaemon(context, newToml, host, port)) return
+            if (!stepAwaitDaemonHealth()) return
+
+            val reResolved = pollChannelsWithTimeout(surviving)
+            if (!reResolved) {
+                markChannelsTimedOut()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Daemon restart after channel purge failed: ${e.message}")
             markChannelsTimedOut()
         }
     }

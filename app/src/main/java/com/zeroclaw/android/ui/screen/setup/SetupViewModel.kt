@@ -128,6 +128,12 @@ class SetupViewModel(
             communicationStyle = extractFromIdentity(identityJson, IDENTITY_KEY_COMMUNICATION_STYLE),
             expectedChannels = enabledChannels,
             port = validPort.toUShort(),
+            onDisableChannel = { channelTomlKey ->
+                disableChannelByTomlKey(channelTomlKey)
+            },
+            onRebuildToml = {
+                buildConfigToml(effectiveSettings, apiKey, apiKeyBytes, secretBuffers)
+            },
         )
     }
 
@@ -354,6 +360,25 @@ class SetupViewModel(
                     )
                 }
         return ConfigTomlBuilder.buildAgentsToml(entries)
+    }
+
+    /**
+     * Disables a channel in Room by its TOML key.
+     *
+     * Finds the first channel whose [ChannelType.tomlKey][com.zeroclaw.android.model.ChannelType.tomlKey]
+     * matches [channelTomlKey] and toggles it off via the repository.
+     *
+     * @param channelTomlKey The TOML section key identifying the channel type.
+     */
+    private suspend fun disableChannelByTomlKey(channelTomlKey: String) {
+        val channels = app.channelConfigRepository.channels.first()
+        val channel = channels.find { it.type.tomlKey == channelTomlKey }
+        if (channel != null) {
+            app.channelConfigRepository.toggleEnabled(channel.id)
+            Log.w(TAG, "Disabled failed channel: $channelTomlKey")
+        } else {
+            Log.w(TAG, "Channel not found for TOML key: $channelTomlKey")
+        }
     }
 
     /**

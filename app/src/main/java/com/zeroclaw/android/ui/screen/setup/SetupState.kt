@@ -47,6 +47,8 @@ sealed interface SetupStepStatus {
  * @property daemonStart Status of the daemon process launch.
  * @property daemonHealth Status of the post-launch health check.
  * @property channels Per-channel health status keyed by the channel's TOML name.
+ * @property purgedChannels TOML keys of channels that were disabled during setup
+ *   because they failed to start. These channels do not block [isComplete].
  */
 data class SetupProgress(
     val configValidation: SetupStepStatus = SetupStepStatus.Pending,
@@ -54,12 +56,16 @@ data class SetupProgress(
     val daemonStart: SetupStepStatus = SetupStepStatus.Pending,
     val daemonHealth: SetupStepStatus = SetupStepStatus.Pending,
     val channels: Map<String, SetupStepStatus> = emptyMap(),
+    val purgedChannels: List<String> = emptyList(),
 ) {
     /**
      * Whether the entire setup flow has resolved.
      *
-     * Returns `true` when every core step and every channel entry has reached
-     * a terminal status ([SetupStepStatus.Success] or [SetupStepStatus.Failed]).
+     * Returns `true` when every core step and every non-purged channel entry
+     * has reached a terminal status ([SetupStepStatus.Success] or
+     * [SetupStepStatus.Failed]). Purged channels are excluded from the check
+     * because they have already been disabled and the daemon was restarted
+     * without them.
      */
     val isComplete: Boolean
         get() {
@@ -71,8 +77,10 @@ data class SetupProgress(
                     daemonHealth,
                 ).all { it is SetupStepStatus.Success || it is SetupStepStatus.Failed }
 
+            val activeChannels =
+                channels.filterKeys { it !in purgedChannels }
             val channelsResolved =
-                channels.values.all {
+                activeChannels.values.all {
                     it is SetupStepStatus.Success || it is SetupStepStatus.Failed
                 }
 

@@ -28,7 +28,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -187,6 +190,13 @@ internal fun SetupContent(
                         label = name.replaceFirstChar { it.uppercase() },
                         status = status,
                         powerSave = powerSave,
+                    )
+                }
+
+                if (progress.purgedChannels.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PurgedChannelsBanner(
+                        purgedChannels = progress.purgedChannels,
                     )
                 }
             }
@@ -367,6 +377,64 @@ private fun SetupBottomBar(
                 modifier = Modifier.defaultMinSize(minHeight = MinButtonHeight),
             ) {
                 Text("Done")
+            }
+        }
+    }
+}
+
+/**
+ * Warning banner listing channels that were disabled during setup.
+ *
+ * Displayed when the orchestrator purged one or more channels because they
+ * failed to start. Uses [MaterialTheme.colorScheme.errorContainer] for the
+ * card background to convey that something went wrong without blocking the
+ * user from completing setup.
+ *
+ * @param purgedChannels TOML keys of the disabled channels.
+ * @param modifier Modifier applied to the root [Card].
+ */
+@Composable
+private fun PurgedChannelsBanner(
+    purgedChannels: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+            ),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(EdgeMargin),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(IconLabelSpacing),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(StepIconSize),
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Column {
+                Text(
+                    text = "Some channels were disabled",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                val channelNames =
+                    purgedChannels.joinToString { it.replaceFirstChar { c -> c.uppercase() } }
+                Text(
+                    text =
+                        "$channelNames failed to start and were disabled. " +
+                            "You can re-enable them in Settings > Connections.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
             }
         }
     }
