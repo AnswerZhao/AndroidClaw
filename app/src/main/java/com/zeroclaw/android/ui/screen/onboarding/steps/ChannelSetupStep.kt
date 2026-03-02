@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -62,7 +63,7 @@ fun ChannelSetupStep(
     onTypeSelected: (ChannelType?) -> Unit,
     onFieldChanged: (String, String) -> Unit,
 ) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier.imePadding().verticalScroll(rememberScrollState())) {
         Text(
             text = "Connect a Channel",
             style = MaterialTheme.typography.headlineSmall,

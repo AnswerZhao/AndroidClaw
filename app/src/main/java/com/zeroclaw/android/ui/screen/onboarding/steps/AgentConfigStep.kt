@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,7 +38,9 @@ fun AgentConfigStep(
     agentName: String,
     onAgentNameChanged: (String) -> Unit,
 ) {
-    Column {
+    Column(
+        modifier = Modifier.imePadding(),
+    ) {
         Text(
             text = "Name Your Daemon",
             style = MaterialTheme.typography.headlineSmall,

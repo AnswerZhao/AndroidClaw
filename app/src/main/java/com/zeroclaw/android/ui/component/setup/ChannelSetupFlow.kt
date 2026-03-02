@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -112,7 +113,7 @@ fun ChannelSetupFlow(
             .any { fieldValues[it.key].isNullOrBlank() }
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
+        modifier = modifier.imePadding().verticalScroll(rememberScrollState()),
     ) {
         Text(
             text = "Step ${currentSubStep + 1} of ${spec.steps.size}",
