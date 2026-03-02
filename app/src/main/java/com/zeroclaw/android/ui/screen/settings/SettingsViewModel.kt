@@ -366,6 +366,16 @@ class SettingsViewModel(
         updateDaemonSetting { setHttpRequestAllowedDomains(domains) }
     }
 
+    /** @see com.zeroclaw.android.data.repository.SettingsRepository.setHttpRequestMaxResponseSize */
+    fun updateHttpRequestMaxResponseSize(size: Int) {
+        updateDaemonSetting { setHttpRequestMaxResponseSize(size) }
+    }
+
+    /** @see com.zeroclaw.android.data.repository.SettingsRepository.setHttpRequestTimeoutSecs */
+    fun updateHttpRequestTimeoutSecs(secs: Int) {
+        updateDaemonSetting { setHttpRequestTimeoutSecs(secs) }
+    }
+
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setWebFetchEnabled */
     fun updateWebFetchEnabled(enabled: Boolean) {
         updateDaemonSetting { setWebFetchEnabled(enabled) }
