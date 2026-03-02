@@ -37,6 +37,9 @@ const val TAB_AVAILABLE = 1
 /** Tab index for the skills tab. */
 const val TAB_SKILLS = 2
 
+/** Tab index for the tools tab. */
+const val TAB_TOOLS = 3
+
 /**
  * ViewModel for the plugin list screen.
  *
@@ -212,6 +215,33 @@ class PluginsViewModel(
             } catch (e: Exception) {
                 _syncState.value =
                     SyncUiState.Error(ErrorSanitizer.sanitizeForUi(e))
+            }
+        }
+    }
+
+    /**
+     * Resets all official plugin enabled states to their seed defaults.
+     *
+     * Vision is enabled by default; all others are disabled. Updates
+     * both AppSettings (source of truth) and Room via sync.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    fun restoreDefaults() {
+        viewModelScope.launch {
+            try {
+                settingsRepository.setWebSearchEnabled(false)
+                settingsRepository.setWebFetchEnabled(false)
+                settingsRepository.setHttpRequestEnabled(false)
+                settingsRepository.setBrowserEnabled(false)
+                settingsRepository.setComposioEnabled(false)
+                settingsRepository.setTranscriptionEnabled(false)
+                settingsRepository.setQueryClassificationEnabled(false)
+                val settings = settingsRepository.settings.first()
+                repository.syncOfficialPluginStates(settings)
+                _snackbarMessage.tryEmit("Official plugins restored to defaults")
+            } catch (e: Exception) {
+                Log.w(TAG, "Restore defaults failed", e)
+                _snackbarMessage.tryEmit("Restore failed: ${ErrorSanitizer.sanitizeForUi(e)}")
             }
         }
     }

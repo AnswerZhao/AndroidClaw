@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
@@ -121,6 +122,8 @@ fun PluginsScreen(
         onToggle = pluginsViewModel::togglePlugin,
         onInstall = pluginsViewModel::installPlugin,
         skillsTabContent = { SkillsTab(skillsViewModel = skillsViewModel) },
+        toolsTabContent = { ToolsTab() },
+        onRestoreDefaults = pluginsViewModel::restoreDefaults,
         modifier = modifier,
     )
 }
@@ -138,6 +141,8 @@ fun PluginsScreen(
  * @param onToggle Callback when a plugin's enable switch is toggled.
  * @param onInstall Callback when a plugin's Install button is tapped.
  * @param skillsTabContent Slot for the skills tab content.
+ * @param toolsTabContent Slot for the tools tab content.
+ * @param onRestoreDefaults Callback to reset official plugins to defaults.
  * @param modifier Modifier applied to the root layout.
  */
 @Composable
@@ -152,6 +157,8 @@ internal fun PluginsContent(
     onToggle: (String) -> Unit,
     onInstall: (String) -> Unit,
     skillsTabContent: @Composable () -> Unit,
+    toolsTabContent: @Composable () -> Unit,
+    onRestoreDefaults: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -184,8 +191,29 @@ internal fun PluginsContent(
                         onClick = { onSelectTab(TAB_SKILLS) },
                         text = { Text("Skills") },
                     )
+                    Tab(
+                        selected = state.selectedTab == TAB_TOOLS,
+                        onClick = { onSelectTab(TAB_TOOLS) },
+                        text = { Text("Tools") },
+                    )
                 }
-                if (state.selectedTab != TAB_SKILLS) {
+                if (state.selectedTab == TAB_INSTALLED) {
+                    IconButton(
+                        onClick = onRestoreDefaults,
+                        modifier =
+                            Modifier.semantics {
+                                contentDescription = "Restore official plugins to defaults"
+                            },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.RestartAlt,
+                            contentDescription = null,
+                        )
+                    }
+                }
+                if (state.selectedTab == TAB_INSTALLED ||
+                    state.selectedTab == TAB_AVAILABLE
+                ) {
                     IconButton(
                         onClick = onSyncNow,
                         enabled = state.syncState !is SyncUiState.Syncing,
@@ -202,23 +230,26 @@ internal fun PluginsContent(
                 }
             }
 
-            if (state.syncState is SyncUiState.Syncing && state.selectedTab != TAB_SKILLS) {
+            if (state.syncState is SyncUiState.Syncing &&
+                (state.selectedTab == TAB_INSTALLED || state.selectedTab == TAB_AVAILABLE)
+            ) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (state.selectedTab == TAB_SKILLS) {
-                skillsTabContent()
-            } else {
-                PluginTabContent(
-                    plugins = state.plugins,
-                    searchQuery = state.searchQuery,
-                    selectedTab = state.selectedTab,
-                    onSearchChange = onSearchChange,
-                    onToggle = onToggle,
-                    onInstall = onInstall,
-                    onNavigateToDetail = onNavigateToDetail,
-                )
+            when (state.selectedTab) {
+                TAB_SKILLS -> skillsTabContent()
+                TAB_TOOLS -> toolsTabContent()
+                else ->
+                    PluginTabContent(
+                        plugins = state.plugins,
+                        searchQuery = state.searchQuery,
+                        selectedTab = state.selectedTab,
+                        onSearchChange = onSearchChange,
+                        onToggle = onToggle,
+                        onInstall = onInstall,
+                        onNavigateToDetail = onNavigateToDetail,
+                    )
             }
         }
         SnackbarHost(
