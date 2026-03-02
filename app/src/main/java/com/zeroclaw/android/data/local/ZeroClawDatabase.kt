@@ -49,7 +49,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ConnectedChannelEntity::class,
         TerminalEntryEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class ZeroClawDatabase : RoomDatabase() {
@@ -180,6 +180,49 @@ abstract class ZeroClawDatabase : RoomDatabase() {
                 }
             }
 
+        /** Migration from schema version 9 to 10: inserts official plugin rows. */
+        @Suppress("LongMethod")
+        private val MIGRATION_9_10 =
+            object : Migration(9, 10) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    val officialPlugins = listOf(
+                        arrayOf("official-web-search", "Web Search",
+                            "Search the web via DuckDuckGo or Brave.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 0, "{}"),
+                        arrayOf("official-web-fetch", "Web Fetch",
+                            "Fetch and read web page content.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 0, "{}"),
+                        arrayOf("official-http-request", "HTTP Request",
+                            "Make HTTP calls to external APIs.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 0, "{}"),
+                        arrayOf("official-browser", "Browser",
+                            "Browse and interact with web pages.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 0, "{}"),
+                        arrayOf("official-composio", "Composio",
+                            "Third-party tool integrations via Composio.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 0, "{}"),
+                        arrayOf("official-vision", "Vision",
+                            "Process images for multimodal queries.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 1, "{}"),
+                        arrayOf("official-transcription", "Transcription",
+                            "Transcribe audio via Whisper-compatible API.", "1.0.0",
+                            "ZeroClaw", "TOOL", 1, 0, "{}"),
+                        arrayOf("official-query-classification", "Query Classification",
+                            "Classify queries for intelligent model routing.", "1.0.0",
+                            "ZeroClaw", "OTHER", 1, 0, "{}"),
+                    )
+                    for (p in officialPlugins) {
+                        db.execSQL(
+                            """INSERT OR IGNORE INTO plugins
+                               (id, name, description, version, author, category,
+                                is_installed, is_enabled, config_json)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            p,
+                        )
+                    }
+                }
+            }
+
         /**
          * Ordered array of schema migrations.
          *
@@ -196,6 +239,7 @@ abstract class ZeroClawDatabase : RoomDatabase() {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
+                MIGRATION_9_10,
             )
 
         /**
