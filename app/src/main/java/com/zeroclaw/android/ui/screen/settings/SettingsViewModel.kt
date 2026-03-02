@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.repository.SettingsRepository
 import com.zeroclaw.android.model.AppSettings
+import com.zeroclaw.android.model.OfficialPlugins
 import com.zeroclaw.android.model.ThemeMode
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -664,6 +665,32 @@ class SettingsViewModel(
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setTheme */
     fun updateTheme(theme: ThemeMode) {
         viewModelScope.launch { repository.setTheme(theme) }
+    }
+
+    /**
+     * Updates the enabled state of an official plugin in [AppSettings].
+     *
+     * Dispatches to the correct setting based on the [OfficialPlugins]
+     * constant. Vision has no enable toggle (always active), so toggling
+     * it is a no-op.
+     *
+     * @param pluginId One of the [OfficialPlugins] constant IDs.
+     * @param enabled New enabled state.
+     */
+    fun updateOfficialPluginEnabled(
+        pluginId: String,
+        enabled: Boolean,
+    ) {
+        when (pluginId) {
+            OfficialPlugins.WEB_SEARCH -> updateWebSearchEnabled(enabled)
+            OfficialPlugins.WEB_FETCH -> updateWebFetchEnabled(enabled)
+            OfficialPlugins.HTTP_REQUEST -> updateHttpRequestEnabled(enabled)
+            OfficialPlugins.BROWSER -> updateBrowserEnabled(enabled)
+            OfficialPlugins.COMPOSIO -> updateComposioEnabled(enabled)
+            OfficialPlugins.TRANSCRIPTION -> updateTranscriptionEnabled(enabled)
+            OfficialPlugins.QUERY_CLASSIFICATION -> updateQueryClassificationEnabled(enabled)
+            else -> {}
+        }
     }
 
     /**

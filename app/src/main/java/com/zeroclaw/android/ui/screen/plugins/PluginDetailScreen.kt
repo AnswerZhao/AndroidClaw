@@ -42,6 +42,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zeroclaw.android.ui.component.CategoryBadge
 import com.zeroclaw.android.ui.component.CollapsibleSection
 import com.zeroclaw.android.ui.component.LoadingIndicator
+import com.zeroclaw.android.ui.component.OfficialPluginBadge
+import com.zeroclaw.android.ui.screen.settings.SettingsViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
@@ -50,10 +52,14 @@ import kotlinx.coroutines.flow.drop
  * Plugin detail screen showing full information, install/enable controls,
  * and configuration fields.
  *
+ * Official plugins render [OfficialPluginConfigSection] instead of the
+ * generic key-value editor, and the uninstall button is hidden.
+ *
  * @param pluginId Unique identifier of the plugin to display.
  * @param onBack Callback to navigate back.
  * @param edgeMargin Horizontal padding based on window width size class.
  * @param detailViewModel The [PluginDetailViewModel] for plugin state.
+ * @param settingsViewModel The [SettingsViewModel] for official plugin config.
  * @param modifier Modifier applied to the root layout.
  */
 @OptIn(FlowPreview::class)
@@ -63,6 +69,7 @@ fun PluginDetailScreen(
     onBack: () -> Unit,
     edgeMargin: Dp,
     detailViewModel: PluginDetailViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(),
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(pluginId) {
@@ -74,7 +81,9 @@ fun PluginDetailScreen(
     }
 
     val plugin by detailViewModel.plugin.collectAsStateWithLifecycle()
+    val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val loadedPlugin = plugin
+    val isOfficial = loadedPlugin?.isOfficial == true
 
     if (loadedPlugin == null) {
         Box(
@@ -103,6 +112,10 @@ fun PluginDetailScreen(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             CategoryBadge(category = loadedPlugin.category)
+            if (isOfficial) {
+                Spacer(modifier = Modifier.width(8.dp))
+                OfficialPluginBadge()
+            }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "v${loadedPlugin.version} by ${loadedPlugin.author}",
@@ -130,7 +143,15 @@ fun PluginDetailScreen(
                 )
                 Switch(
                     checked = loadedPlugin.isEnabled,
-                    onCheckedChange = { detailViewModel.toggleEnabled(pluginId) },
+                    onCheckedChange = {
+                        if (isOfficial) {
+                            settingsViewModel.updateOfficialPluginEnabled(
+                                pluginId,
+                                !loadedPlugin.isEnabled,
+                            )
+                        }
+                        detailViewModel.toggleEnabled(pluginId)
+                    },
                     modifier =
                         Modifier.semantics {
                             contentDescription =
@@ -142,7 +163,19 @@ fun PluginDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (loadedPlugin.isInstalled && loadedPlugin.configFields.isNotEmpty()) {
+        if (loadedPlugin.isInstalled && isOfficial) {
+            CollapsibleSection(
+                title = "Configuration",
+                initiallyExpanded = true,
+            ) {
+                OfficialPluginConfigSection(
+                    officialPluginId = pluginId,
+                    settings = settings,
+                    viewModel = settingsViewModel,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        } else if (loadedPlugin.isInstalled && loadedPlugin.configFields.isNotEmpty()) {
             CollapsibleSection(
                 title = "Configuration",
                 initiallyExpanded = true,
@@ -171,7 +204,13 @@ fun PluginDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (loadedPlugin.isInstalled) {
+        if (loadedPlugin.isInstalled && isOfficial) {
+            Text(
+                text = "Official plugin \u2014 cannot be uninstalled",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (loadedPlugin.isInstalled) {
             OutlinedButton(
                 onClick = { detailViewModel.uninstall(pluginId) },
                 modifier = Modifier.fillMaxWidth(),
