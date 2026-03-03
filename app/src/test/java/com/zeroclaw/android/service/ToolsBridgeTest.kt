@@ -129,6 +129,7 @@ class ToolsBridgeTest {
 
     /** Helper to construct an [FfiToolSpec] with sensible defaults. */
     companion object {
+        @Suppress("LongParameterList")
         private fun makeFfiToolSpec(
             name: String = "test-tool",
             description: String = "A test tool",

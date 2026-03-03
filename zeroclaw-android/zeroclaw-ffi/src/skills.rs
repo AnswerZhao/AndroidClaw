@@ -49,6 +49,8 @@ pub struct FfiSkillTool {
     pub kind: String,
     /// Command string, URL, or script path.
     pub command: String,
+    /// Named arguments for the tool, keyed by argument name.
+    pub args: HashMap<String, String>,
 }
 
 /// Internal representation of a skill parsed from a TOML manifest.
@@ -230,6 +232,7 @@ pub(crate) fn get_skill_tools_inner(skill_name: String) -> Result<Vec<FfiSkillTo
                     description: t.description.clone(),
                     kind: t.kind.clone(),
                     command: t.command.clone(),
+                    args: t.args.clone(),
                 })
                 .collect()
         });

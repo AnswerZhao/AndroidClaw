@@ -79,7 +79,7 @@ import kotlinx.coroutines.launch
  * - [ACTION_RETRY] to reset the retry counter and attempt startup again.
  * - [ACTION_OAUTH_HOLD] to hold the foreground during OAuth flows.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 class ZeroClawDaemonService : Service() {
     @Suppress("InjectDispatcher")
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -233,50 +233,7 @@ class ZeroClawDaemonService : Service() {
             val agentsToml = buildAgentsToml()
             val configToml = baseToml + channelsToml + agentsToml
 
-            try {
-                val validationResult = validateConfig(configToml)
-                if (validationResult.isNotEmpty()) {
-                    val safeMsg = LogSanitizer.sanitizeLogMessage(validationResult)
-                    Log.e(TAG, "Config validation failed: $safeMsg")
-                    logRepository.append(
-                        LogSeverity.ERROR,
-                        TAG,
-                        "Config validation failed: $safeMsg",
-                    )
-                    activityRepository.record(
-                        ActivityType.DAEMON_ERROR,
-                        "Config validation failed: $safeMsg",
-                    )
-                    notificationManager.updateNotification(
-                        ServiceState.ERROR,
-                        errorDetail = safeMsg,
-                    )
-                    releaseWakeLock()
-                    stopForeground(STOP_FOREGROUND_DETACH)
-                    stopSelf()
-                    return@launch
-                }
-            } catch (e: FfiException) {
-                val safeMsg = LogSanitizer.sanitizeLogMessage(e.message ?: "Unknown error")
-                Log.e(TAG, "Config validation threw: $safeMsg")
-                logRepository.append(
-                    LogSeverity.ERROR,
-                    TAG,
-                    "Config validation error: $safeMsg",
-                )
-                activityRepository.record(
-                    ActivityType.DAEMON_ERROR,
-                    "Config validation error: $safeMsg",
-                )
-                notificationManager.updateNotification(
-                    ServiceState.ERROR,
-                    errorDetail = safeMsg,
-                )
-                releaseWakeLock()
-                stopForeground(STOP_FOREGROUND_DETACH)
-                stopSelf()
-                return@launch
-            }
+            if (!validateConfigOrStop(configToml)) return@launch
 
             val conflict = bridge.detectMemoryConflict(effectiveSettings.memoryBackend)
             if (conflict is MemoryConflict.StaleData) {
@@ -306,6 +263,44 @@ class ZeroClawDaemonService : Service() {
                 memoryBackend = effectiveSettings.memoryBackend,
             )
         }
+    }
+
+    /**
+     * Validates the assembled TOML config before daemon startup.
+     *
+     * Calls [validateConfig] and logs / surfaces any validation errors,
+     * then tears down the foreground service if validation fails.
+     *
+     * @param configToml The full TOML configuration string.
+     * @return `true` if the config is valid and startup should proceed,
+     *   `false` if validation failed (caller should `return@launch`).
+     */
+    private suspend fun validateConfigOrStop(configToml: String): Boolean {
+        try {
+            val validationResult = validateConfig(configToml)
+            if (validationResult.isNotEmpty()) {
+                val safeMsg = LogSanitizer.sanitizeLogMessage(validationResult)
+                Log.e(TAG, "Config validation failed: $safeMsg")
+                logRepository.append(LogSeverity.ERROR, TAG, "Config validation failed: $safeMsg")
+                activityRepository.record(ActivityType.DAEMON_ERROR, "Config validation failed: $safeMsg")
+                notificationManager.updateNotification(ServiceState.ERROR, errorDetail = safeMsg)
+                releaseWakeLock()
+                stopForeground(STOP_FOREGROUND_DETACH)
+                stopSelf()
+                return false
+            }
+        } catch (e: FfiException) {
+            val safeMsg = LogSanitizer.sanitizeLogMessage(e.message ?: "Unknown error")
+            Log.e(TAG, "Config validation threw: $safeMsg")
+            logRepository.append(LogSeverity.ERROR, TAG, "Config validation error: $safeMsg")
+            activityRepository.record(ActivityType.DAEMON_ERROR, "Config validation error: $safeMsg")
+            notificationManager.updateNotification(ServiceState.ERROR, errorDetail = safeMsg)
+            releaseWakeLock()
+            stopForeground(STOP_FOREGROUND_DETACH)
+            stopSelf()
+            return false
+        }
+        return true
     }
 
     /**

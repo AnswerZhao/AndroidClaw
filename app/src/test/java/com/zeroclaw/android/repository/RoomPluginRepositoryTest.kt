@@ -127,10 +127,11 @@ class RoomPluginRepositoryTest {
     @Test
     fun `syncOfficialPluginStates enables plugins matching AppSettings`() =
         runTest {
-            val settings = AppSettings(
-                webSearchEnabled = true,
-                webFetchEnabled = true,
-            )
+            val settings =
+                AppSettings(
+                    webSearchEnabled = true,
+                    webFetchEnabled = true,
+                )
 
             repo.syncOfficialPluginStates(settings)
 
@@ -141,15 +142,16 @@ class RoomPluginRepositoryTest {
     @Test
     fun `syncOfficialPluginStates disables plugins not matching AppSettings`() =
         runTest {
-            val settings = AppSettings(
-                webSearchEnabled = false,
-                webFetchEnabled = false,
-                httpRequestEnabled = false,
-                browserEnabled = false,
-                composioEnabled = false,
-                transcriptionEnabled = false,
-                queryClassificationEnabled = false,
-            )
+            val settings =
+                AppSettings(
+                    webSearchEnabled = false,
+                    webFetchEnabled = false,
+                    httpRequestEnabled = false,
+                    browserEnabled = false,
+                    composioEnabled = false,
+                    transcriptionEnabled = false,
+                    queryClassificationEnabled = false,
+                )
 
             repo.syncOfficialPluginStates(settings)
 
@@ -165,15 +167,16 @@ class RoomPluginRepositoryTest {
     @Test
     fun `Vision plugin is always enabled in sync mapping`() =
         runTest {
-            val settings = AppSettings(
-                webSearchEnabled = false,
-                webFetchEnabled = false,
-                httpRequestEnabled = false,
-                browserEnabled = false,
-                composioEnabled = false,
-                transcriptionEnabled = false,
-                queryClassificationEnabled = false,
-            )
+            val settings =
+                AppSettings(
+                    webSearchEnabled = false,
+                    webFetchEnabled = false,
+                    httpRequestEnabled = false,
+                    browserEnabled = false,
+                    composioEnabled = false,
+                    transcriptionEnabled = false,
+                    queryClassificationEnabled = false,
+                )
 
             repo.syncOfficialPluginStates(settings)
 

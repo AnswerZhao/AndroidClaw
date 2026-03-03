@@ -129,12 +129,7 @@ const DELEGATE_TOOL: BuiltInTool = BuiltInTool {
 ///
 /// Memory and cron tools run directly in the FFI session and are always
 /// active when the daemon is running.
-const SESSION_TOOLS: &[&str] = &[
-    "memory_store",
-    "memory_recall",
-    "memory_forget",
-    "schedule",
-];
+const SESSION_TOOLS: &[&str] = &["memory_store", "memory_recall", "memory_forget", "schedule"];
 
 /// Tools that require a [`SecurityPolicy`] and can only execute via daemon
 /// channel routing (e.g. Telegram, Discord).
@@ -322,8 +317,7 @@ mod tests {
     fn test_session_and_security_cover_all_core_tools() {
         for tool in CORE_TOOLS {
             assert!(
-                SESSION_TOOLS.contains(&tool.name)
-                    || SECURITY_POLICY_TOOLS.contains(&tool.name),
+                SESSION_TOOLS.contains(&tool.name) || SECURITY_POLICY_TOOLS.contains(&tool.name),
                 "core tool {:?} is in neither SESSION_TOOLS nor SECURITY_POLICY_TOOLS",
                 tool.name
             );
@@ -337,16 +331,10 @@ mod tests {
         assert_eq!(http.inactive_reason, REASON_DAEMON_ONLY);
 
         let composio = builtin_to_spec(&COMPOSIO_TOOL);
-        assert!(
-            !composio.is_active,
-            "composio should default to inactive"
-        );
+        assert!(!composio.is_active, "composio should default to inactive");
 
         let delegate = builtin_to_spec(&DELEGATE_TOOL);
-        assert!(
-            !delegate.is_active,
-            "delegate should default to inactive"
-        );
+        assert!(!delegate.is_active, "delegate should default to inactive");
 
         for browser_tool in BROWSER_TOOLS {
             let spec = builtin_to_spec(browser_tool);
