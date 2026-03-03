@@ -49,7 +49,7 @@ class TerminalScreenTest {
             )
         }
         composeTestRule
-            .onNodeWithText("ZeroClaw Terminal v0.0.36 \u2014 Type /help for commands")
+            .onNodeWithText("ZeroClaw Terminal v0.0.37 \u2014 Type /help for commands")
             .assertIsDisplayed()
     }
 
