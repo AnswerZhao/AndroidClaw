@@ -613,9 +613,9 @@ interface SettingsRepository {
     /**
      * Updates the sandbox enabled mode.
      *
-     * @param enabled Sandbox mode: "" for auto-detect, "true", or "false".
+     * @param enabled Sandbox mode: null for upstream auto-detect, true, or false.
      */
-    suspend fun setSecuritySandboxEnabled(enabled: String)
+    suspend fun setSecuritySandboxEnabled(enabled: Boolean?)
 
     /**
      * Updates the sandbox backend.

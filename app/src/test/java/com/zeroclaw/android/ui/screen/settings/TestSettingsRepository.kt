@@ -164,7 +164,7 @@ internal class TestSettingsRepository : SettingsRepository {
 
     override suspend fun setWebSearchTimeoutSecs(secs: Int) = _settings.update { it.copy(webSearchTimeoutSecs = secs) }
 
-    override suspend fun setSecuritySandboxEnabled(enabled: String) = _settings.update { it.copy(securitySandboxEnabled = enabled) }
+    override suspend fun setSecuritySandboxEnabled(enabled: Boolean?) = _settings.update { it.copy(securitySandboxEnabled = enabled) }
 
     override suspend fun setSecuritySandboxBackend(backend: String) = _settings.update { it.copy(securitySandboxBackend = backend) }
 

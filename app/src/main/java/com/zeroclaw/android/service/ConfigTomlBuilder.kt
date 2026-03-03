@@ -95,7 +95,8 @@ data class AgentTomlEntry(
  * @property tunnelCustomUrlPattern URL extraction pattern for custom tunnel.
  * @property gatewayHost Gateway bind address.
  * @property gatewayPort Gateway bind port.
- * @property gatewayRequirePairing Whether gateway requires pairing tokens.
+ * @property gatewayRequirePairing Whether gateway requires pairing tokens. Defaults to false
+ *   on Android (upstream default: true) because mobile devices are typically behind NAT.
  * @property gatewayAllowPublicBind Whether to allow binding to 0.0.0.0.
  * @property gatewayPairedTokens Authorized pairing tokens list.
  * @property gatewayPairRateLimit Pairing rate limit per minute.
@@ -151,7 +152,7 @@ data class AgentTomlEntry(
  * @property webSearchBraveApiKey Brave Search API key for authenticated queries.
  * @property webSearchMaxResults Maximum number of search results to return.
  * @property webSearchTimeoutSecs Timeout for web search requests in seconds.
- * @property securitySandboxEnabled Whether sandboxing is enabled (blank = unset).
+ * @property securitySandboxEnabled Whether sandboxing is enabled (null = upstream default).
  * @property securitySandboxBackend Sandbox backend name (e.g. "auto", "firejail").
  * @property securitySandboxFirejailArgs Extra arguments passed to Firejail.
  * @property securityResourcesMaxMemoryMb Maximum memory allocation in MB.
@@ -271,7 +272,7 @@ data class GlobalTomlConfig(
     val webSearchBraveApiKey: String = "",
     val webSearchMaxResults: Int = DEFAULT_WEB_SEARCH_MAX_RESULTS,
     val webSearchTimeoutSecs: Int = DEFAULT_WEB_SEARCH_TIMEOUT_SECS,
-    val securitySandboxEnabled: String = "",
+    val securitySandboxEnabled: Boolean? = null,
     val securitySandboxBackend: String = "auto",
     val securitySandboxFirejailArgs: List<String> = emptyList(),
     val securityResourcesMaxMemoryMb: Int = DEFAULT_RESOURCES_MAX_MEMORY_MB,
@@ -319,11 +320,11 @@ data class GlobalTomlConfig(
         /** Default memory backend. */
         const val DEFAULT_MEMORY = "sqlite"
 
-        /** Default max actions per hour. */
-        const val DEFAULT_MAX_ACTIONS = 100
+        /** Default max actions per hour (aligned with upstream AutonomyConfig default). */
+        const val DEFAULT_MAX_ACTIONS = 20
 
-        /** Default max cost per day in cents. */
-        const val DEFAULT_MAX_COST_CENTS = 1000
+        /** Default max cost per day in cents (aligned with upstream AutonomyConfig default). */
+        const val DEFAULT_MAX_COST_CENTS = 500
 
         /** Default gateway port. */
         const val DEFAULT_GATEWAY_PORT = 42617
@@ -419,6 +420,9 @@ data class GlobalTomlConfig(
 
         /** Default HTTP request timeout in seconds. */
         const val DEFAULT_HTTP_REQUEST_TIMEOUT_SECS = 30
+
+        /** Valid upstream autonomy levels (from AutonomyLevel enum). */
+        val VALID_AUTONOMY_LEVELS = setOf("readonly", "supervised", "full")
     }
 }
 
@@ -693,9 +697,13 @@ object ConfigTomlBuilder {
      * @param config Configuration to read autonomy values from.
      */
     private fun StringBuilder.appendAutonomySection(config: GlobalTomlConfig) {
+        val level = config.autonomyLevel
+        require(level in GlobalTomlConfig.VALID_AUTONOMY_LEVELS) {
+            "Invalid autonomy level '$level': must be one of ${GlobalTomlConfig.VALID_AUTONOMY_LEVELS}"
+        }
         appendLine()
         appendLine("[autonomy]")
-        appendLine("level = ${tomlString(config.autonomyLevel)}")
+        appendLine("level = ${tomlString(level)}")
         appendLine("workspace_only = ${config.workspaceOnly}")
         if (config.allowedCommands.isNotEmpty()) {
             val list = config.allowedCommands.joinToString(", ") { tomlString(it) }
@@ -949,7 +957,7 @@ object ConfigTomlBuilder {
      * Appends the `[proxy]` TOML section when proxy is enabled.
      *
      * Upstream fields: enabled, http_proxy, https_proxy, no_proxy,
-     * all_proxy, scope, service_selectors.
+     * all_proxy, scope, services.
      *
      * @param config Configuration to read proxy values from.
      */
@@ -976,7 +984,7 @@ object ConfigTomlBuilder {
         }
         if (config.proxyServiceSelectors.isNotEmpty()) {
             val list = config.proxyServiceSelectors.joinToString(", ") { tomlString(it) }
-            appendLine("service_selectors = [$list]")
+            appendLine("services = [$list]")
         }
     }
 
@@ -985,6 +993,10 @@ object ConfigTomlBuilder {
      *
      * Upstream fields: enabled, allowed_domains, blocked_domains,
      * max_response_size, timeout_secs.
+     *
+     * When `allowed_domains` is empty and the section is not emitted,
+     * the upstream daemon defaults to wildcard (`*`), allowing fetches
+     * from any domain.
      *
      * @param config Configuration to read web fetch values from.
      */
@@ -1042,7 +1054,7 @@ object ConfigTomlBuilder {
      * @param config Configuration to read sandbox values from.
      */
     private fun StringBuilder.appendSecuritySandboxSection(config: GlobalTomlConfig) {
-        val hasEnabled = config.securitySandboxEnabled.isNotBlank()
+        val hasEnabled = config.securitySandboxEnabled != null
         val hasBackend = config.securitySandboxBackend != "auto"
         val hasArgs = config.securitySandboxFirejailArgs.isNotEmpty()
         if (!hasEnabled && !hasBackend && !hasArgs) return
@@ -1090,16 +1102,20 @@ object ConfigTomlBuilder {
     }
 
     /**
-     * Appends the `[security.audit]` TOML section when audit is enabled.
+     * Appends the `[security.audit]` TOML section.
+     *
+     * When the user disables audit, this explicitly emits `enabled = false`
+     * to override the daemon default of `enabled = true`. When audit is
+     * enabled, emission is skipped since the daemon default already matches.
      *
      * @param config Configuration to read audit values from.
      */
     private fun StringBuilder.appendSecurityAuditSection(config: GlobalTomlConfig) {
-        if (!config.securityAuditEnabled) return
+        if (config.securityAuditEnabled) return
 
         appendLine()
         appendLine("[security.audit]")
-        appendLine("enabled = true")
+        appendLine("enabled = false")
     }
 
     /**

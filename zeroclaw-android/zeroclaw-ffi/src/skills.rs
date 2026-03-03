@@ -136,16 +136,31 @@ fn parse_manifest(content: &str) -> Option<(SkillManifest, Vec<ToolManifest>)> {
     None
 }
 
-/// Returns `true` if a tool command contains path traversal sequences.
+/// Returns `true` if a tool command contains dangerous path or shell
+/// expansion sequences.
+///
+/// Checks for path traversal (`..`), absolute paths (`/`), tilde
+/// expansion (`~`), environment variable expansion (`$`), and
+/// command substitution (backticks or `$()`).
+///
+/// This is a **defense-in-depth** check. The daemon's `SecurityPolicy`
+/// is the real enforcement boundary -- this function provides an early
+/// rejection layer at the FFI edge so that obviously dangerous commands
+/// never reach the daemon in the first place.
 fn has_path_traversal(command: &str) -> bool {
     command.contains("..")
+        || command.starts_with('/')
+        || command.starts_with('~')
+        || command.contains('$')
+        || command.contains('`')
 }
 
 /// Scans the workspace skills directory for skill manifests.
 ///
 /// Reads `SKILL.toml` (or `skill.toml` as fallback) from each
 /// subdirectory of `{workspace}/skills/`. Tools whose command
-/// contains `..` are silently dropped (path traversal prevention).
+/// contains dangerous patterns (path traversal, absolute paths,
+/// shell expansion) are silently dropped (see [`has_path_traversal`]).
 /// Returns an empty vec if the directory doesn't exist or has no
 /// skills.
 pub(crate) fn load_skills_from_workspace(
@@ -265,7 +280,19 @@ pub(crate) fn install_skill_inner(source: String) -> Result<(), FfiError> {
 }
 
 /// Clones a skill from a git URL into the skills directory.
+///
+/// Only HTTPS URLs are accepted. Plain HTTP is rejected to prevent
+/// man-in-the-middle attacks during skill installation.
 fn install_skill_from_url(url: &str, skills_dir: &std::path::Path) -> Result<(), FfiError> {
+    if !url.starts_with("https://") {
+        return Err(FfiError::InvalidArgument {
+            detail: format!(
+                "skill install URLs must use HTTPS (got: {})",
+                url.split("://").next().unwrap_or("unknown"),
+            ),
+        });
+    }
+
     let repo_name = url
         .rsplit('/')
         .next()
@@ -310,15 +337,23 @@ fn install_skill_from_url(url: &str, skills_dir: &std::path::Path) -> Result<(),
 }
 
 /// Copies a skill from a local path into the skills directory.
+///
+/// The source path is canonicalized before use to resolve symlinks
+/// and prevent path traversal attacks.
 fn install_skill_from_path(source: &str, skills_dir: &std::path::Path) -> Result<(), FfiError> {
-    let src_path = std::path::Path::new(source);
+    let src_path =
+        std::path::Path::new(source)
+            .canonicalize()
+            .map_err(|e| FfiError::ConfigError {
+                detail: format!("failed to resolve source path '{source}': {e}"),
+            })?;
     if !src_path.is_dir() {
         return Err(FfiError::ConfigError {
             detail: format!("source is not a directory: {source}"),
         });
     }
 
-    if resolve_manifest_path(src_path).is_none() {
+    if resolve_manifest_path(&src_path).is_none() {
         return Err(FfiError::ConfigError {
             detail: format!("source directory has no SKILL.toml or skill.toml manifest: {source}"),
         });
@@ -335,7 +370,7 @@ fn install_skill_from_path(source: &str, skills_dir: &std::path::Path) -> Result
         });
     }
 
-    if let Err(e) = copy_dir_recursive(src_path, &dest) {
+    if let Err(e) = copy_dir_recursive(&src_path, &dest) {
         let _ = std::fs::remove_dir_all(&dest);
         return Err(FfiError::SpawnError {
             detail: format!("failed to copy skill directory: {e}"),
@@ -424,6 +459,49 @@ mod tests {
     fn test_install_skill_not_running() {
         let result = install_skill_inner("https://example.com/skill".into());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_install_skill_http_url_rejected() {
+        let skills_dir = std::env::temp_dir().join("zeroclaw_test_http_reject");
+        let _ = std::fs::remove_dir_all(&skills_dir);
+        std::fs::create_dir_all(&skills_dir).unwrap();
+
+        let result = install_skill_from_url("http://example.com/skill.git", &skills_dir);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            FfiError::InvalidArgument { detail } => {
+                assert!(
+                    detail.contains("HTTPS"),
+                    "expected HTTPS message, got: {detail}"
+                );
+                assert!(
+                    detail.contains("http"),
+                    "expected scheme in message, got: {detail}"
+                );
+            }
+            other => panic!("expected InvalidArgument, got {other:?}"),
+        }
+
+        let _ = std::fs::remove_dir_all(&skills_dir);
+    }
+
+    #[test]
+    fn test_install_skill_https_url_accepted_format() {
+        let skills_dir = std::env::temp_dir().join("zeroclaw_test_https_accept");
+        let _ = std::fs::remove_dir_all(&skills_dir);
+        std::fs::create_dir_all(&skills_dir).unwrap();
+
+        // HTTPS URL passes the scheme check but will fail at git clone
+        // (no network in unit tests). We just verify it gets past the
+        // HTTPS validation and fails at a later stage.
+        let result = install_skill_from_url("https://example.com/skill.git", &skills_dir);
+        assert!(result.is_err());
+        if let FfiError::InvalidArgument { .. } = result.unwrap_err() {
+            panic!("HTTPS URL should not be rejected as InvalidArgument");
+        }
+
+        let _ = std::fs::remove_dir_all(&skills_dir);
     }
 
     #[test]
@@ -784,12 +862,31 @@ command = "cat ../secret.txt"
 
     #[test]
     fn test_has_path_traversal() {
+        // Path traversal
         assert!(has_path_traversal("../../etc/passwd"));
         assert!(has_path_traversal("cat ../secret"));
         assert!(has_path_traversal("ls .."));
+
+        // Absolute paths
+        assert!(has_path_traversal("/usr/bin/ls"));
+        assert!(has_path_traversal("/etc/passwd"));
+
+        // Tilde expansion
+        assert!(has_path_traversal("~/.ssh/id_rsa"));
+        assert!(has_path_traversal("~root/.bashrc"));
+
+        // Environment variable expansion
+        assert!(has_path_traversal("echo $HOME"));
+        assert!(has_path_traversal("cat ${SECRET}"));
+
+        // Command substitution
+        assert!(has_path_traversal("echo `whoami`"));
+        assert!(has_path_traversal("echo $(id)"));
+
+        // Safe commands
         assert!(!has_path_traversal("echo hello"));
-        assert!(!has_path_traversal("/usr/bin/ls"));
         assert!(!has_path_traversal("curl https://example.com"));
+        assert!(!has_path_traversal("run-tool --flag value"));
     }
 
     #[test]
@@ -906,7 +1003,10 @@ command = "run.sh"
         assert!(result.is_err());
         match result.unwrap_err() {
             FfiError::ConfigError { detail } => {
-                assert!(detail.contains("not a directory"));
+                assert!(
+                    detail.contains("failed to resolve source path"),
+                    "expected resolve error, got: {detail}"
+                );
             }
             other => panic!("expected ConfigError, got {other:?}"),
         }
@@ -923,7 +1023,10 @@ command = "run.sh"
         std::fs::write(skill_dir.join("SKILL.toml"), "{{invalid toml").unwrap();
 
         let result = load_skills_from_workspace(&temp);
-        assert!(result.is_empty(), "invalid manifest should be silently skipped");
+        assert!(
+            result.is_empty(),
+            "invalid manifest should be silently skipped"
+        );
 
         let _ = std::fs::remove_dir_all(&temp);
     }

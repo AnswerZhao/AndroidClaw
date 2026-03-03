@@ -42,7 +42,9 @@ package com.zeroclaw.android.model
  * @property tunnelCustomCommand Custom tunnel start command.
  * @property tunnelCustomHealthUrl Health check URL for custom tunnel.
  * @property tunnelCustomUrlPattern URL extraction pattern for custom tunnel.
- * @property gatewayRequirePairing Whether gateway requires pairing tokens.
+ * @property gatewayRequirePairing Whether gateway requires pairing tokens. Defaults to false
+ *   on Android (upstream defaults to true) because mobile devices are typically behind NAT and
+ *   the gateway is only reachable via an explicit tunnel, reducing the risk of unauthorized access.
  * @property gatewayAllowPublicBind Whether to allow binding to 0.0.0.0.
  * @property gatewayPairedTokens Comma-separated list of authorized pairing tokens.
  * @property gatewayPairRateLimit Pairing rate limit per minute.
@@ -91,7 +93,7 @@ package com.zeroclaw.android.model
  * @property multimodalMaxImages Maximum images allowed per multimodal request (1-16).
  * @property multimodalMaxImageSizeMb Maximum image size in MB for multimodal input (1-20).
  * @property multimodalAllowRemoteFetch Whether the agent can fetch remote image URLs for vision.
- * @property securitySandboxEnabled Sandbox mode: "" for auto-detect, "true", or "false".
+ * @property securitySandboxEnabled Sandbox mode: null for auto-detect, true, or false.
  * @property securitySandboxBackend Sandbox backend: "auto", "landlock", "firejail", "bubblewrap", "docker", "none".
  * @property securitySandboxFirejailArgs Comma-separated extra arguments for firejail.
  * @property securityResourcesMaxMemoryMb Maximum memory in MB for spawned commands.
@@ -219,7 +221,7 @@ data class AppSettings(
     val multimodalMaxImages: Int = DEFAULT_MULTIMODAL_MAX_IMAGES,
     val multimodalMaxImageSizeMb: Int = DEFAULT_MULTIMODAL_MAX_IMAGE_SIZE_MB,
     val multimodalAllowRemoteFetch: Boolean = false,
-    val securitySandboxEnabled: String = "",
+    val securitySandboxEnabled: Boolean? = null,
     val securitySandboxBackend: String = DEFAULT_SANDBOX_BACKEND,
     val securitySandboxFirejailArgs: String = "",
     val securityResourcesMaxMemoryMb: Int = DEFAULT_RESOURCES_MAX_MEMORY_MB,
@@ -263,6 +265,16 @@ data class AppSettings(
     val stripThinkingTags: Boolean = false,
     val theme: ThemeMode = ThemeMode.SYSTEM,
 ) {
+    /**
+     * Returns a string representation with secret fields redacted.
+     *
+     * Prevents accidental leakage of API keys, tokens, and PIN hashes
+     * in log output or crash reports.
+     */
+    override fun toString(): String =
+        "AppSettings(provider=$defaultProvider, model=$defaultModel, host=$host, port=$port, " +
+            "secrets=REDACTED)"
+
     /** Constants for [AppSettings]. */
     companion object {
         /** Default gateway bind address. */
@@ -300,11 +312,11 @@ data class AppSettings(
         const val DEFAULT_FORBIDDEN_PATHS =
             "/etc,/root,~/.ssh,~/.gnupg,~/.aws,~/.config"
 
-        /** Default max agent actions per hour. */
-        const val DEFAULT_MAX_ACTIONS_PER_HOUR = 100
+        /** Default max agent actions per hour (aligned with upstream AutonomyConfig). */
+        const val DEFAULT_MAX_ACTIONS_PER_HOUR = 20
 
-        /** Default max cost per day in cents. */
-        const val DEFAULT_MAX_COST_PER_DAY_CENTS = 1000
+        /** Default max cost per day in cents (aligned with upstream AutonomyConfig). */
+        const val DEFAULT_MAX_COST_PER_DAY_CENTS = 500
 
         /** Default gateway pairing rate limit per minute. */
         const val DEFAULT_PAIR_RATE_LIMIT = 10

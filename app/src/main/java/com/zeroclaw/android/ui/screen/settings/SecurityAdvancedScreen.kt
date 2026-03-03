@@ -39,7 +39,7 @@ import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.SettingsToggleRow
 
 /** Available sandbox enabled states (tri-state: auto, true, false). */
-private val SANDBOX_ENABLED_OPTIONS = listOf("" to "Auto-detect", "true" to "Enabled", "false" to "Disabled")
+private val SANDBOX_ENABLED_OPTIONS = listOf(null to "Auto-detect", true to "Enabled", false to "Disabled")
 
 /** Available sandbox backend options. */
 private val SANDBOX_BACKENDS = listOf("auto", "landlock", "firejail", "bubblewrap", "docker", "none")

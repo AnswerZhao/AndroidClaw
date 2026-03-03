@@ -56,6 +56,13 @@ class RoomPluginRepository(
         dao.toggleEnabled(id)
     }
 
+    /**
+     * Updates a single configuration key for a plugin.
+     *
+     * **Security note**: this stores values in the Room database as plaintext JSON.
+     * Secret values (API keys, tokens) must be stored in [EncryptedSharedPreferences]
+     * via the [SettingsRepository] instead.
+     */
     override suspend fun updateConfig(
         pluginId: String,
         key: String,

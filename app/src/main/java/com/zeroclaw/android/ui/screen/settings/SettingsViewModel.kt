@@ -468,7 +468,7 @@ class SettingsViewModel(
     }
 
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setSecuritySandboxEnabled */
-    fun updateSecuritySandboxEnabled(enabled: String) {
+    fun updateSecuritySandboxEnabled(enabled: Boolean?) {
         updateDaemonSetting { setSecuritySandboxEnabled(enabled) }
     }
 

@@ -425,7 +425,7 @@ private class TestSettingsRepository : SettingsRepository {
 
     override suspend fun setTranscriptionMaxDurationSecs(secs: Int) { /* no-op */ }
 
-    override suspend fun setSecuritySandboxEnabled(enabled: String) { /* no-op */ }
+    override suspend fun setSecuritySandboxEnabled(enabled: Boolean?) { /* no-op */ }
 
     override suspend fun setSecuritySandboxBackend(backend: String) { /* no-op */ }
 

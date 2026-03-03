@@ -279,7 +279,7 @@ class DataStoreSettingsRepository(
                 prefs[KEY_MULTIMODAL_MAX_IMAGE_SIZE_MB]
                     ?: AppSettings.DEFAULT_MULTIMODAL_MAX_IMAGE_SIZE_MB,
             multimodalAllowRemoteFetch = prefs[KEY_MULTIMODAL_ALLOW_REMOTE_FETCH] ?: false,
-            securitySandboxEnabled = prefs[KEY_SECURITY_SANDBOX_ENABLED] ?: "",
+            securitySandboxEnabled = prefs[KEY_SECURITY_SANDBOX_ENABLED]?.toBooleanStrictOrNull(),
             securitySandboxBackend =
                 prefs[KEY_SECURITY_SANDBOX_BACKEND]
                     ?: AppSettings.DEFAULT_SANDBOX_BACKEND,
@@ -502,7 +502,10 @@ class DataStoreSettingsRepository(
 
     override suspend fun setMultimodalAllowRemoteFetch(enabled: Boolean) = edit { it[KEY_MULTIMODAL_ALLOW_REMOTE_FETCH] = enabled }
 
-    override suspend fun setSecuritySandboxEnabled(enabled: String) = edit { it[KEY_SECURITY_SANDBOX_ENABLED] = enabled }
+    override suspend fun setSecuritySandboxEnabled(enabled: Boolean?) =
+        edit {
+            if (enabled != null) it[KEY_SECURITY_SANDBOX_ENABLED] = enabled.toString() else it.remove(KEY_SECURITY_SANDBOX_ENABLED)
+        }
 
     override suspend fun setSecuritySandboxBackend(backend: String) = edit { it[KEY_SECURITY_SANDBOX_BACKEND] = backend }
 
@@ -644,17 +647,14 @@ class DataStoreSettingsRepository(
             booleanPreferencesKey("require_approval_medium_risk")
         val KEY_BLOCK_HIGH_RISK = booleanPreferencesKey("block_high_risk_commands")
         val KEY_TUNNEL_PROVIDER = stringPreferencesKey("tunnel_provider")
-        val KEY_TUNNEL_CF_TOKEN = stringPreferencesKey("tunnel_cf_token")
         val KEY_TUNNEL_TS_FUNNEL = booleanPreferencesKey("tunnel_ts_funnel")
         val KEY_TUNNEL_TS_HOSTNAME = stringPreferencesKey("tunnel_ts_hostname")
-        val KEY_TUNNEL_NGROK_TOKEN = stringPreferencesKey("tunnel_ngrok_token")
         val KEY_TUNNEL_NGROK_DOMAIN = stringPreferencesKey("tunnel_ngrok_domain")
         val KEY_TUNNEL_CUSTOM_CMD = stringPreferencesKey("tunnel_custom_cmd")
         val KEY_TUNNEL_CUSTOM_HEALTH = stringPreferencesKey("tunnel_custom_health")
         val KEY_TUNNEL_CUSTOM_PATTERN = stringPreferencesKey("tunnel_custom_pattern")
         val KEY_GW_REQUIRE_PAIRING = booleanPreferencesKey("gw_require_pairing")
         val KEY_GW_ALLOW_PUBLIC = booleanPreferencesKey("gw_allow_public_bind")
-        val KEY_GW_PAIRED_TOKENS = stringPreferencesKey("gw_paired_tokens")
         val KEY_GW_PAIR_RATE = intPreferencesKey("gw_pair_rate_limit")
         val KEY_GW_WEBHOOK_RATE = intPreferencesKey("gw_webhook_rate_limit")
         val KEY_GW_IDEMPOTENCY_TTL = intPreferencesKey("gw_idempotency_ttl")
@@ -675,7 +675,6 @@ class DataStoreSettingsRepository(
         val KEY_MEMORY_VECTOR_WEIGHT = floatPreferencesKey("memory_vector_weight")
         val KEY_MEMORY_KEYWORD_WEIGHT = floatPreferencesKey("memory_keyword_weight")
         val KEY_COMPOSIO_ENABLED = booleanPreferencesKey("composio_enabled")
-        val KEY_COMPOSIO_API_KEY = stringPreferencesKey("composio_api_key")
         val KEY_COMPOSIO_ENTITY_ID = stringPreferencesKey("composio_entity_id")
         val KEY_BROWSER_ENABLED = booleanPreferencesKey("browser_enabled")
         val KEY_BROWSER_DOMAINS = stringPreferencesKey("browser_domains")
@@ -685,7 +684,6 @@ class DataStoreSettingsRepository(
         val KEY_BIOMETRIC_SETTINGS = booleanPreferencesKey("biometric_for_settings")
         val KEY_LOCK_ENABLED = booleanPreferencesKey("lock_enabled")
         val KEY_LOCK_TIMEOUT = intPreferencesKey("lock_timeout_minutes")
-        val KEY_PIN_HASH = stringPreferencesKey("pin_hash")
         val KEY_BIOMETRIC_UNLOCK = booleanPreferencesKey("biometric_unlock_enabled")
         val KEY_PLUGIN_REGISTRY_URL = stringPreferencesKey("plugin_registry_url")
         val KEY_PLUGIN_SYNC_ENABLED = booleanPreferencesKey("plugin_sync_enabled")
@@ -700,7 +698,6 @@ class DataStoreSettingsRepository(
         val KEY_WEB_FETCH_TIMEOUT_SECS = intPreferencesKey("web_fetch_timeout_secs")
         val KEY_WEB_SEARCH_ENABLED = booleanPreferencesKey("web_search_enabled")
         val KEY_WEB_SEARCH_PROVIDER = stringPreferencesKey("web_search_provider")
-        val KEY_WEB_SEARCH_BRAVE_API_KEY = stringPreferencesKey("web_search_brave_api_key")
         val KEY_WEB_SEARCH_MAX_RESULTS = intPreferencesKey("web_search_max_results")
         val KEY_WEB_SEARCH_TIMEOUT_SECS = intPreferencesKey("web_search_timeout_secs")
         val KEY_TRANSCRIPTION_ENABLED = booleanPreferencesKey("transcription_enabled")
@@ -730,7 +727,6 @@ class DataStoreSettingsRepository(
         val KEY_SECURITY_ESTOP_REQUIRE_OTP = booleanPreferencesKey("security_estop_require_otp_to_resume")
         val KEY_MEMORY_QDRANT_URL = stringPreferencesKey("memory_qdrant_url")
         val KEY_MEMORY_QDRANT_COLLECTION = stringPreferencesKey("memory_qdrant_collection")
-        val KEY_MEMORY_QDRANT_API_KEY = stringPreferencesKey("memory_qdrant_api_key")
         val KEY_EMBEDDING_ROUTES_JSON = stringPreferencesKey("embedding_routes_json")
         val KEY_QUERY_CLASSIFICATION_ENABLED = booleanPreferencesKey("query_classification_enabled")
         val KEY_HTTP_REQUEST_MAX_RESPONSE_SIZE = intPreferencesKey("http_request_max_response_size")
@@ -746,7 +742,6 @@ class DataStoreSettingsRepository(
         val KEY_PROXY_SCOPE = stringPreferencesKey("proxy_scope")
         val KEY_PROXY_SERVICE_SELECTORS = stringPreferencesKey("proxy_service_selectors")
         val KEY_RELIABILITY_BACKOFF_MS = intPreferencesKey("reliability_backoff_ms")
-        val KEY_RELIABILITY_API_KEYS_JSON = stringPreferencesKey("reliability_api_keys_json")
         val KEY_PREFS_MIGRATION_VERSION = intPreferencesKey("prefs_migration_version")
         val KEY_MIGRATION_NOTICE_PENDING = booleanPreferencesKey("migration_notice_pending")
     }

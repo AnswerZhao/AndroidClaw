@@ -29,6 +29,9 @@ class OkHttpPluginRegistryClient(
     @Suppress("InjectDispatcher")
     override suspend fun fetchPlugins(registryUrl: String): List<RemotePlugin> =
         withContext(Dispatchers.IO) {
+            require(registryUrl.startsWith("https://")) {
+                "Registry URL must use HTTPS: $registryUrl"
+            }
             val request =
                 Request
                     .Builder()
@@ -41,9 +44,23 @@ class OkHttpPluginRegistryClient(
                     check(resp.isSuccessful) {
                         "Registry fetch failed: HTTP ${resp.code}"
                     }
-                    resp.body?.string()
-                        ?: error("Empty response body from registry")
+                    val source =
+                        resp.body?.source()
+                            ?: error("Empty response body from registry")
+                    source.request(MAX_RESPONSE_BYTES + 1)
+                    check(source.buffer.size <= MAX_RESPONSE_BYTES) {
+                        "Registry response exceeds ${MAX_RESPONSE_BYTES / BYTES_PER_KB} KB limit"
+                    }
+                    source.buffer.readUtf8()
                 }
             json.decodeFromString<List<RemotePlugin>>(body)
         }
+
+    private companion object {
+        /** Maximum registry response body size (1 MB). */
+        const val MAX_RESPONSE_BYTES = 1L * 1024 * 1024
+
+        /** Bytes per kilobyte for display formatting. */
+        const val BYTES_PER_KB = 1024
+    }
 }

@@ -68,4 +68,11 @@ pub enum FfiError {
         /// Reason or instructions for the operator.
         detail: String,
     },
+
+    /// Caller-supplied argument is invalid (wrong format, unsafe value, etc.).
+    #[error("invalid argument: {detail}")]
+    InvalidArgument {
+        /// Description of why the argument was rejected.
+        detail: String,
+    },
 }

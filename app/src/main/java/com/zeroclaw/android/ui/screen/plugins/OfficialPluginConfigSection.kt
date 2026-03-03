@@ -123,6 +123,8 @@ private fun WebSearchConfig(
             supportingText = { Text("Required for Brave search engine") },
             singleLine = true,
             enabled = settings.webSearchEnabled,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
         )
         if (settings.webSearchEnabled && settings.webSearchBraveApiKey.isBlank()) {
