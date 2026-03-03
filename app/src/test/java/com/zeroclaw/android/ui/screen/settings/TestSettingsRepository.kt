@@ -269,4 +269,8 @@ internal class TestSettingsRepository : SettingsRepository {
     override suspend fun setMultimodalMaxImageSizeMb(mb: Int) = _settings.update { it.copy(multimodalMaxImageSizeMb = mb) }
 
     override suspend fun setMultimodalAllowRemoteFetch(enabled: Boolean) = _settings.update { it.copy(multimodalAllowRemoteFetch = enabled) }
+
+    override val migrationNoticePending: Flow<Boolean> = MutableStateFlow(false)
+
+    override suspend fun clearMigrationNotice() { /* no-op */ }
 }

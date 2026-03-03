@@ -514,6 +514,10 @@ private class TestSettingsRepository : SettingsRepository {
     override suspend fun setStripThinkingTags(enabled: Boolean) { /* no-op */ }
 
     override suspend fun setTheme(theme: com.zeroclaw.android.model.ThemeMode) { /* no-op */ }
+
+    override val migrationNoticePending: Flow<Boolean> = MutableStateFlow(false)
+
+    override suspend fun clearMigrationNotice() { /* no-op */ }
 }
 
 /**

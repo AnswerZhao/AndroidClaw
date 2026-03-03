@@ -69,6 +69,12 @@ fun ToolsTab(
     val sources by toolsBrowserViewModel.availableSources.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
+        Text(
+            text = "All tools are available across every channel (Telegram, Discord, REPL, etc.).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { toolsBrowserViewModel.updateSearch(it) },

@@ -184,6 +184,9 @@ class DataStoreSettingsRepositoryTest {
 private class InMemorySettingsRepository : SettingsRepository {
     private val _settings = MutableStateFlow(AppSettings())
     override val settings = _settings
+    override val migrationNoticePending = MutableStateFlow(false)
+
+    override suspend fun clearMigrationNotice() { /* no-op */ }
 
     override suspend fun setHost(host: String) {
         _settings.update { it.copy(host = host) }

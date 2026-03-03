@@ -335,9 +335,14 @@ fn install_skill_from_path(source: &str, skills_dir: &std::path::Path) -> Result
         });
     }
 
-    copy_dir_recursive(src_path, &dest).map_err(|e| FfiError::SpawnError {
-        detail: format!("failed to copy skill directory: {e}"),
-    })
+    if let Err(e) = copy_dir_recursive(src_path, &dest) {
+        let _ = std::fs::remove_dir_all(&dest);
+        return Err(FfiError::SpawnError {
+            detail: format!("failed to copy skill directory: {e}"),
+        });
+    }
+
+    Ok(())
 }
 
 /// Recursively copies a directory tree.
@@ -886,6 +891,39 @@ command = "run.sh"
         let result = install_skill_from_path(&source_dir.to_string_lossy(), &skills_dir);
         assert!(result.is_ok());
         assert!(skills_dir.join("upper-source").join("SKILL.toml").exists());
+
+        let _ = std::fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn test_install_skill_from_nonexistent_source() {
+        let temp = std::env::temp_dir().join("zeroclaw_test_install_nonexistent");
+        let _ = std::fs::remove_dir_all(&temp);
+        let skills_dir = temp.join("skills");
+        std::fs::create_dir_all(&skills_dir).unwrap();
+
+        let result = install_skill_from_path("/nonexistent/path/to/skill", &skills_dir);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            FfiError::ConfigError { detail } => {
+                assert!(detail.contains("not a directory"));
+            }
+            other => panic!("expected ConfigError, got {other:?}"),
+        }
+
+        let _ = std::fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn test_load_skills_skips_unreadable_manifest() {
+        let temp = std::env::temp_dir().join("zeroclaw_test_skills_unreadable");
+        let _ = std::fs::remove_dir_all(&temp);
+        let skill_dir = temp.join("skills").join("bad-manifest");
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        std::fs::write(skill_dir.join("SKILL.toml"), "{{invalid toml").unwrap();
+
+        let result = load_skills_from_workspace(&temp);
+        assert!(result.is_empty(), "invalid manifest should be silently skipped");
 
         let _ = std::fs::remove_dir_all(&temp);
     }

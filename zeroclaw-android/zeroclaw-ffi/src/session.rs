@@ -718,6 +718,14 @@ impl Tool for FfiHttpRequestTool {
 /// excluded because the upstream security module is `pub(crate)`. These
 /// tools are also less relevant on Android where the OS sandbox provides
 /// security boundaries.
+/// Maximum number of tools registered in a single session.
+///
+/// Prevents excessive token consumption when many plugins are enabled.
+/// The LLM receives tool specs as part of the system prompt; each tool
+/// costs 200-500 tokens. Beyond this limit, lower-priority tools are
+/// silently dropped and a warning is logged.
+const MAX_SESSION_TOOLS: usize = 20;
+
 fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> Vec<Box<dyn Tool>> {
     let config_arc = Arc::new(config.clone());
     let mut tools: Vec<Box<dyn Tool>> = vec![
@@ -760,6 +768,15 @@ fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> V
             max_response_size: config.http_request.max_response_size,
             timeout_secs: config.http_request.timeout_secs,
         }));
+    }
+
+    if tools.len() > MAX_SESSION_TOOLS {
+        tracing::warn!(
+            total = tools.len(),
+            limit = MAX_SESSION_TOOLS,
+            "Session tool count exceeds budget; truncating to {MAX_SESSION_TOOLS} tools",
+        );
+        tools.truncate(MAX_SESSION_TOOLS);
     }
 
     tools

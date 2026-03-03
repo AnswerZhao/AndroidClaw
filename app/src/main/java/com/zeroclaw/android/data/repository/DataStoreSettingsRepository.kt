@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Extension property providing the singleton [DataStore] for app settings. */
@@ -77,9 +78,21 @@ class DataStoreSettingsRepository(
                 if (currentVersion < MIGRATION_V1) {
                     prefs[KEY_WEB_SEARCH_ENABLED] = true
                     prefs[KEY_WEB_FETCH_ENABLED] = true
+                    prefs[KEY_MIGRATION_NOTICE_PENDING] = true
                     prefs[KEY_PREFS_MIGRATION_VERSION] = MIGRATION_V1
                 }
             }
+        }
+    }
+
+    override val migrationNoticePending: Flow<Boolean> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[KEY_MIGRATION_NOTICE_PENDING] ?: false
+        }
+
+    override suspend fun clearMigrationNotice() {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_MIGRATION_NOTICE_PENDING] = false
         }
     }
 
@@ -735,5 +748,6 @@ class DataStoreSettingsRepository(
         val KEY_RELIABILITY_BACKOFF_MS = intPreferencesKey("reliability_backoff_ms")
         val KEY_RELIABILITY_API_KEYS_JSON = stringPreferencesKey("reliability_api_keys_json")
         val KEY_PREFS_MIGRATION_VERSION = intPreferencesKey("prefs_migration_version")
+        val KEY_MIGRATION_NOTICE_PENDING = booleanPreferencesKey("migration_notice_pending")
     }
 }

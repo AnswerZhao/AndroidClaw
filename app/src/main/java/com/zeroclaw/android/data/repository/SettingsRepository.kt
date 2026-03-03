@@ -22,6 +22,21 @@ interface SettingsRepository {
     val settings: Flow<AppSettings>
 
     /**
+     * Emits `true` when a DataStore migration has changed defaults that
+     * the user should be informed about (e.g. newly enabled plugins).
+     * Returns `false` once [clearMigrationNotice] is called.
+     */
+    val migrationNoticePending: Flow<Boolean>
+
+    /**
+     * Clears the pending migration notice flag.
+     *
+     * Call this after the UI has shown the one-time notification so it
+     * is not shown again.
+     */
+    suspend fun clearMigrationNotice()
+
+    /**
      * Updates the gateway host address.
      *
      * @param host New bind address.

@@ -62,6 +62,17 @@ class PluginsViewModel(
                 repository.syncOfficialPluginStates(settings)
             }
         }
+        viewModelScope.launch {
+            settingsRepository.migrationNoticePending.first().let { pending ->
+                if (pending) {
+                    _snackbarMessage.tryEmit(
+                        "Web Search and Web Fetch have been enabled. " +
+                            "You can disable them in Plugins settings.",
+                    )
+                    settingsRepository.clearMigrationNotice()
+                }
+            }
+        }
     }
 
     private val _selectedTab = MutableStateFlow(TAB_INSTALLED)
