@@ -18,10 +18,6 @@
 //! because they require async networking; the static checks here are
 //! sufficient for FFI-side pre-validation.
 
-// Functions are pub(crate) but have no callers until Tasks 21/22 add
-// FfiWebFetchTool and FfiHttpRequestTool.
-#![allow(dead_code)]
-
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 /// Normalises a list of domain strings for allowlist / blocklist matching.

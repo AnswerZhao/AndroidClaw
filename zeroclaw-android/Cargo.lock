@@ -1855,6 +1855,12 @@ dependencies = [
 
 [[package]]
 name = "nanohtml2text"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d4bdc3645754d2da280343bd8f1eaa9acf56c4ed75b540c98c898b171a3d867"
+
+[[package]]
+name = "nanohtml2text"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11ec1bc47d34ae756616f387c11fd0595f86f2cc7e6473bde9e3ded30cb902a1"
@@ -4380,7 +4386,7 @@ dependencies = [
  "libc",
  "mail-parser",
  "mime_guess",
- "nanohtml2text",
+ "nanohtml2text 0.2.1",
  "nostr-sdk",
  "parking_lot",
  "prometheus",
@@ -4423,6 +4429,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "futures-util",
+ "nanohtml2text 0.1.5",
  "reqwest",
  "rhai",
  "serde",
