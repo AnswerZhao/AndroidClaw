@@ -2869,4 +2869,44 @@ mod tests {
         // but critically it does NOT panic.
         drop(guard);
     }
+
+    #[test]
+    fn test_guard_drop_restores_session_on_panic() {
+        *lock_session() = None;
+
+        {
+            let mut guard = lock_session();
+            *guard = Some(Session {
+                history: vec![ChatMessage::user("preserved")],
+                config: zeroclaw::Config::default(),
+                system_prompt: String::new(),
+                model: String::new(),
+                temperature: 0.7,
+                provider_name: String::new(),
+                tools_registry: vec![],
+            });
+        }
+
+        let _panic_result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (history, tools) = {
+                    let mut guard = lock_session();
+                    let session = guard.as_mut().unwrap();
+                    (
+                        std::mem::take(&mut session.history),
+                        std::mem::take(&mut session.tools_registry),
+                    )
+                };
+                let _state_guard = SessionStateGuard::new(history, tools);
+                panic!("simulated unwind");
+            }));
+
+        {
+            let guard = lock_session();
+            let session = guard.as_ref().expect("session should exist");
+            assert_eq!(session.history.len(), 1);
+        }
+
+        *lock_session() = None;
+    }
 }
