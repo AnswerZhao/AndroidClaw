@@ -2887,19 +2887,18 @@ mod tests {
             });
         }
 
-        let _panic_result =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let (history, tools) = {
-                    let mut guard = lock_session();
-                    let session = guard.as_mut().unwrap();
-                    (
-                        std::mem::take(&mut session.history),
-                        std::mem::take(&mut session.tools_registry),
-                    )
-                };
-                let _state_guard = SessionStateGuard::new(history, tools);
-                panic!("simulated unwind");
-            }));
+        let _panic_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let (history, tools) = {
+                let mut guard = lock_session();
+                let session = guard.as_mut().unwrap();
+                (
+                    std::mem::take(&mut session.history),
+                    std::mem::take(&mut session.tools_registry),
+                )
+            };
+            let _state_guard = SessionStateGuard::new(history, tools);
+            panic!("simulated unwind");
+        }));
 
         {
             let guard = lock_session();
@@ -2912,11 +2911,10 @@ mod tests {
 
     #[test]
     fn test_poisoned_cancel_token_recovery() {
-        let _panic_result =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let _guard = CANCEL_TOKEN.lock().unwrap();
-                panic!("poison the mutex");
-            }));
+        let _panic_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = CANCEL_TOKEN.lock().unwrap();
+            panic!("poison the mutex");
+        }));
 
         let mut guard = lock_cancel_token();
         *guard = Some(CancellationToken::new());

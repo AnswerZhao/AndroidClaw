@@ -1590,15 +1590,14 @@ mod tests {
 
     #[test]
     fn test_catch_unwind_returns_internal_panic() {
-        let result: Result<(), FfiError> =
-            std::panic::catch_unwind(|| -> Result<(), FfiError> {
-                panic!("test panic for FFI boundary");
+        let result: Result<(), FfiError> = std::panic::catch_unwind(|| -> Result<(), FfiError> {
+            panic!("test panic for FFI boundary");
+        })
+        .unwrap_or_else(|e| {
+            Err(FfiError::InternalPanic {
+                detail: panic_detail(&e),
             })
-            .unwrap_or_else(|e| {
-                Err(FfiError::InternalPanic {
-                    detail: panic_detail(&e),
-                })
-            });
+        });
         match result.unwrap_err() {
             FfiError::InternalPanic { detail } => {
                 assert!(detail.contains("test panic for FFI boundary"));
