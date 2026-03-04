@@ -893,6 +893,37 @@ pub struct SessionMessage {
     pub content: String,
 }
 
+/// Typed progress phases sent from the agent loop to the Kotlin UI.
+///
+/// Each variant maps to a distinct visual state in the thinking card.
+/// Replaces the previous freeform `on_progress(String)` callback.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum FfiProgressPhase {
+    /// Building memory context from the vector store.
+    SearchingMemory,
+    /// Sending the prompt to the LLM provider.
+    ///
+    /// `round` is 1-based; round 1 is the initial call, round 2+ are
+    /// tool-loop iterations.
+    CallingProvider { round: u32 },
+    /// The LLM returned tool call requests.
+    ///
+    /// `count` is the number of tool calls, `llm_duration_secs` is the
+    /// wall-clock time for the LLM response.
+    GotToolCalls { count: u32, llm_duration_secs: u64 },
+    /// The agent is now streaming the final response text.
+    StreamingResponse,
+    /// The conversation history is being compacted.
+    Compacting,
+    /// No active progress (clears any displayed status).
+    Idle,
+    /// Raw progress message from the upstream agent loop.
+    ///
+    /// Used when `dispatch_delta` receives an informational message that
+    /// doesn't map to a specific typed phase.
+    Raw { message: String },
+}
+
 /// Callback interface that Kotlin implements to receive live agent session events.
 ///
 /// Events are dispatched from the tokio runtime thread during
@@ -933,11 +964,17 @@ pub trait FfiSessionListener: Send + Sync {
     /// with the full stdout/stderr captured from the tool execution.
     fn on_tool_output(&self, name: String, output: String);
 
-    /// A progress status line from the agent loop.
+    /// A typed progress phase from the agent loop.
     ///
-    /// Used for miscellaneous status updates that do not fit the other
-    /// callback categories (e.g. `"Searching memory..."`).
-    fn on_progress(&self, message: String);
+    /// Each [`FfiProgressPhase`] variant maps to a distinct visual state
+    /// in the thinking card. Replaces the previous freeform string callback.
+    fn on_progress(&self, phase: FfiProgressPhase);
+
+    /// Clears any displayed progress status.
+    ///
+    /// Called when the agent transitions out of a progress phase (e.g.
+    /// before streaming the final response text).
+    fn on_progress_clear(&self);
 
     /// The conversation history was compacted to fit the context window.
     ///
@@ -1199,7 +1236,7 @@ pub(crate) fn session_send_inner(
         // Build memory context (best-effort; skip if memory unavailable).
         let mem_context = match daemon_memory {
             Some(ref mem) => {
-                listener.on_progress("Searching memory...".into());
+                listener.on_progress(FfiProgressPhase::SearchingMemory);
                 build_memory_context(mem.as_ref(), &message).await
             }
             None => String::new(),
@@ -1287,6 +1324,7 @@ pub(crate) fn session_send_inner(
                 if let Some(summary_msg) = history.iter().rev().find(|m| {
                     m.role == "assistant" && m.content.starts_with("[Compaction summary]")
                 }) {
+                    listener.on_progress(FfiProgressPhase::Compacting);
                     listener.on_compaction(summary_msg.content.clone());
                 }
             }
@@ -1509,15 +1547,14 @@ async fn run_agent_loop(
             return Err(AgentLoopOutcome::Cancelled);
         }
 
-        // Progress: thinking.
-        let phase = if iteration == 0 {
-            "Thinking...".to_string()
-        } else {
-            format!("Thinking (round {})...", iteration + 1)
-        };
-        listener.on_thinking(phase);
+        // Progress: calling provider.
+        #[allow(clippy::cast_possible_truncation)] // iteration ≤ DEFAULT_MAX_TOOL_ITERATIONS (10)
+        listener.on_progress(FfiProgressPhase::CallingProvider {
+            round: (iteration + 1) as u32,
+        });
 
         // Call the provider.
+        let llm_start_time = std::time::Instant::now();
         let chat_future = provider.chat(
             ChatRequest {
                 messages: history,
@@ -1539,6 +1576,9 @@ async fn run_agent_loop(
         if response.tool_calls.is_empty() {
             let text = response.text_or_empty().to_string();
 
+            // Clear progress before streaming the final response.
+            listener.on_progress_clear();
+
             // Stream response in chunks.
             stream_response_text(&text, listener, cancel_token)?;
 
@@ -1548,7 +1588,11 @@ async fn run_agent_loop(
 
         // Has tool calls -- execute those we have and report unavailable for the rest.
         let tool_call_count = response.tool_calls.len();
-        listener.on_progress(format!("Got {tool_call_count} tool call(s)"));
+        #[allow(clippy::cast_possible_truncation)] // tool_call_count bounded by LLM response
+        listener.on_progress(FfiProgressPhase::GotToolCalls {
+            count: tool_call_count as u32,
+            llm_duration_secs: llm_start_time.elapsed().as_secs(),
+        });
 
         // Push assistant message with tool calls context.
         let assistant_text = response.text_or_empty().to_string();
@@ -2149,6 +2193,7 @@ pub(crate) fn dispatch_delta(
 ) {
     if delta == DRAFT_CLEAR_SENTINEL {
         *streaming_response = true;
+        listener.on_progress_clear();
         return;
     }
 
@@ -2191,11 +2236,15 @@ pub(crate) fn dispatch_delta(
             }
             '\u{1f4ac}' => {
                 // Informational progress
-                listener.on_progress(rest.trim().to_string());
+                listener.on_progress(FfiProgressPhase::Raw {
+                    message: rest.trim().to_string(),
+                });
             }
             _ => {
                 // Unrecognised prefix -- treat as generic progress
-                listener.on_progress(trimmed.to_string());
+                listener.on_progress(FfiProgressPhase::Raw {
+                    message: trimmed.to_string(),
+                });
             }
         }
     }
@@ -2291,11 +2340,18 @@ mod tests {
                 .push(format!("tool_output:{name}:{output}"));
         }
 
-        fn on_progress(&self, message: String) {
+        fn on_progress(&self, phase: FfiProgressPhase) {
             self.events
                 .lock()
                 .unwrap()
-                .push(format!("progress:{message}"));
+                .push(format!("progress:{phase:?}"));
+        }
+
+        fn on_progress_clear(&self) {
+            self.events
+                .lock()
+                .unwrap()
+                .push("progress_clear".to_string());
         }
 
         fn on_compaction(&self, summary: String) {
@@ -2392,7 +2448,10 @@ mod tests {
         let listener = RecordingListener::new();
         let mut streaming = false;
         dispatch_delta("\u{1f4ac} Got 3 tool calls\n", &listener, &mut streaming);
-        assert_eq!(listener.events(), vec!["progress:Got 3 tool calls"]);
+        assert_eq!(
+            listener.events(),
+            vec!["progress:Raw { message: \"Got 3 tool calls\" }"]
+        );
     }
 
     #[test]
@@ -2401,7 +2460,7 @@ mod tests {
         let mut streaming = false;
         dispatch_delta(DRAFT_CLEAR_SENTINEL, &listener, &mut streaming);
         assert!(streaming);
-        assert!(listener.events().is_empty());
+        assert_eq!(listener.events(), vec!["progress_clear"]);
     }
 
     #[test]
@@ -2417,7 +2476,11 @@ mod tests {
 
         assert_eq!(
             listener.events(),
-            vec!["response_chunk:Hello, ", "response_chunk:world!",]
+            vec![
+                "progress_clear",
+                "response_chunk:Hello, ",
+                "response_chunk:world!",
+            ]
         );
     }
 
