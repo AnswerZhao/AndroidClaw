@@ -203,11 +203,17 @@ pub(crate) fn validate_target_url(
         return Err("Only http:// and https:// URLs are allowed".to_string());
     }
 
+    // Empty allowlist means "allow all domains" — the user enabled the
+    // tool but didn't restrict it to specific domains.
     if allowed_domains.is_empty() {
-        return Err(format!(
-            "{tool_name} tool is enabled but no allowed_domains are configured. \
-             Add [{tool_name}].allowed_domains in config.toml"
-        ));
+        let host = extract_host(url)?;
+        if is_private_or_local_host(&host) {
+            return Err(format!("Blocked local/private host: {host}"));
+        }
+        if !blocked_domains.is_empty() && host_matches_allowlist(&host, blocked_domains) {
+            return Err(format!("Host '{host}' is in {tool_name}.blocked_domains"));
+        }
+        return Ok(url.to_string());
     }
 
     let host = extract_host(url)?;
@@ -749,10 +755,22 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_empty_allowlist() {
-        let err = validate_target_url("https://example.com", &[], &[], "web_fetch").unwrap_err();
-        assert!(err.contains("allowed_domains"));
-        assert!(err.contains("web_fetch"));
+    fn validate_empty_allowlist_allows_public_hosts() {
+        let url = validate_target_url("https://example.com", &[], &[], "web_fetch").unwrap();
+        assert_eq!(url, "https://example.com");
+    }
+
+    #[test]
+    fn validate_empty_allowlist_still_blocks_private() {
+        let err = validate_target_url("https://localhost:8080", &[], &[], "web_fetch").unwrap_err();
+        assert!(err.contains("local/private"));
+    }
+
+    #[test]
+    fn validate_empty_allowlist_still_checks_blocked() {
+        let blocked = vec!["evil.com".into()];
+        let err = validate_target_url("https://evil.com", &[], &blocked, "web_fetch").unwrap_err();
+        assert!(err.contains("blocked_domains"));
     }
 
     #[test]
@@ -832,7 +850,9 @@ mod tests {
 
     #[test]
     fn validate_tool_name_in_error_messages() {
-        let err = validate_target_url("https://example.com", &[], &[], "http_request").unwrap_err();
+        let blocked = vec!["example.com".into()];
+        let err =
+            validate_target_url("https://example.com", &[], &blocked, "http_request").unwrap_err();
         assert!(err.contains("http_request"));
     }
 

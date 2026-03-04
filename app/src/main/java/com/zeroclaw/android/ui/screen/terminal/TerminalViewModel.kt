@@ -393,10 +393,8 @@ class TerminalViewModel(
 
             try {
                 withContext(Dispatchers.IO) {
-                    if (!ensureSession()) {
-                        throw IllegalStateException(
-                            "No active session — is the daemon running?",
-                        )
+                    check(ensureSession()) {
+                        "No active session — is the daemon running?"
                     }
                     sessionSend(
                         message,

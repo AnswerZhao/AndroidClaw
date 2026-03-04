@@ -48,6 +48,14 @@ const MAX_MESSAGE_BYTES: usize = 1_048_576;
 /// Default maximum agentic tool-use iterations per user message.
 const DEFAULT_MAX_TOOL_ITERATIONS: usize = 10;
 
+/// Maximum number of tool calls to execute from a single model response.
+///
+/// Prompt-guided models (e.g. Codex) sometimes emit dozens of
+/// `<tool_call>` tags in one response. Executing all of them wastes
+/// tokens and fills the thinking card with noise. Excess calls are
+/// dropped with a warning.
+const MAX_TOOL_CALLS_PER_RESPONSE: usize = 5;
+
 /// Non-system message count threshold that triggers auto-compaction.
 const DEFAULT_MAX_HISTORY_MESSAGES: usize = 50;
 
@@ -256,8 +264,8 @@ impl Tool for FfiMemoryForgetTool {
 struct FfiWebSearchTool {
     /// Maximum search results to return (1-10).
     max_results: usize,
-    /// HTTP request timeout.
-    timeout: Duration,
+    /// Shared HTTP client (reuses TLS sessions and connection pools).
+    client: reqwest::Client,
 }
 
 /// Decode DuckDuckGo redirect URL to extract the actual destination.
@@ -383,18 +391,37 @@ impl Tool for FfiWebSearchTool {
         let encoded = urlencoding::encode(query);
         let url = format!("https://html.duckduckgo.com/html/?q={encoded}");
 
-        let client = reqwest::Client::builder()
-            .timeout(self.timeout)
-            .user_agent("ZeroClaw/1.0")
-            .build()?;
+        let resp = self.client.get(&url).send().await?;
 
-        let resp = client.get(&url).send().await?;
-
+        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            return Ok(ToolResult {
+                success: false,
+                output: String::new(),
+                error: Some(
+                    "Rate limited by DuckDuckGo (HTTP 403). Wait a minute before searching again."
+                        .to_string(),
+                ),
+            });
+        }
         if !resp.status().is_success() {
             anyhow::bail!("DuckDuckGo search failed with status: {}", resp.status());
         }
 
         let html = resp.text().await?;
+
+        // Detect DuckDuckGo CAPTCHA/anomaly page.
+        if html.contains("anomaly-modal") || html.contains("Please try again") {
+            return Ok(ToolResult {
+                success: false,
+                output: String::new(),
+                error: Some(
+                    "DuckDuckGo is showing a CAPTCHA — search is temporarily \
+                     unavailable. Try again later or reduce search frequency."
+                        .to_string(),
+                ),
+            });
+        }
+
         let output = self.parse_duckduckgo_results(&html, query);
 
         Ok(ToolResult {
@@ -420,8 +447,8 @@ struct FfiWebFetchTool {
     blocked_domains: Vec<String>,
     /// Maximum response body size in bytes before truncation.
     max_response_size: usize,
-    /// HTTP request timeout in seconds (0 falls back to 30s).
-    timeout_secs: u64,
+    /// Shared HTTP client (reuses TLS sessions and connection pools).
+    client: reqwest::Client,
 }
 
 impl FfiWebFetchTool {
@@ -464,45 +491,6 @@ impl FfiWebFetchTool {
         }
 
         Ok(String::from_utf8_lossy(&bytes).into_owned())
-    }
-
-    /// Builds a [`reqwest::Client`] with redirect validation that
-    /// checks each redirect target against the domain lists.
-    fn build_client(&self) -> Result<reqwest::Client, String> {
-        let timeout_secs = if self.timeout_secs == 0 {
-            tracing::warn!("web_fetch: timeout_secs is 0, using safe default of 30s");
-            30
-        } else {
-            self.timeout_secs
-        };
-
-        let allowed = self.allowed_domains.clone();
-        let blocked = self.blocked_domains.clone();
-        let redirect_policy = reqwest::redirect::Policy::custom(move |attempt| {
-            if attempt.previous().len() >= 10 {
-                return attempt.error(std::io::Error::other("Too many redirects (max 10)"));
-            }
-            if let Err(err) = url_helpers::validate_target_url(
-                attempt.url().as_str(),
-                &allowed,
-                &blocked,
-                "web_fetch",
-            ) {
-                return attempt.error(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    format!("Blocked redirect target: {err}"),
-                ));
-            }
-            attempt.follow()
-        });
-
-        reqwest::Client::builder()
-            .timeout(Duration::from_secs(timeout_secs))
-            .connect_timeout(Duration::from_secs(10))
-            .redirect(redirect_policy)
-            .user_agent("ZeroClaw/0.1 (web_fetch)")
-            .build()
-            .map_err(|e| format!("Failed to build HTTP client: {e}"))
     }
 
     /// Determines the processing strategy for the response based on
@@ -587,12 +575,7 @@ impl Tool for FfiWebFetchTool {
             Err(e) => return Ok(fail_result(e)),
         };
 
-        let client = match self.build_client() {
-            Ok(c) => c,
-            Err(e) => return Ok(fail_result(e)),
-        };
-
-        let response = match client.get(&url).send().await {
+        let response = match self.client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => return Ok(fail_result(format!("HTTP request failed: {e}"))),
         };
@@ -640,8 +623,8 @@ struct FfiHttpRequestTool {
     allowed_domains: Vec<String>,
     /// Maximum response body size in bytes before truncation (0 = unlimited).
     max_response_size: usize,
-    /// HTTP request timeout in seconds (0 falls back to 30s).
-    timeout_secs: u64,
+    /// Shared HTTP client (reuses TLS sessions and connection pools).
+    client: reqwest::Client,
 }
 
 impl FfiHttpRequestTool {
@@ -715,24 +698,6 @@ impl FfiHttpRequestTool {
         } else {
             text.to_string()
         }
-    }
-
-    /// Builds a [`reqwest::Client`] with no redirect following and the
-    /// configured timeout.
-    fn build_client(&self) -> Result<reqwest::Client, String> {
-        let timeout_secs = if self.timeout_secs == 0 {
-            tracing::warn!("http_request: timeout_secs is 0, using safe default of 30s");
-            30
-        } else {
-            self.timeout_secs
-        };
-
-        reqwest::Client::builder()
-            .timeout(Duration::from_secs(timeout_secs))
-            .connect_timeout(Duration::from_secs(10))
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(|e| format!("Failed to build HTTP client: {e}"))
     }
 
     /// Formats a successful response into the canonical output string
@@ -852,10 +817,7 @@ impl Tool for FfiHttpRequestTool {
         let redacted = Self::redact_headers_for_display(&request_headers);
         tracing::debug!(url = %url, method = %method, headers = ?redacted, "http_request: dispatching");
 
-        let client = match self.build_client() {
-            Ok(c) => c,
-            Err(e) => return Ok(fail_result(e)),
-        };
+        let client = &self.client;
 
         let mut request = client.request(method, &url);
         for (key, value) in request_headers {
@@ -906,32 +868,79 @@ fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> V
     ];
 
     if config.web_search.enabled {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(config.web_search.timeout_secs))
+            .user_agent(&config.web_search.user_agent)
+            .build()
+            .unwrap_or_default();
         tools.push(Box::new(FfiWebSearchTool {
             max_results: config.web_search.max_results,
-            timeout: Duration::from_secs(config.web_search.timeout_secs),
+            client,
         }));
     }
 
     if config.web_fetch.enabled {
+        let fetch_allowed =
+            url_helpers::normalize_allowed_domains(config.web_fetch.allowed_domains.clone());
+        let fetch_blocked =
+            url_helpers::normalize_allowed_domains(config.web_fetch.blocked_domains.clone());
+        let timeout_secs = if config.web_fetch.timeout_secs == 0 {
+            30
+        } else {
+            config.web_fetch.timeout_secs
+        };
+        let allowed_for_redirect = fetch_allowed.clone();
+        let blocked_for_redirect = fetch_blocked.clone();
+        let redirect_policy = reqwest::redirect::Policy::custom(move |attempt| {
+            if attempt.previous().len() >= 10 {
+                return attempt.error(std::io::Error::other("Too many redirects (max 10)"));
+            }
+            if let Err(err) = url_helpers::validate_target_url(
+                attempt.url().as_str(),
+                &allowed_for_redirect,
+                &blocked_for_redirect,
+                "web_fetch",
+            ) {
+                return attempt.error(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    format!("Blocked redirect target: {err}"),
+                ));
+            }
+            attempt.follow()
+        });
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(timeout_secs))
+            .connect_timeout(Duration::from_secs(10))
+            .redirect(redirect_policy)
+            .user_agent(&config.web_fetch.user_agent)
+            .build()
+            .unwrap_or_default();
         tools.push(Box::new(FfiWebFetchTool {
-            allowed_domains: url_helpers::normalize_allowed_domains(
-                config.web_fetch.allowed_domains.clone(),
-            ),
-            blocked_domains: url_helpers::normalize_allowed_domains(
-                config.web_fetch.blocked_domains.clone(),
-            ),
+            allowed_domains: fetch_allowed,
+            blocked_domains: fetch_blocked,
             max_response_size: config.web_fetch.max_response_size,
-            timeout_secs: config.web_fetch.timeout_secs,
+            client,
         }));
     }
 
     if config.http_request.enabled {
+        let timeout_secs = if config.http_request.timeout_secs == 0 {
+            30
+        } else {
+            config.http_request.timeout_secs
+        };
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(timeout_secs))
+            .connect_timeout(Duration::from_secs(10))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap_or_default();
         tools.push(Box::new(FfiHttpRequestTool {
             allowed_domains: url_helpers::normalize_allowed_domains(
                 config.http_request.allowed_domains.clone(),
             ),
             max_response_size: config.http_request.max_response_size,
-            timeout_secs: config.http_request.timeout_secs,
+            client,
         }));
     }
 
@@ -1886,6 +1895,16 @@ async fn run_agent_loop(
             listener.on_thinking(inline_thinking);
         }
 
+        // Cap excessive tool calls from a single response.
+        if response.tool_calls.len() > MAX_TOOL_CALLS_PER_RESPONSE {
+            tracing::warn!(
+                total = response.tool_calls.len(),
+                limit = MAX_TOOL_CALLS_PER_RESPONSE,
+                "agent_loop: capping tool calls per response"
+            );
+            response.tool_calls.truncate(MAX_TOOL_CALLS_PER_RESPONSE);
+        }
+
         let tool_call_count = response.tool_calls.len();
         listener.on_progress(FfiProgressPhase::GotToolCalls {
             count: u32::try_from(tool_call_count).unwrap_or(u32::MAX),
@@ -1963,11 +1982,13 @@ async fn run_agent_loop(
             };
 
             let duration_secs = start_time.elapsed().as_secs();
+            let output_preview: String = output.chars().take(200).collect();
             tracing::info!(
                 tool = %call.name,
                 success,
                 duration_secs,
                 output_len = output.len(),
+                output_preview,
                 "agent_loop: tool done"
             );
             listener.on_tool_result(call.name.clone(), success, duration_secs);
@@ -2283,10 +2304,7 @@ fn build_android_tool_specs(config: &zeroclaw::Config) -> Vec<ToolSpec> {
 /// The output includes:
 /// - Format instructions with concrete examples
 /// - A list of available tools with their parameter schemas
-fn build_tool_use_protocol(
-    tools_registry: &[Box<dyn Tool>],
-    config: &zeroclaw::Config,
-) -> String {
+fn build_tool_use_protocol(tools_registry: &[Box<dyn Tool>], config: &zeroclaw::Config) -> String {
     use std::fmt::Write;
 
     let mut out = String::with_capacity(2048);
@@ -3572,7 +3590,8 @@ mod tests {
 
     #[test]
     fn test_parse_xml_single_tool_call() {
-        let input = r#"<tool_call>{"name": "web_search", "arguments": {"query": "rust lang"}}</tool_call>"#;
+        let input =
+            r#"<tool_call>{"name": "web_search", "arguments": {"query": "rust lang"}}</tool_call>"#;
         let (clean, calls) = parse_xml_tool_calls(input);
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].name, "web_search");
