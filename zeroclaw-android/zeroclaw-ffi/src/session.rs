@@ -862,6 +862,17 @@ impl SessionStateGuard {
 }
 
 impl Drop for SessionStateGuard {
+    /// Restore session state when the guard is dropped during a panic unwind.
+    ///
+    /// # Safety — Mutex Reentrancy
+    ///
+    /// This acquires `SESSION` and `CANCEL_TOKEN` mutexes during `drop`, which
+    /// may run inside a `catch_unwind` unwind. This is safe because:
+    /// - `run_agent_loop` (the only call-site that creates a guard) takes
+    ///   `history` and `tools` **out** of the session before entering the loop,
+    ///   so it does **not** hold the `SESSION` lock when panic occurs.
+    /// - `lock_session()` / `lock_cancel_token()` use poison-recovering helpers,
+    ///   so a previously-panicked thread cannot deadlock this path.
     fn drop(&mut self) {
         let Some(history) = self.history.take() else {
             return;
@@ -1331,12 +1342,14 @@ pub(crate) fn session_send_inner(
 
             put_session_state_back(history, tools, &system_prompt);
             clear_cancel_token();
+            listener.on_progress(FfiProgressPhase::Idle);
             listener.on_complete(full_response);
             Ok(())
         }
         Err(AgentLoopOutcome::Cancelled) => {
             put_session_state_back(history, tools, &system_prompt);
             clear_cancel_token();
+            listener.on_progress(FfiProgressPhase::Idle);
             listener.on_cancelled();
             Ok(())
         }
@@ -1345,6 +1358,7 @@ pub(crate) fn session_send_inner(
             history.truncate(history_len_before);
             put_session_state_back(history, tools, &system_prompt);
             clear_cancel_token();
+            listener.on_progress(FfiProgressPhase::Idle);
             listener.on_error(msg.clone());
             Err(FfiError::SpawnError { detail: msg })
         }
@@ -1576,7 +1590,8 @@ async fn run_agent_loop(
         if response.tool_calls.is_empty() {
             let text = response.text_or_empty().to_string();
 
-            // Clear progress before streaming the final response.
+            // Signal that we are now streaming the final response.
+            listener.on_progress(FfiProgressPhase::StreamingResponse);
             listener.on_progress_clear();
 
             // Stream response in chunks.
@@ -1588,9 +1603,8 @@ async fn run_agent_loop(
 
         // Has tool calls -- execute those we have and report unavailable for the rest.
         let tool_call_count = response.tool_calls.len();
-        #[allow(clippy::cast_possible_truncation)] // tool_call_count bounded by LLM response
         listener.on_progress(FfiProgressPhase::GotToolCalls {
-            count: tool_call_count as u32,
+            count: u32::try_from(tool_call_count).unwrap_or(u32::MAX),
             llm_duration_secs: llm_start_time.elapsed().as_secs(),
         });
 

@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.component
 
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -21,12 +22,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 
 /**
  * Text field for API keys, tokens, and other secrets with paste support.
@@ -76,10 +77,12 @@ fun SecretTextField(
             IconButton(
                 onClick = { revealed = !revealed },
                 modifier =
-                    Modifier.semantics {
-                        contentDescription =
-                            if (revealed) "Hide value" else "Show value"
-                    },
+                    Modifier
+                        .size(48.dp)
+                        .semantics {
+                            contentDescription =
+                                if (revealed) "Hide value" else "Show value"
+                        },
             ) {
                 Icon(
                     imageVector =
@@ -97,11 +100,6 @@ fun SecretTextField(
                 keyboardType = KeyboardType.Text,
                 imeAction = imeAction,
             ),
-        modifier =
-            modifier.semantics {
-                if (!revealed) {
-                    invisibleToUser()
-                }
-            },
+        modifier = modifier,
     )
 }

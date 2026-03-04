@@ -108,7 +108,6 @@ fun ThinkingCard(
                     .fillMaxWidth()
                     .semantics(mergeDescendants = true) {
                         contentDescription = "Model is thinking"
-                        liveRegion = LiveRegionMode.Polite
                     },
         ) {
             Column(
@@ -131,6 +130,10 @@ fun ThinkingCard(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                        Modifier.semantics {
+                            liveRegion = LiveRegionMode.Polite
+                        },
                 ) {
                     BrailleSpinner(label = headerLabel)
                     Spacer(modifier = Modifier.weight(1f))
