@@ -42,6 +42,39 @@ use std::sync::Arc;
 
 pub use error::FfiError;
 
+/// Initialises the Rust tracing subscriber for Android logcat output.
+///
+/// On Android debug builds, routes `tracing` events (info, warn, error)
+/// to `__android_log_write` with the tag `"zeroclaw_ffi"`. On release
+/// builds or non-Android targets, this is a no-op.
+///
+/// Safe to call multiple times — the second and subsequent calls are
+/// silently ignored by the subscriber registry.
+#[uniffi::export]
+pub fn init_logging() {
+    #[cfg(target_os = "android")]
+    {
+        use tracing_subscriber::prelude::*;
+        use tracing_subscriber::EnvFilter;
+
+        // Noisy HTTP/TLS crates → WARN only; everything else → DEBUG.
+        let filter = if cfg!(debug_assertions) {
+            EnvFilter::new(
+                "debug,hyper=warn,hyper_util=warn,reqwest=warn,rustls=warn,h2=warn,tower=warn",
+            )
+        } else {
+            EnvFilter::new("warn")
+        };
+
+        if let Ok(layer) = tracing_android::layer("zeroclaw_ffi") {
+            let _ = tracing_subscriber::registry()
+                .with(layer.with_filter(filter))
+                .try_init();
+            tracing::info!("Rust tracing initialised");
+        }
+    }
+}
+
 /// Extracts a human-readable message from a caught panic payload.
 fn panic_detail(payload: &Box<dyn std::any::Any + Send>) -> String {
     payload

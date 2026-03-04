@@ -80,6 +80,10 @@ class TerminalViewModel(
     private val _history = MutableStateFlow<List<String>>(emptyList())
     private val _historyIndex = MutableStateFlow(NO_HISTORY_SELECTION)
 
+    /** Whether [sessionStart] has succeeded at least once. */
+    @Volatile
+    private var sessionReady = false
+
     /** Observable terminal state combining persisted entries with transient UI state. */
     val state: StateFlow<TerminalState> =
         combine(
@@ -123,6 +127,7 @@ class TerminalViewModel(
                 withContext(Dispatchers.IO) {
                     sessionStart()
                 }
+                sessionReady = true
             } catch (e: Exception) {
                 logRepository.append(
                     LogSeverity.WARN,
@@ -130,6 +135,32 @@ class TerminalViewModel(
                     "Agent session init failed: ${e.message}",
                 )
             }
+        }
+    }
+
+    /**
+     * Attempts [sessionStart] if the initial call in [initAgentSession] failed.
+     *
+     * This handles the race where the daemon service hasn't finished
+     * starting when the ViewModel initialises. Called on [Dispatchers.IO]
+     * before the first [sessionSend].
+     *
+     * @return `true` if a session is now active.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun ensureSession(): Boolean {
+        if (sessionReady) return true
+        return try {
+            sessionStart()
+            sessionReady = true
+            true
+        } catch (e: Exception) {
+            logRepository.append(
+                LogSeverity.WARN,
+                TAG,
+                "Session retry failed: ${e.message}",
+            )
+            false
         }
     }
 
@@ -362,6 +393,11 @@ class TerminalViewModel(
 
             try {
                 withContext(Dispatchers.IO) {
+                    if (!ensureSession()) {
+                        throw IllegalStateException(
+                            "No active session — is the daemon running?",
+                        )
+                    }
                     sessionSend(
                         message,
                         images.map { it.base64Data },

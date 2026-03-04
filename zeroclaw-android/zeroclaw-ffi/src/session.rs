@@ -242,6 +242,42 @@ impl Tool for FfiMemoryForgetTool {
     }
 }
 
+/// Thin wrapper around upstream [`zeroclaw::tools::WebSearchTool`] that
+/// normalises the tool name from `"web_search_tool"` to the industry-
+/// standard `"web_search"` expected by most LLMs.
+///
+/// Upstream chose `"web_search_tool"` as the tool name, but models fine-
+/// tuned for function calling (GPT-4o, Claude, Gemini, etc.) generate
+/// calls to `"web_search"`. The dispatch in [`run_agent_loop`] uses
+/// exact-match lookup, so the name must match what the model emits.
+struct FfiWebSearchTool {
+    /// The upstream search tool instance that does the actual work.
+    inner: zeroclaw::tools::WebSearchTool,
+}
+
+#[async_trait]
+impl Tool for FfiWebSearchTool {
+    fn name(&self) -> &'static str {
+        "web_search"
+    }
+
+    fn description(&self) -> &'static str {
+        "Search the web using a search engine (DuckDuckGo or Brave). \
+         Returns a list of result titles, URLs, and descriptions. \
+         Use this when: you need to find current information, news, \
+         weather, facts, or research a topic. \
+         Do NOT use this to fetch a specific URL (use web_fetch instead)."
+    }
+
+    fn parameters_schema(&self) -> serde_json::Value {
+        self.inner.parameters_schema()
+    }
+
+    async fn execute(&self, args: serde_json::Value) -> anyhow::Result<ToolResult> {
+        self.inner.execute(args).await
+    }
+}
+
 /// FFI-specific web fetch tool that bypasses `SecurityPolicy`.
 ///
 /// Fetches a web page and converts HTML to clean plain text for LLM
@@ -743,12 +779,14 @@ fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> V
     ];
 
     if config.web_search.enabled {
-        tools.push(Box::new(zeroclaw::tools::WebSearchTool::new(
-            config.web_search.provider.clone(),
-            config.web_search.brave_api_key.clone(),
-            config.web_search.max_results,
-            config.web_search.timeout_secs,
-        )));
+        tools.push(Box::new(FfiWebSearchTool {
+            inner: zeroclaw::tools::WebSearchTool::new(
+                config.web_search.provider.clone(),
+                config.web_search.brave_api_key.clone(),
+                config.web_search.max_results,
+                config.web_search.timeout_secs,
+            ),
+        }));
     }
 
     if config.web_fetch.enabled {
@@ -1215,6 +1253,8 @@ pub(crate) fn session_send_inner(
         });
     }
 
+    tracing::info!(len = message.len(), images = image_data.len(), "session_send: start");
+
     let cancel_token = CancellationToken::new();
     {
         let mut ct_guard = lock_cancel_token();
@@ -1321,6 +1361,7 @@ pub(crate) fn session_send_inner(
 
     match result {
         Ok(full_response) => {
+            tracing::info!(len = full_response.len(), "session_send: success");
             // Run compaction on the history (best-effort).
             if let Ok(true) = handle.block_on(async {
                 let provider =
@@ -1355,6 +1396,7 @@ pub(crate) fn session_send_inner(
             Ok(())
         }
         Err(AgentLoopOutcome::Cancelled) => {
+            tracing::info!("session_send: cancelled");
             put_session_state_back(history, tools, &system_prompt);
             clear_cancel_token();
             listener.on_progress(FfiProgressPhase::Idle);
@@ -1362,6 +1404,7 @@ pub(crate) fn session_send_inner(
             Ok(())
         }
         Err(AgentLoopOutcome::Error(msg)) => {
+            tracing::error!(error = %msg, "session_send: agent loop error");
             // Rollback history to pre-send state.
             history.truncate(history_len_before);
             put_session_state_back(history, tools, &system_prompt);
@@ -1563,6 +1606,8 @@ async fn run_agent_loop(
         None
     };
 
+    tracing::info!(native_tools = use_native_tools, specs = tool_specs.len(), "agent_loop: start");
+
     for iteration in 0..DEFAULT_MAX_TOOL_ITERATIONS {
         // Check cancellation before each iteration.
         if cancel_token.is_cancelled() {
@@ -1574,6 +1619,7 @@ async fn run_agent_loop(
         listener.on_progress(FfiProgressPhase::CallingProvider {
             round: (iteration + 1) as u32,
         });
+        tracing::info!(iteration = iteration + 1, model, "agent_loop: calling provider");
 
         // Call the provider.
         let llm_start_time = std::time::Instant::now();
@@ -1591,25 +1637,79 @@ async fn run_agent_loop(
             result = chat_future => result,
         };
 
-        let response = chat_result
-            .map_err(|e| AgentLoopOutcome::Error(format!("provider chat failed: {e}")))?;
+        let response = chat_result.map_err(|e| {
+            tracing::error!(error = %e, "agent_loop: provider chat failed");
+            AgentLoopOutcome::Error(format!("provider chat failed: {e}"))
+        })?;
+
+        tracing::info!(
+            tool_calls = response.tool_calls.len(),
+            text_len = response.text_or_empty().len(),
+            has_reasoning = response.reasoning_content.is_some(),
+            elapsed_secs = llm_start_time.elapsed().as_secs(),
+            "agent_loop: provider responded"
+        );
 
         // No tool calls -- this is the final response.
         if response.tool_calls.is_empty() {
-            let text = response.text_or_empty().to_string();
+            let raw_text = response.text_or_empty().to_string();
+
+            // Forward API-level reasoning_content (o1, o3) to the
+            // thinking card.
+            if let Some(ref reasoning) = response.reasoning_content
+                && !reasoning.is_empty()
+            {
+                listener.on_thinking(reasoning.clone());
+            }
+
+            // Extract inline thinking tags (DeepSeek-R1, Qwen, etc.)
+            // from the text field and route them to the thinking card
+            // so they don't appear as the visible response.
+            let (clean_text, inline_thinking) = extract_thinking_from_text(&raw_text);
+            if !inline_thinking.is_empty() {
+                tracing::info!(
+                    thinking_len = inline_thinking.len(),
+                    "agent_loop: extracted inline thinking"
+                );
+                listener.on_thinking(inline_thinking);
+            }
+
+            tracing::info!(
+                raw_len = raw_text.len(),
+                clean_len = clean_text.len(),
+                "agent_loop: final response"
+            );
 
             // Signal that we are now streaming the final response.
             listener.on_progress(FfiProgressPhase::StreamingResponse);
             listener.on_progress_clear();
 
-            // Stream response in chunks.
-            stream_response_text(&text, listener, cancel_token)?;
+            // Stream the cleaned response (thinking blocks removed).
+            stream_response_text(&clean_text, listener, cancel_token)?;
 
-            history.push(ChatMessage::assistant(&text));
-            return Ok(text);
+            // Keep the full raw text in history so the model retains
+            // its own reasoning context for follow-up turns.
+            history.push(ChatMessage::assistant(&raw_text));
+            return Ok(clean_text);
         }
 
-        // Has tool calls -- execute those we have and report unavailable for the rest.
+        // Has tool calls -- execute those we have and report unavailable
+        // for the rest.
+        //
+        // Forward API-level reasoning_content and inline thinking tags
+        // to the thinking card.
+        if let Some(ref reasoning) = response.reasoning_content
+            && !reasoning.is_empty()
+        {
+            listener.on_thinking(reasoning.clone());
+        }
+
+        let raw_assistant = response.text_or_empty().to_string();
+        let (_clean_assistant, inline_thinking) = extract_thinking_from_text(&raw_assistant);
+        if !inline_thinking.is_empty() {
+            listener.on_thinking(inline_thinking);
+        }
+
         let tool_call_count = response.tool_calls.len();
         listener.on_progress(FfiProgressPhase::GotToolCalls {
             count: u32::try_from(tool_call_count).unwrap_or(u32::MAX),
@@ -1617,7 +1717,9 @@ async fn run_agent_loop(
         });
 
         // Push assistant message with tool calls context.
-        let assistant_text = response.text_or_empty().to_string();
+        // Keep raw text (with thinking tags) so the model retains its
+        // reasoning context for subsequent iterations.
+        let assistant_text = raw_assistant;
         if use_native_tools {
             let native_history = build_native_assistant_history(
                 &assistant_text,
@@ -1639,51 +1741,59 @@ async fn run_agent_loop(
 
             let args_hint = truncate_tool_args_hint(&call.name, &call.arguments);
             listener.on_tool_start(call.name.clone(), args_hint);
+            tracing::info!(tool = %call.name, "agent_loop: tool start");
 
             let start_time = std::time::Instant::now();
 
             // Find the tool by name in the registry.
             let tool = tools.iter().find(|t| t.name() == call.name);
 
-            let (success, output) = match tool {
-                Some(tool) => {
-                    let args: serde_json::Value =
-                        serde_json::from_str(&call.arguments).unwrap_or(serde_json::json!({}));
+            let (success, output) = if let Some(tool) = tool {
+                let args: serde_json::Value =
+                    serde_json::from_str(&call.arguments).unwrap_or(serde_json::json!({}));
 
-                    let exec_result = tokio::select! {
-                        () = cancel_token.cancelled() => {
-                            return Err(AgentLoopOutcome::Cancelled);
-                        }
-                        result = tool.execute(args) => result,
-                    };
-
-                    match exec_result {
-                        Ok(result) => {
-                            if result.success {
-                                (true, result.output)
-                            } else {
-                                (
-                                    false,
-                                    result.error.unwrap_or_else(|| {
-                                        "Tool failed without error message".into()
-                                    }),
-                                )
-                            }
-                        }
-                        Err(e) => (false, format!("Tool execution error: {e}")),
+                let exec_result = tokio::select! {
+                    () = cancel_token.cancelled() => {
+                        return Err(AgentLoopOutcome::Cancelled);
                     }
+                    result = tool.execute(args) => result,
+                };
+
+                match exec_result {
+                    Ok(result) => {
+                        if result.success {
+                            (true, result.output)
+                        } else {
+                            (
+                                false,
+                                result.error.unwrap_or_else(|| {
+                                    "Tool failed without error message".into()
+                                }),
+                            )
+                        }
+                    }
+                    Err(e) => (false, format!("Tool execution error: {e}")),
                 }
-                None => (
+            } else {
+                tracing::warn!(tool = %call.name, "agent_loop: tool not found in registry");
+                (
                     false,
                     format!(
                         "Tool '{}' is not available in this session. \
                          Please answer directly without this tool.",
                         call.name
                     ),
-                ),
+                )
             };
 
             let duration_secs = start_time.elapsed().as_secs();
+            tracing::info!(
+                tool = %call.name,
+                success,
+                duration_secs,
+                output_len = output.len(),
+                "agent_loop: tool done"
+            );
             listener.on_tool_result(call.name.clone(), success, duration_secs);
             listener.on_tool_output(call.name.clone(), output.clone());
 
@@ -2009,6 +2119,71 @@ fn truncate_tool_args_hint(tool_name: &str, arguments_json: &str) -> String {
     }
 }
 
+/// Tag names treated as thinking/reasoning blocks.
+///
+/// Content inside these tags is extracted from the response `text` field and
+/// forwarded to the thinking card via [`FfiSessionListener::on_thinking`]
+/// instead of being streamed as visible response text.
+///
+/// Different models use different tag conventions:
+/// - DeepSeek-R1, Qwen: `<think>...</think>`
+/// - Some fine-tuned models: `<thinking>...</thinking>`
+/// - Claude artifacts: `<analysis>`, `<reflection>`, `<inner_monologue>`
+const THINKING_TAG_NAMES: &[&str] = &[
+    "think",
+    "thinking",
+    "analysis",
+    "reflection",
+    "inner_monologue",
+];
+
+/// Extracts thinking/reasoning blocks from model response text.
+///
+/// Scans `text` for matched pairs of tags listed in [`THINKING_TAG_NAMES`],
+/// collects their inner content, and returns a tuple of
+/// `(clean_text, thinking_content)`.  The clean text has the tag blocks
+/// removed (with surrounding whitespace collapsed), ready for streaming to
+/// the user.  The thinking content is the concatenation of all extracted
+/// blocks, suitable for [`FfiSessionListener::on_thinking`].
+///
+/// Matching is case-insensitive.  Nested or overlapping tags of the same
+/// kind are handled greedily (the outermost pair wins).
+fn extract_thinking_from_text(text: &str) -> (String, String) {
+    let mut clean = text.to_string();
+    let mut thinking = String::new();
+
+    for tag in THINKING_TAG_NAMES {
+        loop {
+            let lower = clean.to_lowercase();
+            let open_tag = format!("<{tag}>");
+            let close_tag = format!("</{tag}>");
+
+            let Some(open_start) = lower.find(&open_tag) else {
+                break;
+            };
+            let content_start = open_start + open_tag.len();
+            let Some(close_start) = lower[content_start..].find(&close_tag) else {
+                break;
+            };
+            let close_end = content_start + close_start + close_tag.len();
+
+            let inner = &clean[content_start..content_start + close_start];
+            let trimmed = inner.trim();
+            if !trimmed.is_empty() {
+                if !thinking.is_empty() {
+                    thinking.push('\n');
+                }
+                thinking.push_str(trimmed);
+            }
+
+            clean.replace_range(open_start..close_end, "");
+        }
+    }
+
+    let clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+    (clean, thinking)
+}
+
 /// Streams the final response text to the listener in chunks of at least
 /// [`STREAM_CHUNK_MIN_CHARS`] characters, split on whitespace boundaries.
 fn stream_response_text(
@@ -2094,8 +2269,8 @@ fn clear_cancel_token() {
 /// available in an Android agent session. This is a strict subset of the
 /// tools available via daemon channel routing.
 ///
-/// Session tools include: memory (store/recall/forget), cron (add/list/remove),
-/// and optionally web_fetch, http_request, browser_open, and delegate.
+/// Session tools include: memory (store/recall/forget), cron (list/runs),
+/// and optionally web_search, web_fetch, and http_request.
 ///
 /// Shell and file I/O tools (`shell`, `file_read`, `file_write`) are NOT
 /// included here — those tools are only available via daemon channel tools
@@ -2104,8 +2279,13 @@ fn clear_cancel_token() {
 /// Hardware peripherals, composio, and screenshot tools are excluded because
 /// they require desktop-only capabilities.
 ///
-/// Conditional tools (`web_fetch`, `http_request`, `browser_open`, `delegate`)
-/// are included only when their corresponding config sections are enabled/non-empty.
+/// Conditional tools (`web_search`, `web_fetch`, `http_request`) are
+/// included only when their corresponding config sections are enabled.
+///
+/// Only tools with a backing executor in [`build_tools_registry`] are
+/// listed.  Phantom specs (name-only, no executor) cause wasted tool-call
+/// iterations: the LLM invokes the tool, the dispatch returns "not
+/// available", and the model must retry or answer without it.
 fn build_android_tool_descs(config: &zeroclaw::Config) -> Vec<(String, String)> {
     let mut descs: Vec<(String, String)> = vec![
         (
@@ -2130,32 +2310,32 @@ fn build_android_tool_descs(config: &zeroclaw::Config) -> Vec<(String, String)> 
                 .into(),
         ),
         (
-            "cron_add".into(),
-            "Create a cron job. Supports schedule kinds: cron, at, every; \
-             and job types: shell or agent."
-                .into(),
-        ),
-        (
             "cron_list".into(),
             "List all cron jobs with schedule, status, and metadata.".into(),
         ),
-        ("cron_remove".into(), "Remove a cron job by job_id.".into()),
+        (
+            "cron_runs".into(),
+            "Show recent and upcoming cron job executions with timestamps \
+             and exit status."
+                .into(),
+        ),
     ];
 
-    if config.browser.enabled {
-        descs.push((
-            "browser_open".into(),
-            "Open approved HTTPS URLs in system browser \
-             (allowlist-only, no scraping)"
-                .into(),
-        ));
-    }
+    // ── Web tools: three distinct tools with clear boundaries ────────
+    //
+    // web_search  → search engine queries (DuckDuckGo / Brave)
+    // web_fetch   → GET a known URL, return page text
+    // http_request → full HTTP client (any method, custom headers/body)
 
-    if !config.agents.is_empty() {
+    if config.web_search.enabled {
         descs.push((
-            "delegate".into(),
-            "Delegate a sub-task to a specialized agent. Use when: task \
-             needs different model/capability, or to parallelize work."
+            "web_search".into(),
+            "Search the web via a search engine (DuckDuckGo or Brave). \
+             Returns result titles, URLs, and snippets. \
+             Use when: finding current information, news, weather, or \
+             researching a topic. \
+             Do NOT use this to fetch a specific URL (use web_fetch). \
+             Do NOT use this to call an API (use http_request)."
                 .into(),
         ));
     }
@@ -2163,10 +2343,13 @@ fn build_android_tool_descs(config: &zeroclaw::Config) -> Vec<(String, String)> 
     if config.web_fetch.enabled {
         descs.push((
             "web_fetch".into(),
-            "Fetch a web page and return its content as clean text. \
-             Use when: gathering web content, reading documentation, \
-             checking APIs. Don't use when: making API calls with custom \
-             headers (use http_request instead)."
+            "Fetch a specific URL and return its content as clean text. \
+             HTML pages are automatically converted to readable text. \
+             GET requests only; follows redirects; domain-allowlisted. \
+             Use when: you already have a URL and need its content. \
+             Do NOT use this to search (use web_search). \
+             Do NOT use this to call an API with custom headers \
+             (use http_request)."
                 .into(),
         ));
     }
@@ -2174,9 +2357,13 @@ fn build_android_tool_descs(config: &zeroclaw::Config) -> Vec<(String, String)> 
     if config.http_request.enabled {
         descs.push((
             "http_request".into(),
-            "Make HTTP requests to external APIs with custom methods and \
-             headers. Supports GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. \
-             Use when: calling REST APIs, webhooks, external services."
+            "Make HTTP requests with custom methods and headers. \
+             Supports GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. \
+             Returns raw response including status and headers. \
+             Use when: calling REST APIs, webhooks, or services that \
+             require authentication headers or request bodies. \
+             Do NOT use this for web browsing (use web_fetch) or \
+             searching (use web_search)."
                 .into(),
         ));
     }
@@ -2920,5 +3107,103 @@ mod tests {
         *guard = Some(CancellationToken::new());
         assert!(guard.is_some());
         *guard = None;
+    }
+
+    // ── extract_thinking_from_text tests ────────────────────────────
+
+    #[test]
+    fn test_extract_thinking_basic_think_tag() {
+        let input = "<think>Planning my approach</think>Here is the answer.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Here is the answer.");
+        assert_eq!(thinking, "Planning my approach");
+    }
+
+    #[test]
+    fn test_extract_thinking_case_insensitive() {
+        let input = "<THINK>Uppercase tags</THINK>Result text.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Result text.");
+        assert_eq!(thinking, "Uppercase tags");
+    }
+
+    #[test]
+    fn test_extract_thinking_mixed_case() {
+        let input = "<Think>Mixed case</Think>Output.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Output.");
+        assert_eq!(thinking, "Mixed case");
+    }
+
+    #[test]
+    fn test_extract_thinking_multiple_blocks() {
+        let input = "<think>First thought</think>Middle text<think>Second thought</think>End.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Middle textEnd.");
+        assert_eq!(thinking, "First thought\nSecond thought");
+    }
+
+    #[test]
+    fn test_extract_thinking_no_tags() {
+        let input = "Plain response with no thinking tags.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Plain response with no thinking tags.");
+        assert_eq!(thinking, "");
+    }
+
+    #[test]
+    fn test_extract_thinking_empty_tag() {
+        let input = "<think></think>Just the answer.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Just the answer.");
+        assert_eq!(thinking, "");
+    }
+
+    #[test]
+    fn test_extract_thinking_whitespace_only_tag() {
+        let input = "<think>   \n  </think>Answer.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Answer.");
+        assert_eq!(thinking, "");
+    }
+
+    #[test]
+    fn test_extract_thinking_different_tag_types() {
+        let input = "<thinking>Deep analysis</thinking>Response here.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Response here.");
+        assert_eq!(thinking, "Deep analysis");
+    }
+
+    #[test]
+    fn test_extract_thinking_reflection_tag() {
+        let input = "<reflection>Checking my work</reflection>Final answer.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Final answer.");
+        assert_eq!(thinking, "Checking my work");
+    }
+
+    #[test]
+    fn test_extract_thinking_unclosed_tag_preserved() {
+        let input = "<think>Unclosed thinking block without end tag";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "<think>Unclosed thinking block without end tag");
+        assert_eq!(thinking, "");
+    }
+
+    #[test]
+    fn test_extract_thinking_collapses_whitespace() {
+        let input = "Before  <think>Thought</think>  After";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Before After");
+        assert_eq!(thinking, "Thought");
+    }
+
+    #[test]
+    fn test_extract_thinking_multiline_content() {
+        let input = "<think>\nLine 1\nLine 2\nLine 3\n</think>The response.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "The response.");
+        assert_eq!(thinking, "Line 1\nLine 2\nLine 3");
     }
 }

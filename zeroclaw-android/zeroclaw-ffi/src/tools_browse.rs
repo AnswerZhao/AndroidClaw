@@ -78,6 +78,14 @@ const CORE_TOOLS: &[BuiltInTool] = &[
         description: "Remove a memory entry by key",
     },
     BuiltInTool {
+        name: "cron_list",
+        description: "List all cron jobs with schedule, status, and metadata",
+    },
+    BuiltInTool {
+        name: "cron_runs",
+        description: "Show recent and upcoming cron job executions",
+    },
+    BuiltInTool {
         name: "schedule",
         description: "Schedule cron jobs and one-shot delayed tasks",
     },
@@ -107,6 +115,12 @@ const BROWSER_TOOLS: &[BuiltInTool] = &[
     },
 ];
 
+/// Web search tool (available when web search is enabled).
+const WEB_SEARCH_TOOL: BuiltInTool = BuiltInTool {
+    name: "web_search",
+    description: "Search the web via DuckDuckGo or Brave search engine",
+};
+
 /// HTTP request tool (available when HTTP is enabled).
 const HTTP_TOOL: BuiltInTool = BuiltInTool {
     name: "http_request",
@@ -129,7 +143,13 @@ const DELEGATE_TOOL: BuiltInTool = BuiltInTool {
 ///
 /// Memory and cron tools run directly in the FFI session and are always
 /// active when the daemon is running.
-const SESSION_TOOLS: &[&str] = &["memory_store", "memory_recall", "memory_forget", "schedule"];
+const SESSION_TOOLS: &[&str] = &[
+    "memory_store",
+    "memory_recall",
+    "memory_forget",
+    "cron_list",
+    "cron_runs",
+];
 
 /// Tools that require a [`SecurityPolicy`] and can only execute via daemon
 /// channel routing (e.g. Telegram, Discord).
@@ -144,6 +164,7 @@ const SECURITY_POLICY_TOOLS: &[&str] = &[
     "shell",
     "file_read",
     "file_write",
+    "schedule",
     "git_operations",
     "screenshot",
     "image_info",
@@ -189,16 +210,23 @@ fn builtin_to_spec(tool: &BuiltInTool) -> FfiToolSpec {
 ///
 /// Returns [`FfiError::StateError`] if the daemon is not running.
 pub(crate) fn list_tools_inner() -> Result<Vec<FfiToolSpec>, FfiError> {
-    let (workspace_dir, browser_enabled, http_enabled, composio_key, has_agents) =
-        crate::runtime::with_daemon_config(|config| {
-            (
-                config.workspace_dir.clone(),
-                config.browser.enabled,
-                config.http_request.enabled,
-                config.composio.api_key.clone(),
-                !config.agents.is_empty(),
-            )
-        })?;
+    let (
+        workspace_dir,
+        browser_enabled,
+        http_enabled,
+        web_search_enabled,
+        composio_key,
+        has_agents,
+    ) = crate::runtime::with_daemon_config(|config| {
+        (
+            config.workspace_dir.clone(),
+            config.browser.enabled,
+            config.http_request.enabled,
+            config.web_search.enabled,
+            config.composio.api_key.clone(),
+            !config.agents.is_empty(),
+        )
+    })?;
 
     let mut specs: Vec<FfiToolSpec> = CORE_TOOLS
         .iter()
@@ -218,6 +246,13 @@ pub(crate) fn list_tools_inner() -> Result<Vec<FfiToolSpec>, FfiError> {
                     s
                 }),
         );
+    }
+
+    if web_search_enabled {
+        let mut s = builtin_to_spec(&WEB_SEARCH_TOOL);
+        s.is_active = true;
+        s.inactive_reason = String::new();
+        specs.push(s);
     }
 
     if http_enabled {
@@ -277,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_core_tools_count() {
-        assert_eq!(CORE_TOOLS.len(), 10);
+        assert_eq!(CORE_TOOLS.len(), 12);
     }
 
     #[test]
@@ -360,6 +395,12 @@ mod tests {
 
     #[test]
     fn test_conditional_tools_default_inactive() {
+        let web_search = builtin_to_spec(&WEB_SEARCH_TOOL);
+        assert!(
+            !web_search.is_active,
+            "web_search should default to inactive"
+        );
+
         let http = builtin_to_spec(&HTTP_TOOL);
         assert!(!http.is_active, "http_request should default to inactive");
         assert_eq!(http.inactive_reason, REASON_DAEMON_ONLY);

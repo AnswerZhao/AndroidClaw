@@ -212,6 +212,7 @@ class ZeroClawApplication :
         super.onCreate()
         System.loadLibrary("sqlcipher")
         System.loadLibrary("zeroclaw")
+        com.zeroclaw.ffi.initLogging()
         verifyCrateVersion()
 
         @Suppress("InjectDispatcher")
