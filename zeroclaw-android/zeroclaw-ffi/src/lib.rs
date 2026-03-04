@@ -1569,4 +1569,22 @@ mod tests {
         assert!(parsed[0].get("id").is_some());
         assert!(parsed[0].get("name").is_some());
     }
+
+    #[test]
+    fn test_panic_detail_str_payload() {
+        let payload: Box<dyn std::any::Any + Send> = Box::new("boom");
+        assert_eq!(panic_detail(&payload), "boom");
+    }
+
+    #[test]
+    fn test_panic_detail_string_payload() {
+        let payload: Box<dyn std::any::Any + Send> = Box::new(String::from("kaboom"));
+        assert_eq!(panic_detail(&payload), "kaboom");
+    }
+
+    #[test]
+    fn test_panic_detail_unknown_payload() {
+        let payload: Box<dyn std::any::Any + Send> = Box::new(42_i32);
+        assert_eq!(panic_detail(&payload), "unknown panic");
+    }
 }
