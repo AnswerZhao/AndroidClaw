@@ -8,7 +8,7 @@ use crate::error::FfiError;
 use chrono::Utc;
 use std::future::Future;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, Once, OnceLock};
 use tokio::runtime::{Handle, Runtime};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
@@ -186,6 +186,34 @@ fn lock_runtime() -> std::sync::MutexGuard<'static, Option<Runtime>> {
     })
 }
 
+/// One-time panic hook installer.
+static PANIC_HOOK_INSTALLED: Once = Once::new();
+
+/// Installs a global panic hook that logs panic details via [`tracing::error!`].
+///
+/// The hook chains with the default hook (preserved via [`std::panic::take_hook`])
+/// and is installed exactly once via [`std::sync::Once`]. It does not interfere
+/// with unwinding — it is purely observational, ensuring that panics caught by
+/// `catch_unwind` at FFI boundaries are still visible in Android logcat.
+fn install_panic_hook() {
+    PANIC_HOOK_INSTALLED.call_once(|| {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let message = info
+                .payload()
+                .downcast_ref::<&str>()
+                .map(ToString::to_string)
+                .or_else(|| info.payload().downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "unknown panic".to_string());
+            let location = info
+                .location()
+                .map_or_else(|| "unknown location".to_string(), ToString::to_string);
+            tracing::error!("FFI panic at {location}: {message}");
+            previous(info);
+        }));
+    });
+}
+
 /// Returns a [`Handle`] to the tokio runtime, creating it on first access.
 ///
 /// The returned `Handle` is an owned, cloneable token that keeps the
@@ -196,6 +224,7 @@ fn lock_runtime() -> std::sync::MutexGuard<'static, Option<Runtime>> {
 ///
 /// Returns [`FfiError::SpawnError`] if the tokio runtime builder fails.
 pub(crate) fn get_or_create_runtime() -> Result<Handle, FfiError> {
+    install_panic_hook();
     let mut guard = lock_runtime();
     if let Some(rt) = guard.as_ref() {
         return Ok(rt.handle().clone());
