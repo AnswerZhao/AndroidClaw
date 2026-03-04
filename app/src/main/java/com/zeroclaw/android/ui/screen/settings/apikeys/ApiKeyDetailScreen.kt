@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -413,23 +412,27 @@ private fun EditKeyForm(
         baseUrlKeyboardType = KeyboardType.Uri,
         baseUrlImeAction = if (needsKey) ImeAction.Next else ImeAction.Done,
         apiKeyImeAction = ImeAction.Done,
-        apiKeyTrailingIcon = {
-            IconButton(
-                onClick = onNavigateToQrScanner,
-                enabled = !isSaving,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "Scan QR code to fill API key"
-                    },
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.CameraAlt,
-                    contentDescription = null,
-                )
-            }
-        },
         modifier = Modifier.fillMaxWidth(),
     )
+
+    if (needsKey) {
+        TextButton(
+            onClick = onNavigateToQrScanner,
+            enabled = !isSaving,
+            modifier =
+                Modifier.semantics {
+                    contentDescription = "Scan QR code to fill API key"
+                },
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CameraAlt,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Scan QR Code")
+        }
+    }
 
     if (providerId.isNotBlank()) {
         ModelSuggestionField(

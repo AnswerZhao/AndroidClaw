@@ -77,8 +77,6 @@ private const val INLINE_ICON_LABEL_SPACING_DP = 4
  * @param providerDropdownEnabled Separate enable flag for the provider dropdown
  *   (e.g. disabled when editing an existing key).
  * @param apiKeyLabel Label for the API key field.
- * @param apiKeyTrailingIcon Optional trailing icon composable for the API key field
- *   (e.g. a QR scanner button).
  * @param showApiKeyWhenBlank When true, shows the API key field even when no
  *   provider is selected (used by the settings screen).
  * @param baseUrlKeyboardType Keyboard type for the base URL field.
@@ -102,7 +100,6 @@ fun ProviderCredentialForm(
     enabled: Boolean = true,
     providerDropdownEnabled: Boolean = enabled,
     apiKeyLabel: String = "API Key",
-    apiKeyTrailingIcon: @Composable (() -> Unit)? = null,
     showApiKeyWhenBlank: Boolean = false,
     baseUrlKeyboardType: KeyboardType = KeyboardType.Uri,
     baseUrlImeAction: ImeAction = ImeAction.Default,
