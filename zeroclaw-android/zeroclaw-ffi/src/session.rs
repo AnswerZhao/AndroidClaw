@@ -2909,4 +2909,18 @@ mod tests {
 
         *lock_session() = None;
     }
+
+    #[test]
+    fn test_poisoned_cancel_token_recovery() {
+        let _panic_result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _guard = CANCEL_TOKEN.lock().unwrap();
+                panic!("poison the mutex");
+            }));
+
+        let mut guard = lock_cancel_token();
+        *guard = Some(CancellationToken::new());
+        assert!(guard.is_some());
+        *guard = None;
+    }
 }
