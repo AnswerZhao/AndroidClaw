@@ -844,6 +844,10 @@ impl SessionStateGuard {
 
     /// Returns mutable references to the held history and tools.
     fn state_mut(&mut self) -> (&mut Vec<ChatMessage>, &[Box<dyn Tool>]) {
+        debug_assert!(
+            self.history.is_some() && self.tools.is_some(),
+            "SessionStateGuard::state_mut called after take/defuse"
+        );
         (
             self.history.as_mut().expect("guard already defused"),
             self.tools.as_deref().expect("guard already defused"),
@@ -854,6 +858,10 @@ impl SessionStateGuard {
     ///
     /// After this call the guard's [`Drop`] is a no-op.
     fn take(mut self) -> (Vec<ChatMessage>, Vec<Box<dyn Tool>>) {
+        debug_assert!(
+            self.history.is_some() && self.tools.is_some(),
+            "SessionStateGuard::take called after take/defuse"
+        );
         (
             self.history.take().expect("guard already defused"),
             self.tools.take().expect("guard already defused"),
