@@ -1587,4 +1587,40 @@ mod tests {
         let payload: Box<dyn std::any::Any + Send> = Box::new(42_i32);
         assert_eq!(panic_detail(&payload), "unknown panic");
     }
+
+    #[test]
+    fn test_catch_unwind_returns_internal_panic() {
+        let result: Result<(), FfiError> =
+            std::panic::catch_unwind(|| -> Result<(), FfiError> {
+                panic!("test panic for FFI boundary");
+            })
+            .unwrap_or_else(|e| {
+                Err(FfiError::InternalPanic {
+                    detail: panic_detail(&e),
+                })
+            });
+        match result.unwrap_err() {
+            FfiError::InternalPanic { detail } => {
+                assert!(detail.contains("test panic for FFI boundary"));
+            }
+            other => panic!("expected InternalPanic, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_operational_after_caught_panic() {
+        let panic_result: Result<String, FfiError> =
+            std::panic::catch_unwind(|| -> Result<String, FfiError> {
+                panic!("simulated panic");
+            })
+            .unwrap_or_else(|e| {
+                Err(FfiError::InternalPanic {
+                    detail: panic_detail(&e),
+                })
+            });
+        assert!(panic_result.is_err());
+
+        let version = get_version().unwrap();
+        assert_eq!(version, "0.0.37");
+    }
 }
