@@ -26,11 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.SettingsToggleRow
 
@@ -177,12 +177,10 @@ fun MemoryAdvancedScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        OutlinedTextField(
+        SecretTextField(
             value = settings.memoryQdrantApiKey,
             onValueChange = { settingsViewModel.updateMemoryQdrantApiKey(it) },
-            label = { Text("API key") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            label = "API key",
             modifier = Modifier.fillMaxWidth(),
         )
 

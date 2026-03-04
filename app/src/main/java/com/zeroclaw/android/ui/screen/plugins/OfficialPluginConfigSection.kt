@@ -25,10 +25,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.zeroclaw.android.model.AppSettings
 import com.zeroclaw.android.model.OfficialPlugins
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.SettingsToggleRow
 import com.zeroclaw.android.ui.screen.settings.SettingsViewModel
 
@@ -116,15 +116,12 @@ private fun WebSearchConfig(
     }
 
     if (settings.webSearchProvider == "brave") {
-        OutlinedTextField(
+        SecretTextField(
             value = settings.webSearchBraveApiKey,
             onValueChange = { viewModel.updateWebSearchBraveApiKey(it) },
-            label = { Text("Brave Search API key") },
+            label = "Brave Search API key",
             supportingText = { Text("Required for Brave search engine") },
-            singleLine = true,
             enabled = settings.webSearchEnabled,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
         )
         if (settings.webSearchEnabled && settings.webSearchBraveApiKey.isBlank()) {
@@ -317,13 +314,11 @@ private fun ComposioConfig(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    OutlinedTextField(
+    SecretTextField(
         value = settings.composioApiKey,
         onValueChange = { viewModel.updateComposioApiKey(it) },
-        label = { Text("API key") },
-        singleLine = true,
+        label = "API key",
         enabled = settings.composioEnabled,
-        visualTransformation = PasswordVisualTransformation(),
         modifier = Modifier.fillMaxWidth(),
     )
 

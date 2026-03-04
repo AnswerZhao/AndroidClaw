@@ -23,12 +23,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -36,17 +33,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.zeroclaw.android.data.channel.ChannelSetupSpec
@@ -57,6 +48,7 @@ import com.zeroclaw.android.data.validation.ValidationResult
 import com.zeroclaw.android.model.ChannelFieldSpec
 import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.FieldInputType
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Standard vertical spacing between major sections. */
@@ -198,8 +190,8 @@ fun ChannelSetupFlow(
  * - [FieldInputType.LIST]: plain text [OutlinedTextField] with supporting text.
  *
  * Required fields display a " *" suffix in their label. Secret fields (including
- * those with [ChannelFieldSpec.isSecret] regardless of input type) use
- * [PasswordVisualTransformation] with a visibility toggle [IconButton].
+ * those with [ChannelFieldSpec.isSecret] regardless of input type) delegate to
+ * [SecretTextField] for masked input with a visibility toggle.
  *
  * @param spec The field specification describing label, type, and constraints.
  * @param value The current string value of the field.
@@ -317,9 +309,9 @@ private fun ChannelField(
 /**
  * Secret text field with password masking and a visibility toggle.
  *
- * The field uses [PasswordVisualTransformation] by default and provides an
- * [IconButton] trailing icon to reveal or hide the value. The toggle state
- * is preserved across recompositions via [rememberSaveable].
+ * Delegates to the shared [SecretTextField] component which uses
+ * [KeyboardType.Text] instead of [KeyboardType.Password] to allow
+ * clipboard paste on Android's secure keyboards.
  *
  * @param label The field label text.
  * @param value The current field value.
@@ -331,53 +323,11 @@ private fun SecretField(
     value: String,
     onValueChanged: (String) -> Unit,
 ) {
-    var revealed by rememberSaveable { mutableStateOf(false) }
-
-    OutlinedTextField(
+    SecretTextField(
         value = value,
         onValueChange = onValueChanged,
-        label = { Text(label) },
-        singleLine = true,
-        visualTransformation =
-            if (revealed) {
-                VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
-        keyboardOptions =
-            KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-            ),
-        trailingIcon = {
-            IconButton(
-                onClick = { revealed = !revealed },
-                modifier =
-                    Modifier.semantics {
-                        contentDescription =
-                            if (revealed) {
-                                "Hide $label"
-                            } else {
-                                "Show $label"
-                            }
-                    },
-            ) {
-                Icon(
-                    imageVector =
-                        if (revealed) {
-                            Icons.Filled.VisibilityOff
-                        } else {
-                            Icons.Filled.Visibility
-                        },
-                    contentDescription = null,
-                )
-            }
-        },
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription = label
-                },
+        label = label,
+        modifier = Modifier.fillMaxWidth(),
     )
 }
 

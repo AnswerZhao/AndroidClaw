@@ -76,6 +76,7 @@ import com.zeroclaw.android.model.isOAuthToken
 import com.zeroclaw.android.ui.component.EmptyState
 import com.zeroclaw.android.ui.component.ErrorCard
 import com.zeroclaw.android.ui.component.MaskedText
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.SetupBottomSheet
 import com.zeroclaw.android.ui.component.setup.ValidationIndicator
 import kotlinx.coroutines.launch
@@ -855,17 +856,11 @@ private fun KeyRotateDialog(
         onDismissRequest = onDismiss,
         title = { Text("Rotate $providerName Key") },
         text = {
-            OutlinedTextField(
+            SecretTextField(
                 value = newKey,
                 onValueChange = { newKey = it },
-                label = { Text("New key") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions =
-                    KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
+                label = "New key",
+                imeAction = ImeAction.Done,
                 modifier =
                     Modifier
                         .fillMaxWidth()

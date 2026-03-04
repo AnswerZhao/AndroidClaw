@@ -16,14 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,8 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +53,7 @@ import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.ConnectedChannel
 import com.zeroclaw.android.model.FieldInputType
 import com.zeroclaw.android.ui.component.CollapsibleSection
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.setup.ChannelSetupFlow
 import com.zeroclaw.android.ui.screen.settings.apikeys.SaveState
 import java.util.UUID
@@ -494,6 +488,10 @@ private fun BooleanField(
 /**
  * A secret text field with password masking and a reveal toggle.
  *
+ * Delegates to the shared [SecretTextField] component which uses
+ * [KeyboardType.Text] instead of [KeyboardType.Password] to allow
+ * clipboard paste on Android's secure keyboards.
+ *
  * @param label Human-readable label.
  * @param value Current field value.
  * @param onValueChange Callback when text changes.
@@ -506,32 +504,10 @@ private fun SecretField(
     onValueChange: (String) -> Unit,
     isRequired: Boolean,
 ) {
-    var revealed by remember { mutableStateOf(false) }
-
-    OutlinedTextField(
+    SecretTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(if (isRequired) "$label *" else label) },
-        singleLine = true,
-        visualTransformation =
-            if (revealed) {
-                VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
-        trailingIcon = {
-            IconButton(onClick = { revealed = !revealed }) {
-                Icon(
-                    imageVector =
-                        if (revealed) {
-                            Icons.Filled.VisibilityOff
-                        } else {
-                            Icons.Filled.Visibility
-                        },
-                    contentDescription = if (revealed) "Hide $label" else "Show $label",
-                )
-            }
-        },
+        label = if (isRequired) "$label *" else label,
         modifier = Modifier.fillMaxWidth(),
     )
 }

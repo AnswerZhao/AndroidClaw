@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.zeroclaw.android.data.ProviderKeyValidator
 import com.zeroclaw.android.data.ProviderRegistry
@@ -239,19 +238,11 @@ fun ProviderCredentialForm(
         }
 
         if (showKeyField || showApiKeyWhenBlank) {
-            OutlinedTextField(
+            SecretTextField(
                 value = apiKey,
                 onValueChange = onApiKeyChanged,
-                label = { Text(if (needsKey) apiKeyLabel else "$apiKeyLabel (optional)") },
-                singleLine = true,
+                label = if (needsKey) apiKeyLabel else "$apiKeyLabel (optional)",
                 enabled = enabled,
-                visualTransformation = PasswordVisualTransformation(),
-                trailingIcon = apiKeyTrailingIcon,
-                keyboardOptions =
-                    KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = apiKeyImeAction,
-                    ),
                 isError = prefixWarning != null && !prefixOverridden,
                 supportingText =
                     if (prefixWarning != null && !prefixOverridden) {
@@ -259,6 +250,7 @@ fun ProviderCredentialForm(
                     } else {
                         null
                     },
+                imeAction = apiKeyImeAction,
                 modifier = Modifier.fillMaxWidth(),
             )
             if (prefixWarning != null && !prefixOverridden) {

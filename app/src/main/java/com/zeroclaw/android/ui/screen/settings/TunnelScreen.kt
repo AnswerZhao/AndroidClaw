@@ -31,11 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.SectionHeader
 
 /** Available tunnel providers matching upstream TunnelProvider. */
@@ -127,12 +127,10 @@ private fun CloudflareSection(
     viewModel: SettingsViewModel,
 ) {
     SectionHeader(title = "Cloudflare")
-    OutlinedTextField(
+    SecretTextField(
         value = settings.tunnelCloudflareToken,
         onValueChange = { viewModel.updateTunnelCloudflareToken(it) },
-        label = { Text("Token") },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
+        label = "Token",
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -176,12 +174,10 @@ private fun NgrokSection(
     viewModel: SettingsViewModel,
 ) {
     SectionHeader(title = "ngrok")
-    OutlinedTextField(
+    SecretTextField(
         value = settings.tunnelNgrokAuthToken,
         onValueChange = { viewModel.updateTunnelNgrokAuthToken(it) },
-        label = { Text("Auth token") },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
+        label = "Auth token",
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(

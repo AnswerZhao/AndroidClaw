@@ -36,11 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.SectionHeader
 import org.json.JSONArray
 import org.json.JSONObject
@@ -196,16 +196,14 @@ private fun ModelRouteCard(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            SecretTextField(
                 value = apiKey,
                 onValueChange = {
                     apiKey = it
                     onUpdate(route.copy(apiKey = it))
                 },
-                label = { Text("API Key") },
+                label = "API Key",
                 supportingText = { Text("Optional per-route key") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
