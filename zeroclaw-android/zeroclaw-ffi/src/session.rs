@@ -35,7 +35,7 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use tokio_util::sync::CancellationToken;
 use zeroclaw::memory::{Memory, MemoryCategory};
-use zeroclaw::providers::{ChatMessage, ChatRequest, Provider};
+use zeroclaw::providers::{ChatMessage, ChatRequest, Provider, ToolCall};
 use zeroclaw::tools::{Tool, ToolResult, ToolSpec};
 
 use crate::error::FfiError;
@@ -247,17 +247,100 @@ impl Tool for FfiMemoryForgetTool {
 /// Upstream [`zeroclaw::tools::WebSearchTool`] now requires
 /// `Arc<SecurityPolicy>`, which is `pub(crate)` and inaccessible from
 /// external crates. This standalone implementation replicates the
-/// DuckDuckGo scraping path without the security dependency (the FFI
-/// layer always allows search).
+/// upstream DuckDuckGo regex-based parser **exactly** so the output
+/// format matches what providers expect.
 ///
 /// Uses the name `"web_search"` (not upstream's `"web_search_tool"`)
 /// because models fine-tuned for function calling generate calls to
 /// `"web_search"`.
 struct FfiWebSearchTool {
-    /// Maximum search results to return.
+    /// Maximum search results to return (1-10).
     max_results: usize,
     /// HTTP request timeout.
     timeout: Duration,
+}
+
+/// Decode DuckDuckGo redirect URL to extract the actual destination.
+///
+/// DDG wraps result links in a redirect through `//duckduckgo.com/l/?uddg=`
+/// with the real URL percent-encoded in the `uddg` query parameter.
+fn decode_ddg_redirect_url(raw_url: &str) -> String {
+    if let Some(index) = raw_url.find("uddg=") {
+        let encoded = &raw_url[index + 5..];
+        let encoded = encoded.split('&').next().unwrap_or(encoded);
+        if let Ok(decoded) = urlencoding::decode(encoded) {
+            return decoded.into_owned();
+        }
+    }
+    raw_url.to_string()
+}
+
+/// Remove HTML tags from content, leaving only plain text.
+fn strip_html_tags(content: &str) -> String {
+    use std::sync::OnceLock;
+    static TAG_RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = TAG_RE.get_or_init(|| regex::Regex::new(r"<[^>]+>").expect("valid tag regex"));
+    re.replace_all(content, "").to_string()
+}
+
+impl FfiWebSearchTool {
+    /// Parse DuckDuckGo HTML into structured search results.
+    ///
+    /// Mirrors upstream's `parse_duckduckgo_results` regex approach:
+    /// extracts `result__a` links and `result__snippet` descriptions.
+    fn parse_duckduckgo_results(&self, html: &str, query: &str) -> String {
+        use std::sync::OnceLock;
+        static LINK_RE: OnceLock<regex::Regex> = OnceLock::new();
+        static SNIPPET_RE: OnceLock<regex::Regex> = OnceLock::new();
+
+        let link_re = LINK_RE.get_or_init(|| {
+            regex::Regex::new(
+                r#"<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)</a>"#,
+            )
+            .expect("valid link regex")
+        });
+
+        let snippet_re = SNIPPET_RE.get_or_init(|| {
+            regex::Regex::new(r#"<a class="result__snippet[^"]*"[^>]*>([\s\S]*?)</a>"#)
+                .expect("valid snippet regex")
+        });
+
+        let link_matches: Vec<_> = link_re
+            .captures_iter(html)
+            .take(self.max_results + 2)
+            .collect();
+
+        let snippet_matches: Vec<_> = snippet_re
+            .captures_iter(html)
+            .take(self.max_results + 2)
+            .collect();
+
+        if link_matches.is_empty() {
+            return format!("No results found for: {query}");
+        }
+
+        let mut lines = vec![format!("Search results for: {query} (via DuckDuckGo)")];
+        let count = link_matches.len().min(self.max_results);
+
+        for i in 0..count {
+            let caps = &link_matches[i];
+            let url_str = decode_ddg_redirect_url(&caps[1]);
+            let title = strip_html_tags(&caps[2]);
+
+            lines.push(format!("{}. {}", i + 1, title.trim()));
+            lines.push(format!("   {}", url_str.trim()));
+
+            if i < snippet_matches.len() {
+                let snippet = strip_html_tags(&snippet_matches[i][1]);
+                let snippet = snippet.trim();
+                if !snippet.is_empty() {
+                    lines.push(format!("   {snippet}"));
+                }
+            }
+        }
+
+        lines.join("\n")
+    }
 }
 
 #[async_trait]
@@ -267,11 +350,9 @@ impl Tool for FfiWebSearchTool {
     }
 
     fn description(&self) -> &'static str {
-        "Search the web using DuckDuckGo. \
-         Returns a list of result titles, URLs, and descriptions. \
-         Use this when: you need to find current information, news, \
-         weather, facts, or research a topic. \
-         Do NOT use this to fetch a specific URL (use web_fetch instead)."
+        "Search the web for information. Returns relevant search results \
+         with titles, URLs, and descriptions. Use this to find current \
+         information, news, or research topics."
     }
 
     fn parameters_schema(&self) -> serde_json::Value {
@@ -308,30 +389,13 @@ impl Tool for FfiWebSearchTool {
             .build()?;
 
         let resp = client.get(&url).send().await?;
-        let html = resp.text().await?;
-        let text = nanohtml2text::html2text(&html);
 
-        // Parse DuckDuckGo results from plain text.
-        let mut results = Vec::new();
-        for line in text.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-                results.push(trimmed.to_string());
-            } else if !trimmed.is_empty() && results.len() <= self.max_results {
-                // Append description to the last URL entry.
-                if let Some(last) = results.last_mut() {
-                    last.push('\n');
-                    last.push_str(trimmed);
-                }
-            }
+        if !resp.status().is_success() {
+            anyhow::bail!("DuckDuckGo search failed with status: {}", resp.status());
         }
 
-        results.truncate(self.max_results);
-        let output = if results.is_empty() {
-            format!("No results found for: {query}")
-        } else {
-            results.join("\n\n")
-        };
+        let html = resp.text().await?;
+        let output = self.parse_duckduckgo_results(&html, query);
 
         Ok(ToolResult {
             success: true,
@@ -1211,6 +1275,14 @@ pub(crate) fn session_start_inner() -> Result<(), FfiError> {
         config.skills.prompt_injection_mode,
     );
 
+    // When the provider does not support native tool calling, append the
+    // full Tool Use Protocol to the system prompt so the model knows to
+    // emit <tool_call> XML tags. Without this, the model will answer
+    // directly instead of using tools.
+    if !native_tools && !tools_registry.is_empty() {
+        system_prompt.push_str(&build_tool_use_protocol(&tools_registry, &config));
+    }
+
     // Upstream AIEOS only renders agent identity fields; Android onboarding
     // also stores user_name, timezone, and communication_style inside the
     // identity JSON object. Extract and append them so the model knows who
@@ -1312,7 +1384,11 @@ pub(crate) fn session_send_inner(
         });
     }
 
-    tracing::info!(len = message.len(), images = image_data.len(), "session_send: start");
+    tracing::info!(
+        len = message.len(),
+        images = image_data.len(),
+        "session_send: start"
+    );
 
     let cancel_token = CancellationToken::new();
     {
@@ -1669,7 +1745,11 @@ async fn run_agent_loop(
         None
     };
 
-    tracing::info!(native_tools = use_native_tools, specs = tool_specs.len(), "agent_loop: start");
+    tracing::info!(
+        native_tools = use_native_tools,
+        specs = tool_specs.len(),
+        "agent_loop: start"
+    );
 
     for iteration in 0..DEFAULT_MAX_TOOL_ITERATIONS {
         // Check cancellation before each iteration.
@@ -1682,7 +1762,11 @@ async fn run_agent_loop(
         listener.on_progress(FfiProgressPhase::CallingProvider {
             round: (iteration + 1) as u32,
         });
-        tracing::info!(iteration = iteration + 1, model, "agent_loop: calling provider");
+        tracing::info!(
+            iteration = iteration + 1,
+            model,
+            "agent_loop: calling provider"
+        );
 
         // Call the provider.
         let llm_start_time = std::time::Instant::now();
@@ -1700,7 +1784,7 @@ async fn run_agent_loop(
             result = chat_future => result,
         };
 
-        let response = chat_result.map_err(|e| {
+        let mut response = chat_result.map_err(|e| {
             tracing::error!(error = %e, "agent_loop: provider chat failed");
             AgentLoopOutcome::Error(format!("provider chat failed: {e}"))
         })?;
@@ -1713,7 +1797,8 @@ async fn run_agent_loop(
             "agent_loop: provider responded"
         );
 
-        // No tool calls -- this is the final response.
+        // No tool calls -- check for prompt-guided XML tool calls before
+        // treating as a final response.
         if response.tool_calls.is_empty() {
             let raw_text = response.text_or_empty().to_string();
 
@@ -1737,23 +1822,51 @@ async fn run_agent_loop(
                 listener.on_thinking(inline_thinking);
             }
 
-            tracing::info!(
-                raw_len = raw_text.len(),
-                clean_len = clean_text.len(),
-                "agent_loop: final response"
-            );
+            // When the provider uses prompt-guided tool calling (no native
+            // tools), parse <tool_call> XML tags from the response text.
+            // Upstream's Provider::chat() returns tool_calls=[] for
+            // prompt-guided mode, so we must do the parsing ourselves.
+            if !use_native_tools {
+                let (text_without_calls, xml_calls) = parse_xml_tool_calls(&clean_text);
+                if !xml_calls.is_empty() {
+                    tracing::info!(
+                        count = xml_calls.len(),
+                        "agent_loop: parsed prompt-guided <tool_call> tags"
+                    );
 
-            // Signal that we are now streaming the final response.
-            listener.on_progress(FfiProgressPhase::StreamingResponse);
-            listener.on_progress_clear();
+                    // Promote the parsed XML calls into the response so
+                    // the existing tool-dispatch logic handles them.
+                    response.tool_calls = xml_calls;
 
-            // Stream the cleaned response (thinking blocks removed).
-            stream_response_text(&clean_text, listener, cancel_token)?;
+                    // Replace text with the cleaned version (tags removed)
+                    // so the assistant history doesn't contain raw XML.
+                    response.text = Some(text_without_calls);
 
-            // Keep the full raw text in history so the model retains
-            // its own reasoning context for follow-up turns.
-            history.push(ChatMessage::assistant(&raw_text));
-            return Ok(clean_text);
+                    // Fall through to the tool-call execution block below.
+                }
+            }
+
+            // If still no tool calls after XML parsing, this is truly
+            // the final response.
+            if response.tool_calls.is_empty() {
+                tracing::info!(
+                    raw_len = raw_text.len(),
+                    clean_len = clean_text.len(),
+                    "agent_loop: final response"
+                );
+
+                // Signal that we are now streaming the final response.
+                listener.on_progress(FfiProgressPhase::StreamingResponse);
+                listener.on_progress_clear();
+
+                // Stream the cleaned response (thinking blocks removed).
+                stream_response_text(&clean_text, listener, cancel_token)?;
+
+                // Keep the full raw text in history so the model retains
+                // its own reasoning context for follow-up turns.
+                history.push(ChatMessage::assistant(&raw_text));
+                return Ok(clean_text);
+            }
         }
 
         // Has tool calls -- execute those we have and report unavailable
@@ -1829,9 +1942,9 @@ async fn run_agent_loop(
                         } else {
                             (
                                 false,
-                                result.error.unwrap_or_else(|| {
-                                    "Tool failed without error message".into()
-                                }),
+                                result
+                                    .error
+                                    .unwrap_or_else(|| "Tool failed without error message".into()),
                             )
                         }
                     }
@@ -2159,6 +2272,116 @@ fn build_android_tool_specs(config: &zeroclaw::Config) -> Vec<ToolSpec> {
         .collect()
 }
 
+/// Builds a `## Tool Use Protocol` section for the system prompt.
+///
+/// When the provider does not support native tool calling (e.g. OpenAI Codex),
+/// the model needs explicit instructions on how to emit tool calls using
+/// `<tool_call>` XML tags. This mirrors the upstream
+/// `build_tool_instructions_from_specs()` in `agent/loop_.rs` but works with
+/// the FFI session's tool registry and static tool descriptions.
+///
+/// The output includes:
+/// - Format instructions with concrete examples
+/// - A list of available tools with their parameter schemas
+fn build_tool_use_protocol(
+    tools_registry: &[Box<dyn Tool>],
+    config: &zeroclaw::Config,
+) -> String {
+    use std::fmt::Write;
+
+    let mut out = String::with_capacity(2048);
+    out.push_str("\n## Tool Use Protocol\n\n");
+    out.push_str("To use a tool, wrap a JSON object in <tool_call></tool_call> tags:\n\n");
+    out.push_str(
+        "```\n<tool_call>\n\
+         {\"name\": \"tool_name\", \"arguments\": {\"param\": \"value\"}}\n\
+         </tool_call>\n```\n\n",
+    );
+    out.push_str(
+        "CRITICAL: Output actual <tool_call> tags\u{2014}\
+         never describe steps or give examples.\n\n",
+    );
+    out.push_str(
+        "When a tool is needed, emit a real call (not prose), for example:\n\
+         <tool_call>\n\
+         {\"name\":\"tool_name\",\"arguments\":{}}\n\
+         </tool_call>\n\n",
+    );
+    out.push_str("You may use multiple tool calls in a single response. ");
+    out.push_str("After tool execution, results appear in <tool_result> tags. ");
+    out.push_str("Continue reasoning with the results until you can give a final answer.\n\n");
+    out.push_str("### Available Tools\n\n");
+
+    // First, list tools from the live registry (these have real parameter schemas).
+    for tool in tools_registry {
+        let spec = tool.spec();
+        let _ = writeln!(
+            out,
+            "**{}**: {}\nParameters: `{}`\n",
+            spec.name, spec.description, spec.parameters
+        );
+    }
+
+    // Then, list static tool descriptions for tools not in the registry
+    // (web_search, web_fetch, http_request — executed by daemon, not FFI).
+    let registry_names: Vec<&str> = tools_registry.iter().map(|t| t.name()).collect();
+    for (name, desc) in build_android_tool_descs(config) {
+        if !registry_names.contains(&name.as_str()) {
+            let params = match name.as_str() {
+                "web_search" => serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query"
+                        }
+                    },
+                    "required": ["query"]
+                }),
+                "web_fetch" => serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "The URL to fetch"
+                        }
+                    },
+                    "required": ["url"]
+                }),
+                "http_request" => serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "method": {
+                            "type": "string",
+                            "description": "HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)"
+                        },
+                        "url": {
+                            "type": "string",
+                            "description": "The URL to request"
+                        },
+                        "headers": {
+                            "type": "object",
+                            "description": "Optional HTTP headers"
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "Optional request body"
+                        }
+                    },
+                    "required": ["method", "url"]
+                }),
+                _ => serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                }),
+            };
+            let _ = writeln!(out, "**{name}**: {desc}\nParameters: `{params}`\n");
+        }
+    }
+
+    out
+}
+
 /// Extracts a short hint from tool call arguments for the progress display.
 ///
 /// For `shell` tools, shows the `command` field. For file tools, shows the
@@ -2245,6 +2468,76 @@ fn extract_thinking_from_text(text: &str) -> (String, String) {
 
     let clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
     (clean, thinking)
+}
+
+/// Parses `<tool_call>` XML tags from prompt-guided model responses.
+///
+/// When the provider does not support native tool calling (e.g. OpenAI Codex),
+/// upstream injects a `## Tool Use Protocol` section into the system prompt
+/// that instructs the model to emit tool calls as:
+///
+/// ```text
+/// <tool_call>
+/// {"name": "web_search", "arguments": {"query": "latest news"}}
+/// </tool_call>
+/// ```
+///
+/// However, upstream's `Provider::chat()` default implementation returns
+/// `tool_calls: Vec::new()` for prompt-guided mode — it never parses the
+/// XML tags from the response text. This function fills that gap.
+///
+/// Returns a tuple of `(clean_text, parsed_tool_calls)` where `clean_text`
+/// has the `<tool_call>` blocks removed, and `parsed_tool_calls` contains
+/// the extracted [`ToolCall`] structs ready for execution.
+fn parse_xml_tool_calls(text: &str) -> (String, Vec<ToolCall>) {
+    let mut calls = Vec::new();
+    let mut clean = text.to_string();
+    let mut counter = 0u32;
+
+    loop {
+        let lower = clean.to_lowercase();
+        let Some(open_idx) = lower.find("<tool_call>") else {
+            break;
+        };
+        let Some(close_idx) = lower[open_idx..].find("</tool_call>") else {
+            break;
+        };
+        let close_abs = open_idx + close_idx;
+        let inner_start = open_idx + "<tool_call>".len();
+        let inner = clean[inner_start..close_abs].trim();
+
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(inner) {
+            let name = parsed
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let arguments = match parsed.get("arguments") {
+                Some(v) => v.to_string(),
+                None => "{}".to_string(),
+            };
+
+            if !name.is_empty() {
+                counter += 1;
+                calls.push(ToolCall {
+                    id: format!("xmltc_{counter}"),
+                    name,
+                    arguments,
+                });
+            }
+        }
+
+        // Remove the full <tool_call>...</tool_call> block from clean text.
+        let end = close_abs + "</tool_call>".len();
+        clean.replace_range(open_idx..end, "");
+    }
+
+    // Collapse leftover whitespace runs.
+    if !calls.is_empty() {
+        clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+    }
+
+    (clean, calls)
 }
 
 /// Streams the final response text to the listener in chunks of at least
@@ -2386,14 +2679,14 @@ fn build_android_tool_descs(config: &zeroclaw::Config) -> Vec<(String, String)> 
 
     // ── Web tools: three distinct tools with clear boundaries ────────
     //
-    // web_search  → search engine queries (DuckDuckGo / Brave)
-    // web_fetch   → GET a known URL, return page text
+    // web_search   → search engine queries (DuckDuckGo)
+    // web_fetch    → GET a known URL, return page text
     // http_request → full HTTP client (any method, custom headers/body)
 
     if config.web_search.enabled {
         descs.push((
             "web_search".into(),
-            "Search the web via a search engine (DuckDuckGo or Brave). \
+            "Search the web via DuckDuckGo. \
              Returns result titles, URLs, and snippets. \
              Use when: finding current information, news, weather, or \
              researching a topic. \
@@ -3273,5 +3566,113 @@ mod tests {
         let (clean, thinking) = extract_thinking_from_text(input);
         assert_eq!(clean, "The response.");
         assert_eq!(thinking, "Line 1\nLine 2\nLine 3");
+    }
+
+    // ── parse_xml_tool_calls tests ──────────────────────────────────
+
+    #[test]
+    fn test_parse_xml_single_tool_call() {
+        let input = r#"<tool_call>{"name": "web_search", "arguments": {"query": "rust lang"}}</tool_call>"#;
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "web_search");
+        assert!(calls[0].arguments.contains("rust lang"));
+        assert_eq!(calls[0].id, "xmltc_1");
+        assert_eq!(clean.trim(), "");
+    }
+
+    #[test]
+    fn test_parse_xml_multiple_tool_calls() {
+        let input = concat!(
+            r#"<tool_call>{"name": "web_search", "arguments": {"query": "a"}}</tool_call>"#,
+            " ",
+            r#"<tool_call>{"name": "web_fetch", "arguments": {"url": "https://example.com"}}</tool_call>"#,
+        );
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].name, "web_search");
+        assert_eq!(calls[0].id, "xmltc_1");
+        assert_eq!(calls[1].name, "web_fetch");
+        assert_eq!(calls[1].id, "xmltc_2");
+        assert_eq!(clean.trim(), "");
+    }
+
+    #[test]
+    fn test_parse_xml_no_tool_calls() {
+        let input = "Just a normal response with no tool calls.";
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert!(calls.is_empty());
+        assert_eq!(clean, input);
+    }
+
+    #[test]
+    fn test_parse_xml_malformed_json_skipped() {
+        let input = "<tool_call>this is not json</tool_call>";
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert!(calls.is_empty());
+        assert_eq!(clean.trim(), "");
+    }
+
+    #[test]
+    fn test_parse_xml_case_insensitive_tags() {
+        let input =
+            r#"<Tool_Call>{"name": "web_search", "arguments": {"query": "test"}}</TOOL_CALL>"#;
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "web_search");
+        assert_eq!(clean.trim(), "");
+    }
+
+    #[test]
+    fn test_parse_xml_mixed_text_and_calls() {
+        let input = concat!(
+            "Let me search for that. ",
+            r#"<tool_call>{"name": "web_search", "arguments": {"query": "weather"}}</tool_call>"#,
+            " I found the results.",
+        );
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "web_search");
+        assert_eq!(clean, "Let me search for that. I found the results.");
+    }
+
+    #[test]
+    fn test_parse_xml_missing_name_skipped() {
+        let input = r#"<tool_call>{"arguments": {"key": "val"}}</tool_call>"#;
+        let (_, calls) = parse_xml_tool_calls(input);
+        assert!(calls.is_empty());
+    }
+
+    #[test]
+    fn test_parse_xml_empty_name_skipped() {
+        let input = r#"<tool_call>{"name": "", "arguments": {}}</tool_call>"#;
+        let (_, calls) = parse_xml_tool_calls(input);
+        assert!(calls.is_empty());
+    }
+
+    #[test]
+    fn test_parse_xml_missing_arguments_defaults_to_empty() {
+        let input = r#"<tool_call>{"name": "list_tools"}</tool_call>"#;
+        let (_, calls) = parse_xml_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "list_tools");
+        assert_eq!(calls[0].arguments, "{}");
+    }
+
+    #[test]
+    fn test_parse_xml_unclosed_tag_ignored() {
+        let input = r#"<tool_call>{"name": "web_search", "arguments": {"q": "x"}}"#;
+        let (clean, calls) = parse_xml_tool_calls(input);
+        assert!(calls.is_empty());
+        assert_eq!(clean, input);
+    }
+
+    #[test]
+    fn test_parse_xml_multiline_call() {
+        let input = "<tool_call>\n{\n  \"name\": \"recall_memory\",\n  \"arguments\": {\"query\": \"user prefs\"}\n}\n</tool_call>";
+        let (_, calls) = parse_xml_tool_calls(input);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "recall_memory");
+        assert!(calls[0].arguments.contains("user prefs"));
     }
 }

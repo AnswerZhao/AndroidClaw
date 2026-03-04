@@ -95,7 +95,6 @@ class RoomPluginRepository(
                 OfficialPlugins.WEB_SEARCH to settings.webSearchEnabled,
                 OfficialPlugins.WEB_FETCH to settings.webFetchEnabled,
                 OfficialPlugins.HTTP_REQUEST to settings.httpRequestEnabled,
-                OfficialPlugins.BROWSER to settings.browserEnabled,
                 OfficialPlugins.COMPOSIO to settings.composioEnabled,
                 OfficialPlugins.VISION to true,
                 OfficialPlugins.TRANSCRIPTION to settings.transcriptionEnabled,

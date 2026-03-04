@@ -33,7 +33,7 @@ import com.zeroclaw.android.ui.component.SettingsToggleRow
 import com.zeroclaw.android.ui.screen.settings.SettingsViewModel
 
 /** Available web search engine options. */
-private val WEB_SEARCH_ENGINES = listOf("duckduckgo", "brave")
+private val WEB_SEARCH_ENGINES = listOf("duckduckgo")
 
 /**
  * Renders a purpose-built configuration form for an official plugin.
@@ -60,7 +60,6 @@ fun OfficialPluginConfigSection(
             OfficialPlugins.WEB_SEARCH -> WebSearchConfig(settings, viewModel)
             OfficialPlugins.WEB_FETCH -> WebFetchConfig(settings, viewModel)
             OfficialPlugins.HTTP_REQUEST -> HttpRequestConfig(settings, viewModel)
-            OfficialPlugins.BROWSER -> BrowserConfig(settings, viewModel)
             OfficialPlugins.COMPOSIO -> ComposioConfig(settings, viewModel)
             OfficialPlugins.VISION -> VisionConfig(settings, viewModel)
             OfficialPlugins.TRANSCRIPTION -> TranscriptionConfig(settings, viewModel)
@@ -72,8 +71,8 @@ fun OfficialPluginConfigSection(
 /**
  * Web search plugin configuration.
  *
- * Controls the search engine provider, Brave API key, max results, and
- * timeout. Maps to upstream `[tools.web_search]` TOML section.
+ * Controls the search engine provider, max results, and timeout.
+ * Maps to upstream `[tools.web_search]` TOML section.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,25 +111,6 @@ private fun WebSearchConfig(
                     },
                 )
             }
-        }
-    }
-
-    if (settings.webSearchProvider == "brave") {
-        SecretTextField(
-            value = settings.webSearchBraveApiKey,
-            onValueChange = { viewModel.updateWebSearchBraveApiKey(it) },
-            label = "Brave Search API key",
-            supportingText = { Text("Required for Brave search engine") },
-            enabled = settings.webSearchEnabled,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (settings.webSearchEnabled && settings.webSearchBraveApiKey.isBlank()) {
-            Text(
-                text = "Brave Search requires an API key",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp),
-            )
         }
     }
 
@@ -279,28 +259,6 @@ private fun HttpRequestConfig(
             modifier = Modifier.padding(top = 4.dp),
         )
     }
-}
-
-/**
- * Browser plugin configuration.
- *
- * Controls domain allowlists for web page browsing. Maps to upstream
- * `[browser]` TOML section.
- */
-@Composable
-private fun BrowserConfig(
-    settings: AppSettings,
-    viewModel: SettingsViewModel,
-) {
-    OutlinedTextField(
-        value = settings.browserAllowedDomains,
-        onValueChange = { viewModel.updateBrowserAllowedDomains(it) },
-        label = { Text("Allowed domains") },
-        supportingText = { Text("Comma-separated (empty allows all)") },
-        enabled = settings.browserEnabled,
-        minLines = 2,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 /**

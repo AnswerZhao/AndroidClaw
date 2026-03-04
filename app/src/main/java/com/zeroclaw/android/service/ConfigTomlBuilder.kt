@@ -7,6 +7,7 @@
 package com.zeroclaw.android.service
 
 import com.zeroclaw.android.model.Agent
+import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.ConnectedChannel
 import com.zeroclaw.android.model.FieldInputType
 
@@ -1292,6 +1293,11 @@ object ConfigTomlBuilder {
                     val value = values[spec.key].orEmpty()
                     if (value.isBlank() && !spec.isRequired) continue
                     appendTomlField(spec.key, value, spec.inputType)
+                }
+                if (channel.type == ChannelType.TELEGRAM) {
+                    appendLine("stream_mode = \"partial\"")
+                    appendLine("draft_update_interval_ms = 1000")
+                    appendLine("interrupt_on_new_message = true")
                 }
             }
         }

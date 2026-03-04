@@ -13,7 +13,7 @@ package com.zeroclaw.android.model
  * plugin is enabled.
  */
 object OfficialPlugins {
-    /** Web search tool (DuckDuckGo / Brave). Maps to `[web_search]`. */
+    /** Web search tool (DuckDuckGo). Maps to `[web_search]`. */
     const val WEB_SEARCH = "official-web-search"
 
     /** Web page content fetcher. Maps to `[web_fetch]`. */
@@ -21,9 +21,6 @@ object OfficialPlugins {
 
     /** HTTP request tool for external APIs. Maps to `[http_request]`. */
     const val HTTP_REQUEST = "official-http-request"
-
-    /** Web browser automation tool. Maps to `[browser]`. */
-    const val BROWSER = "official-browser"
 
     /** Composio third-party tool integration. Maps to `[composio]`. */
     const val COMPOSIO = "official-composio"
@@ -43,7 +40,6 @@ object OfficialPlugins {
             WEB_SEARCH,
             WEB_FETCH,
             HTTP_REQUEST,
-            BROWSER,
             COMPOSIO,
             VISION,
             TRANSCRIPTION,

@@ -147,7 +147,6 @@ class RoomPluginRepositoryTest {
                     webSearchEnabled = false,
                     webFetchEnabled = false,
                     httpRequestEnabled = false,
-                    browserEnabled = false,
                     composioEnabled = false,
                     transcriptionEnabled = false,
                     queryClassificationEnabled = false,
@@ -158,7 +157,6 @@ class RoomPluginRepositoryTest {
             coVerify { dao.setEnabled(OfficialPlugins.WEB_SEARCH, false) }
             coVerify { dao.setEnabled(OfficialPlugins.WEB_FETCH, false) }
             coVerify { dao.setEnabled(OfficialPlugins.HTTP_REQUEST, false) }
-            coVerify { dao.setEnabled(OfficialPlugins.BROWSER, false) }
             coVerify { dao.setEnabled(OfficialPlugins.COMPOSIO, false) }
             coVerify { dao.setEnabled(OfficialPlugins.TRANSCRIPTION, false) }
             coVerify { dao.setEnabled(OfficialPlugins.QUERY_CLASSIFICATION, false) }
@@ -172,7 +170,6 @@ class RoomPluginRepositoryTest {
                     webSearchEnabled = false,
                     webFetchEnabled = false,
                     httpRequestEnabled = false,
-                    browserEnabled = false,
                     composioEnabled = false,
                     transcriptionEnabled = false,
                     queryClassificationEnabled = false,

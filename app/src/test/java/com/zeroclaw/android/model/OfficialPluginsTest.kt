@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test
 @DisplayName("OfficialPlugins")
 class OfficialPluginsTest {
     @Test
-    fun `ALL contains exactly 8 official plugin IDs`() {
-        assertEquals(8, OfficialPlugins.ALL.size)
+    fun `ALL contains exactly 7 official plugin IDs`() {
+        assertEquals(7, OfficialPlugins.ALL.size)
     }
 
     @Test
@@ -40,7 +40,6 @@ class OfficialPluginsTest {
                 OfficialPlugins.WEB_SEARCH,
                 OfficialPlugins.WEB_FETCH,
                 OfficialPlugins.HTTP_REQUEST,
-                OfficialPlugins.BROWSER,
                 OfficialPlugins.COMPOSIO,
                 OfficialPlugins.VISION,
                 OfficialPlugins.TRANSCRIPTION,
@@ -54,7 +53,7 @@ class OfficialPluginsTest {
 
     @Test
     fun `ALL set size matches sync mapping count`() {
-        val syncMappingCount = 8
+        val syncMappingCount = 7
         assertEquals(syncMappingCount, OfficialPlugins.ALL.size)
     }
 }

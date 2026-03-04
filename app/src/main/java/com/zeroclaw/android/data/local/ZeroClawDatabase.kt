@@ -49,7 +49,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         ConnectedChannelEntity::class,
         TerminalEntryEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class ZeroClawDatabase : RoomDatabase() {
@@ -289,6 +289,21 @@ abstract class ZeroClawDatabase : RoomDatabase() {
             }
 
         /**
+         * Migration from schema version 10 to 11: removes Browser plugin
+         * (unavailable on Android) and updates stale web search description.
+         */
+        private val MIGRATION_10_11 =
+            object : Migration(10, 11) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("DELETE FROM plugins WHERE id = 'official-browser'")
+                    db.execSQL(
+                        """UPDATE plugins SET description = 'Search the web via DuckDuckGo.'
+                           WHERE id = 'official-web-search'""",
+                    )
+                }
+            }
+
+        /**
          * Ordered array of schema migrations.
          *
          * Add new [Migration] instances here as the schema evolves.
@@ -305,6 +320,7 @@ abstract class ZeroClawDatabase : RoomDatabase() {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
+                MIGRATION_10_11,
             )
 
         /**

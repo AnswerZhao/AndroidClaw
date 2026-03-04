@@ -513,8 +513,13 @@ class OnboardingCoordinator(
     /**
      * Brings the app to the foreground to dismiss the Custom Tab overlay.
      *
-     * Uses the package launch intent with [Intent.FLAG_ACTIVITY_SINGLE_TOP]
-     * to resume the existing activity rather than creating a new one.
+     * Uses [Intent.FLAG_ACTIVITY_CLEAR_TOP] combined with
+     * [Intent.FLAG_ACTIVITY_SINGLE_TOP] so the system finds the existing
+     * [MainActivity] in the back-stack, clears everything above it (the
+     * Custom Tab browser activity), and delivers [Activity.onNewIntent]
+     * instead of creating a fresh instance. Without `CLEAR_TOP`, the
+     * system sees the Custom Tab on top and creates a **new** Activity,
+     * which triggers `onCreate` → onboarding reset.
      *
      * @param context Context for launching the intent.
      */
@@ -522,7 +527,9 @@ class OnboardingCoordinator(
         val intent =
             context.packageManager
                 .getLaunchIntentForPackage(context.packageName)
-                ?.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                ?.addFlags(
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
                 ?: return
         context.startActivity(intent)
     }

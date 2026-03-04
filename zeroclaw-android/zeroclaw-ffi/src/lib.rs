@@ -54,8 +54,8 @@ pub use error::FfiError;
 pub fn init_logging() {
     #[cfg(target_os = "android")]
     {
-        use tracing_subscriber::prelude::*;
         use tracing_subscriber::EnvFilter;
+        use tracing_subscriber::prelude::*;
 
         // Noisy HTTP/TLS crates → WARN only; everything else → DEBUG.
         let filter = if cfg!(debug_assertions) {

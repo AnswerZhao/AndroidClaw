@@ -4568,6 +4568,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "nanohtml2text",
+ "regex",
  "reqwest",
  "rhai",
  "serde",

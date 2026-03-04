@@ -685,7 +685,6 @@ class SettingsViewModel(
             OfficialPlugins.WEB_SEARCH -> updateWebSearchEnabled(enabled)
             OfficialPlugins.WEB_FETCH -> updateWebFetchEnabled(enabled)
             OfficialPlugins.HTTP_REQUEST -> updateHttpRequestEnabled(enabled)
-            OfficialPlugins.BROWSER -> updateBrowserEnabled(enabled)
             OfficialPlugins.COMPOSIO -> updateComposioEnabled(enabled)
             OfficialPlugins.TRANSCRIPTION -> updateTranscriptionEnabled(enabled)
             OfficialPlugins.QUERY_CLASSIFICATION -> updateQueryClassificationEnabled(enabled)

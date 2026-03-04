@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.remote.OkHttpPluginRegistryClient
+import com.zeroclaw.android.model.OfficialPlugins
 import com.zeroclaw.android.model.Plugin
 import com.zeroclaw.android.util.ErrorSanitizer
 import kotlinx.coroutines.delay
@@ -55,6 +56,7 @@ class PluginsViewModel(
     private val app = application as ZeroClawApplication
     private val repository = app.pluginRepository
     private val settingsRepository = app.settingsRepository
+    private val daemonBridge = app.daemonBridge
 
     init {
         viewModelScope.launch {
@@ -192,10 +194,35 @@ class PluginsViewModel(
         viewModelScope.launch {
             try {
                 repository.toggleEnabled(pluginId)
+                syncOfficialPluginSetting(pluginId)
+                daemonBridge.markRestartRequired()
             } catch (e: Exception) {
                 Log.w(TAG, "Toggle failed for $pluginId", e)
                 _snackbarMessage.tryEmit("Toggle failed: ${ErrorSanitizer.sanitizeForUi(e)}")
             }
+        }
+    }
+
+    /**
+     * Syncs the enabled state of an official plugin to [AppSettings].
+     *
+     * The Room `isEnabled` flag drives the Plugins UI, but the daemon
+     * config is generated from [AppSettings]. Without this sync, toggling
+     * an official plugin in the Plugins screen has no effect on the TOML
+     * config that the daemon reads at startup.
+     */
+    private suspend fun syncOfficialPluginSetting(pluginId: String) {
+        if (!OfficialPlugins.isOfficial(pluginId)) return
+        val newState = repository.getById(pluginId)?.isEnabled ?: return
+        when (pluginId) {
+            OfficialPlugins.WEB_SEARCH -> settingsRepository.setWebSearchEnabled(newState)
+            OfficialPlugins.WEB_FETCH -> settingsRepository.setWebFetchEnabled(newState)
+            OfficialPlugins.HTTP_REQUEST -> settingsRepository.setHttpRequestEnabled(newState)
+            OfficialPlugins.COMPOSIO -> settingsRepository.setComposioEnabled(newState)
+            OfficialPlugins.TRANSCRIPTION -> settingsRepository.setTranscriptionEnabled(newState)
+            OfficialPlugins.QUERY_CLASSIFICATION ->
+                settingsRepository.setQueryClassificationEnabled(newState)
+            else -> {}
         }
     }
 

@@ -118,7 +118,7 @@ const BROWSER_TOOLS: &[BuiltInTool] = &[
 /// Web search tool (available when web search is enabled).
 const WEB_SEARCH_TOOL: BuiltInTool = BuiltInTool {
     name: "web_search",
-    description: "Search the web via DuckDuckGo or Brave search engine",
+    description: "Search the web via DuckDuckGo and return structured results",
 };
 
 /// HTTP request tool (available when HTTP is enabled).
