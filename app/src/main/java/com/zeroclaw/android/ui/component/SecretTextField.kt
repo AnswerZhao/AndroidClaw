@@ -81,7 +81,7 @@ fun SecretTextField(
                         .size(48.dp)
                         .semantics {
                             contentDescription =
-                                if (revealed) "Hide value" else "Show value"
+                                if (revealed) "Hide $label" else "Show $label"
                         },
             ) {
                 Icon(
@@ -100,6 +100,9 @@ fun SecretTextField(
                 keyboardType = KeyboardType.Text,
                 imeAction = imeAction,
             ),
-        modifier = modifier,
+        modifier =
+            modifier.semantics {
+                contentDescription = label
+            },
     )
 }
