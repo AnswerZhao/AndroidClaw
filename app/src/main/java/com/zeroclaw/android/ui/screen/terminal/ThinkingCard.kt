@@ -52,7 +52,7 @@ private const val BODY_SPACING_DP = 8
 /**
  * Card displaying live thinking/reasoning tokens from the model.
  *
- * Shows a [BrailleSpinner] with a "Thinking..." label in the header row,
+ * Shows a [BrailleSpinner] with a phase-derived label in the header row,
  * accumulated thinking tokens in a scrolling body, and a "Cancel" button
  * in the footer. The card auto-scrolls to the bottom as new tokens arrive.
  *
@@ -67,7 +67,10 @@ private const val BODY_SPACING_DP = 8
  * @param onCancel Callback when the user taps the cancel button.
  * @param activeTools Tools currently executing during the turn.
  * @param toolResults Completed tool execution results for the current turn.
- * @param progressMessage Miscellaneous progress status (e.g. "Searching memory...").
+ * @param phase Current streaming phase driving the header label.
+ * @param providerRound 1-based LLM call round (round 2+ shown in header).
+ * @param toolCallCount Number of tool calls from the last LLM response.
+ * @param llmDurationSecs Wall-clock seconds the LLM took before tool dispatch.
  * @param modifier Modifier applied to the outer container.
  */
 @Composable
@@ -77,7 +80,10 @@ fun ThinkingCard(
     onCancel: () -> Unit,
     activeTools: List<ToolProgress> = emptyList(),
     toolResults: List<ToolResultEntry> = emptyList(),
-    progressMessage: String? = null,
+    phase: StreamingPhase = StreamingPhase.THINKING,
+    providerRound: Int = 0,
+    toolCallCount: Int = 0,
+    llmDurationSecs: Long = 0,
     modifier: Modifier = Modifier,
 ) {
     val isPowerSave = LocalPowerSaveMode.current
@@ -108,10 +114,25 @@ fun ThinkingCard(
             Column(
                 modifier = Modifier.padding(CARD_PADDING_DP.dp),
             ) {
+                val headerLabel =
+                    when (phase) {
+                        StreamingPhase.SEARCHING_MEMORY -> "Searching memory\u2026"
+                        StreamingPhase.CALLING_PROVIDER -> {
+                            if (providerRound > 1) {
+                                "Thinking (round $providerRound)\u2026"
+                            } else {
+                                "Thinking\u2026"
+                            }
+                        }
+                        StreamingPhase.COMPACTING -> "Compacting\u2026"
+                        StreamingPhase.RESPONDING -> "Responding\u2026"
+                        else -> "Thinking\u2026"
+                    }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    BrailleSpinner(label = "Thinking\u2026")
+                    BrailleSpinner(label = headerLabel)
                     Spacer(modifier = Modifier.weight(1f))
                     TextButton(
                         onClick = onCancel,
@@ -150,7 +171,8 @@ fun ThinkingCard(
                 ToolActivityFooter(
                     activeTools = activeTools,
                     toolResults = toolResults,
-                    progressMessage = progressMessage,
+                    toolCallCount = toolCallCount,
+                    llmDurationSecs = llmDurationSecs,
                 )
             }
         }
@@ -160,21 +182,23 @@ fun ThinkingCard(
 /**
  * Tool activity footer displaying in-flight and completed tool executions.
  *
- * Renders a [HorizontalDivider] followed by optional progress text,
- * active tool rows (hourglass indicator), and completed tool rows
- * (check/cross indicator with duration).
+ * Renders a [HorizontalDivider] followed by optional progress text derived
+ * from tool metrics, active tool rows (hourglass indicator), and completed
+ * tool rows (check/cross indicator with duration).
  *
  * @param activeTools Tools currently executing during the turn.
  * @param toolResults Completed tool execution results for the current turn.
- * @param progressMessage Miscellaneous progress status text.
+ * @param toolCallCount Number of tool calls from the last LLM response.
+ * @param llmDurationSecs Wall-clock seconds the LLM took before tool dispatch.
  */
 @Composable
 private fun ToolActivityFooter(
     activeTools: List<ToolProgress>,
     toolResults: List<ToolResultEntry>,
-    progressMessage: String?,
+    toolCallCount: Int,
+    llmDurationSecs: Long,
 ) {
-    if (activeTools.isEmpty() && toolResults.isEmpty() && progressMessage == null) {
+    if (activeTools.isEmpty() && toolResults.isEmpty() && toolCallCount == 0) {
         return
     }
 
@@ -183,9 +207,15 @@ private fun ToolActivityFooter(
         color = MaterialTheme.colorScheme.outlineVariant,
     )
 
-    if (progressMessage != null) {
+    if (toolCallCount > 0) {
+        val progressText =
+            buildString {
+                append("$toolCallCount tool call")
+                if (toolCallCount != 1) append("s")
+                if (llmDurationSecs > 0) append(" (LLM ${llmDurationSecs}s)")
+            }
         Text(
-            text = progressMessage,
+            text = progressText,
             style = TerminalTypography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 4.dp),

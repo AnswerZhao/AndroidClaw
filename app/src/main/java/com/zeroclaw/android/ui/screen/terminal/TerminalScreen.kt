@@ -202,11 +202,7 @@ internal fun TerminalContent(
             }
         }
 
-    val isAgentActive =
-        streamingState.phase != StreamingPhase.IDLE &&
-            streamingState.phase != StreamingPhase.COMPLETE &&
-            streamingState.phase != StreamingPhase.CANCELLED &&
-            streamingState.phase != StreamingPhase.ERROR
+    val isAgentActive = streamingState.phase.isActive
     val isInputDisabled = state.isLoading || isAgentActive
 
     val stableOnRemove: (Int) -> Unit = remember { { index -> onRemoveImage(index) } }
@@ -284,7 +280,10 @@ internal fun TerminalContent(
                             onCancel = onCancelAgent,
                             activeTools = streamingState.activeTools,
                             toolResults = streamingState.toolResults,
-                            progressMessage = streamingState.progressMessage,
+                            phase = streamingState.phase,
+                            providerRound = streamingState.providerRound,
+                            toolCallCount = streamingState.toolCallCount,
+                            llmDurationSecs = streamingState.llmDurationSecs,
                             modifier =
                                 Modifier.padding(
                                     horizontal = AUTOCOMPLETE_ITEM_H_PAD_DP.dp,

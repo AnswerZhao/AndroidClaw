@@ -24,6 +24,7 @@ import com.zeroclaw.android.service.ZeroClawDaemonService
 import com.zeroclaw.android.util.ErrorSanitizer
 import com.zeroclaw.android.util.ImageProcessor
 import com.zeroclaw.ffi.FfiException
+import com.zeroclaw.ffi.FfiProgressPhase
 import com.zeroclaw.ffi.FfiSessionListener
 import com.zeroclaw.ffi.evalRepl
 import com.zeroclaw.ffi.getVersion
@@ -382,6 +383,17 @@ class TerminalViewModel(
                 }
                 logRepository.append(LogSeverity.ERROR, TAG, "Agent turn failed: $sanitized")
                 repository.append(content = sanitized, entryType = ENTRY_TYPE_ERROR)
+            } finally {
+                _streamingState.update { current ->
+                    if (current.phase.isActive) {
+                        StreamingState(
+                            phase = StreamingPhase.ERROR,
+                            errorMessage = "Session ended unexpectedly",
+                        )
+                    } else {
+                        current
+                    }
+                }
             }
         }
     }
@@ -627,6 +639,9 @@ class TerminalViewModel(
                 current.copy(
                     phase = StreamingPhase.RESPONDING,
                     responseText = current.responseText + text,
+                    providerRound = 0,
+                    toolCallCount = 0,
+                    llmDurationSecs = 0,
                 )
             }
         }
@@ -679,15 +694,54 @@ class TerminalViewModel(
             }
         }
 
-        override fun onProgress(message: String) {
+        override fun onProgress(phase: FfiProgressPhase) {
             _streamingState.update { current ->
-                current.copy(progressMessage = message)
+                when (phase) {
+                    is FfiProgressPhase.SearchingMemory ->
+                        current.copy(
+                            phase = StreamingPhase.SEARCHING_MEMORY,
+                        )
+                    is FfiProgressPhase.CallingProvider ->
+                        current.copy(
+                            phase = StreamingPhase.CALLING_PROVIDER,
+                            providerRound = phase.round.toInt(),
+                        )
+                    is FfiProgressPhase.GotToolCalls ->
+                        current.copy(
+                            phase = StreamingPhase.TOOL_EXECUTING,
+                            toolCallCount = phase.count.toInt(),
+                            llmDurationSecs = phase.llmDurationSecs.toLong(),
+                        )
+                    is FfiProgressPhase.StreamingResponse ->
+                        current.copy(
+                            phase = StreamingPhase.RESPONDING,
+                        )
+                    is FfiProgressPhase.Compacting ->
+                        current.copy(
+                            phase = StreamingPhase.COMPACTING,
+                        )
+                    is FfiProgressPhase.Idle ->
+                        current.copy(
+                            phase = StreamingPhase.IDLE,
+                        )
+                    is FfiProgressPhase.Raw -> current
+                }
+            }
+        }
+
+        override fun onProgressClear() {
+            _streamingState.update { current ->
+                current.copy(
+                    providerRound = 0,
+                    toolCallCount = 0,
+                    llmDurationSecs = 0,
+                )
             }
         }
 
         override fun onCompaction(summary: String) {
             _streamingState.update { current ->
-                current.copy(phase = StreamingPhase.COMPACTING, progressMessage = summary)
+                current.copy(phase = StreamingPhase.COMPACTING)
             }
         }
 

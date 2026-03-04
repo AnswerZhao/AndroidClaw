@@ -10,12 +10,19 @@ package com.zeroclaw.android.ui.screen.terminal
  * Phases of a streaming response lifecycle.
  *
  * Transitions follow:
- * [IDLE] -> [THINKING] -> [TOOL_EXECUTING] -> [RESPONDING] -> [COMPACTING] -> [COMPLETE],
+ * [IDLE] -> [SEARCHING_MEMORY] -> [CALLING_PROVIDER] -> [THINKING] ->
+ * [TOOL_EXECUTING] -> [RESPONDING] -> [COMPACTING] -> [COMPLETE],
  * or any active phase may transition to [CANCELLED] or [ERROR].
  */
 enum class StreamingPhase {
     /** No streaming operation in progress. */
     IDLE,
+
+    /** Building memory context from the vector store. */
+    SEARCHING_MEMORY,
+
+    /** Sending the prompt to the LLM provider. */
+    CALLING_PROVIDER,
 
     /** Receiving thinking/reasoning tokens from the model. */
     THINKING,
@@ -37,6 +44,15 @@ enum class StreamingPhase {
 
     /** An error occurred during streaming. */
     ERROR,
+    ;
+
+    /**
+     * Whether this phase represents an active (non-terminal) streaming operation.
+     *
+     * Returns `false` for [IDLE], [COMPLETE], [CANCELLED], and [ERROR].
+     */
+    val isActive: Boolean
+        get() = this != IDLE && this != COMPLETE && this != CANCELLED && this != ERROR
 }
 
 /**
@@ -74,7 +90,9 @@ data class ToolResultEntry(
  * @property errorMessage Error description when [phase] is [StreamingPhase.ERROR].
  * @property activeTools Tools currently executing during [StreamingPhase.TOOL_EXECUTING].
  * @property toolResults Completed tool execution results for the current turn.
- * @property progressMessage Miscellaneous progress status (e.g. "Searching memory...").
+ * @property providerRound 1-based LLM call round (round 2+ means tool-loop iteration).
+ * @property toolCallCount Number of tool calls returned by the last LLM response.
+ * @property llmDurationSecs Wall-clock seconds the LLM took to respond before tool dispatch.
  */
 data class StreamingState(
     val phase: StreamingPhase = StreamingPhase.IDLE,
@@ -83,7 +101,9 @@ data class StreamingState(
     val errorMessage: String? = null,
     val activeTools: List<ToolProgress> = emptyList(),
     val toolResults: List<ToolResultEntry> = emptyList(),
-    val progressMessage: String? = null,
+    val providerRound: Int = 0,
+    val toolCallCount: Int = 0,
+    val llmDurationSecs: Long = 0,
 ) {
     /** Constants and factory methods for [StreamingState]. */
     companion object {
