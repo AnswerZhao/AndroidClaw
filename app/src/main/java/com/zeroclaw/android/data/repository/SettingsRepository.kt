@@ -898,6 +898,23 @@ interface SettingsRepository {
     suspend fun setLastPluginSyncTimestamp(timestamp: Long)
 
     /**
+     * Stores the raw gateway bearer token for authenticated requests.
+     *
+     * The token is stored in EncryptedSharedPreferences so it is
+     * available for the app's own gateway calls without re-derivation.
+     *
+     * @param token The bearer token string.
+     */
+    suspend fun setGatewayBearerToken(token: String)
+
+    /**
+     * Retrieves the raw gateway bearer token.
+     *
+     * @return The stored bearer token, or an empty string if none exists.
+     */
+    suspend fun getGatewayBearerToken(): String
+
+    /**
      * Toggles stripping of thinking tags from model responses.
      *
      * @param enabled Whether to strip thinking tags.

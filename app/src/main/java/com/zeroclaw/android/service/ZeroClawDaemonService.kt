@@ -221,10 +221,12 @@ class ZeroClawDaemonService : Service() {
         serviceScope.launch(ioDispatcher) {
             val settings = settingsRepository.settings.first()
             val effectiveSettings = resolveEffectiveDefaults(settings)
-            val apiKey = apiKeyRepository.getByProviderFresh(effectiveSettings.defaultProvider)
+            val mergedSettings = mergeUpstreamPairedTokens(effectiveSettings)
+            val seededSettings = preSeedGatewayTokenIfNeeded(mergedSettings)
+            val apiKey = apiKeyRepository.getByProviderFresh(seededSettings.defaultProvider)
 
             val globalConfig =
-                buildGlobalTomlConfig(effectiveSettings, apiKey)
+                buildGlobalTomlConfig(seededSettings, apiKey)
 
             if (!validateProviderKeyOrStop(globalConfig)) return@launch
 
@@ -238,7 +240,7 @@ class ZeroClawDaemonService : Service() {
 
             if (!validateConfigOrStop(configToml)) return@launch
 
-            val conflict = bridge.detectMemoryConflict(effectiveSettings.memoryBackend)
+            val conflict = bridge.detectMemoryConflict(seededSettings.memoryBackend)
             if (conflict is MemoryConflict.StaleData) {
                 val shouldDelete = bridge.awaitConflictResolution(conflict)
                 if (shouldDelete) {
@@ -263,7 +265,7 @@ class ZeroClawDaemonService : Service() {
                 configToml = configToml,
                 host = settings.host,
                 port = validPort.toUShort(),
-                memoryBackend = effectiveSettings.memoryBackend,
+                memoryBackend = seededSettings.memoryBackend,
             )
         }
     }
@@ -538,6 +540,110 @@ class ZeroClawDaemonService : Service() {
                     )
                 }
         return ConfigTomlBuilder.buildAgentsToml(entries)
+    }
+
+    /**
+     * Generates and persists a gateway bearer token if pairing is required
+     * and no tokens exist.
+     *
+     * The token hash is stored in [AppSettings.gatewayPairedTokens] so it
+     * appears in the TOML `[gateway].paired_tokens` array, which upstream
+     * defines as `Vec<String>` in [GatewayConfig]. The raw token is stored
+     * separately for the app's own authenticated requests.
+     *
+     * Aligned with upstream `zeroclaw/src/config/schema.rs` (v0.1.7):
+     * - `paired_tokens: Vec<String>` (line 777)
+     * - `require_pairing: bool` (line 771, default `true`)
+     *
+     * @param settings Current settings, possibly with empty paired tokens.
+     * @return Settings with the token hash merged if pre-seeding occurred,
+     *   or unchanged if pairing is not required or tokens already exist.
+     */
+    private suspend fun preSeedGatewayTokenIfNeeded(settings: AppSettings): AppSettings {
+        if (!settings.gatewayRequirePairing) return settings
+        if (settings.gatewayPairedTokens.isNotBlank()) return settings
+
+        val token = generateBearerToken()
+        val hash = sha256Hex(token)
+
+        settingsRepository.setGatewayPairedTokens(hash)
+        settingsRepository.setGatewayBearerToken(token)
+
+        Log.i(TAG, "Pre-seeded gateway bearer token for pairing")
+        return settings.copy(gatewayPairedTokens = hash)
+    }
+
+    /**
+     * Generates a ZeroClaw-style bearer token with 256-bit entropy.
+     *
+     * @return A `zc_`-prefixed hex token string.
+     */
+    private fun generateBearerToken(): String {
+        val bytes = ByteArray(BEARER_TOKEN_BYTES)
+        java.security.SecureRandom().nextBytes(bytes)
+        return "zc_" + bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Returns the SHA-256 hex digest of the given [input] string.
+     *
+     * @param input The string to hash.
+     * @return Lowercase hex-encoded SHA-256 hash.
+     */
+    private fun sha256Hex(input: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        return digest.digest(input.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Reads paired token hashes from upstream config.toml and merges
+     * them into [AppSettings.gatewayPairedTokens].
+     *
+     * Prevents token wipe when [ConfigTomlBuilder] rebuilds TOML from
+     * scratch. Tokens from the upstream file that are not already present
+     * in settings are appended to the comma-separated list.
+     *
+     * The upstream `[gateway].paired_tokens` field is defined as
+     * `Vec<String>` in `GatewayConfig` (schema.rs line 777).
+     *
+     * @param settings Current settings.
+     * @return Settings with merged tokens, or unchanged if no upstream file.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun mergeUpstreamPairedTokens(settings: AppSettings): AppSettings {
+        val rawTokens = try {
+            val configFile = java.io.File(filesDir, "config.toml")
+            if (!configFile.exists()) return settings
+
+            val tomlText = configFile.readText()
+            val tokenRegex = Regex("""paired_tokens\s*=\s*\[([^\]]*)]""")
+            val matchResult = tokenRegex.find(tomlText)
+            matchResult?.groupValues?.get(1)
+                ?.split(",")
+                ?.map { it.trim().removeSurrounding("\"") }
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to merge upstream paired tokens: ${e.message}")
+            return settings
+        }
+
+        if (rawTokens.isEmpty()) return settings
+
+        val existing =
+            settings.gatewayPairedTokens
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+
+        val merged = (existing + rawTokens).toSet()
+        if (merged == existing) return settings
+
+        val csv = merged.joinToString(",")
+        settingsRepository.setGatewayPairedTokens(csv)
+        return settings.copy(gatewayPairedTokens = csv)
     }
 
     private fun handleStop() {
@@ -976,6 +1082,7 @@ class ZeroClawDaemonService : Service() {
         private const val RESTART_DELAY_MS = 5_000L
         private const val RESTART_REQUEST_CODE = 42
         private const val OAUTH_HOLD_TIMEOUT_MS = 120_000L
+        private const val BEARER_TOKEN_BYTES = 32
         private val VALID_PORT_RANGE = 1..65535
     }
 }

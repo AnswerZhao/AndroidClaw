@@ -410,6 +410,11 @@ class DataStoreSettingsRepository(
 
     override suspend fun setGatewayPairedTokens(tokens: String) = editSecure(SEC_GW_PAIRED_TOKENS, tokens)
 
+    override suspend fun setGatewayBearerToken(token: String) = editSecure(SEC_GW_BEARER_TOKEN, token)
+
+    override suspend fun getGatewayBearerToken(): String =
+        securePrefs.getString(SEC_GW_BEARER_TOKEN, "") ?: ""
+
     override suspend fun setGatewayPairRateLimit(limit: Int) = edit { it[KEY_GW_PAIR_RATE] = limit }
 
     override suspend fun setGatewayWebhookRateLimit(limit: Int) = edit { it[KEY_GW_WEBHOOK_RATE] = limit }
@@ -615,6 +620,7 @@ class DataStoreSettingsRepository(
         const val SEC_TUNNEL_CF_TOKEN = "sec_tunnel_cf_token"
         const val SEC_TUNNEL_NGROK_TOKEN = "sec_tunnel_ngrok_token"
         const val SEC_GW_PAIRED_TOKENS = "sec_gw_paired_tokens"
+        const val SEC_GW_BEARER_TOKEN = "sec_gw_bearer_token"
         const val SEC_COMPOSIO_API_KEY = "sec_composio_api_key"
         const val SEC_WEB_SEARCH_BRAVE_API_KEY = "sec_web_search_brave_api_key"
         const val SEC_MEMORY_QDRANT_API_KEY = "sec_memory_qdrant_api_key"
