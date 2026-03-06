@@ -2496,6 +2496,7 @@ const THINKING_TAG_NAMES: &[&str] = &[
     "analysis",
     "reflection",
     "inner_monologue",
+    "reasoning",
 ];
 
 /// Extracts thinking/reasoning blocks from model response text.
@@ -3640,6 +3641,14 @@ mod tests {
         let (clean, thinking) = extract_thinking_from_text(input);
         assert_eq!(clean, "The response.");
         assert_eq!(thinking, "Line 1\nLine 2\nLine 3");
+    }
+
+    #[test]
+    fn extract_thinking_reasoning_tag() {
+        let input = "<reasoning>Step 1: check input\nStep 2: validate</reasoning>Final answer.";
+        let (clean, thinking) = extract_thinking_from_text(input);
+        assert_eq!(clean, "Final answer.");
+        assert_eq!(thinking, "Step 1: check input\nStep 2: validate");
     }
 
     // ── parse_xml_tool_calls tests ──────────────────────────────────
