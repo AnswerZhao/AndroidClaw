@@ -281,6 +281,8 @@ export ANDROID_HOME="/path/to/Android/Sdk"
 
 The Gradle build invokes `cargo-ndk` via [Gobley](https://github.com/aspect-build/gobley) to cross-compile the Rust FFI library and generate UniFFI Kotlin bindings. No manual Rust build step needed.
 
+> **Debug APK logging:** Debug builds include expanded `Log.d`/`Log.v` output across the FFI bridge, service lifecycle, and TOML config builder. Connect with `adb logcat -s ZeroClaw` to stream logs in real time -- particularly useful when diagnosing daemon startup issues with an AI assistant reading the log output.
+
 ### Project structure
 
 ```
