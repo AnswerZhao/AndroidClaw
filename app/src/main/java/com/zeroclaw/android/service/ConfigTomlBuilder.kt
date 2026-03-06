@@ -161,6 +161,9 @@ data class AgentTomlEntry(
  * @property securityResourcesMaxSubprocesses Maximum number of subprocesses.
  * @property securityResourcesMemoryMonitoring Whether memory monitoring is active.
  * @property securityAuditEnabled Whether security audit logging is active.
+ * @property securityAuditLogPath File path for audit log output.
+ * @property securityAuditMaxSizeMb Maximum audit log file size in megabytes.
+ * @property securityAuditSignEvents Whether audit events are cryptographically signed.
  * @property securityOtpEnabled Whether one-time password verification is active.
  * @property securityOtpMethod OTP method (e.g. "totp", "hotp").
  * @property securityOtpTokenTtlSecs OTP token time-to-live in seconds.
@@ -170,6 +173,7 @@ data class AgentTomlEntry(
  * @property securityOtpGatedDomainCategories Domain categories requiring OTP verification.
  * @property securityEstopEnabled Whether the emergency stop mechanism is active.
  * @property securityEstopRequireOtpToResume Whether resuming from e-stop requires OTP.
+ * @property securityEstopStateFile File path for e-stop state persistence.
  * @property memoryQdrantUrl Qdrant vector database connection URL.
  * @property memoryQdrantCollection Qdrant collection name for memory storage.
  * @property memoryQdrantApiKey Qdrant API key for authenticated access.
@@ -281,6 +285,9 @@ data class GlobalTomlConfig(
     val securityResourcesMaxSubprocesses: Int = DEFAULT_RESOURCES_MAX_SUBPROCESSES,
     val securityResourcesMemoryMonitoring: Boolean = true,
     val securityAuditEnabled: Boolean = false,
+    val securityAuditLogPath: String = "audit.log",
+    val securityAuditMaxSizeMb: Int = DEFAULT_AUDIT_MAX_SIZE_MB,
+    val securityAuditSignEvents: Boolean = false,
     val securityOtpEnabled: Boolean = false,
     val securityOtpMethod: String = "totp",
     val securityOtpTokenTtlSecs: Int = DEFAULT_OTP_TOKEN_TTL_SECS,
@@ -290,6 +297,7 @@ data class GlobalTomlConfig(
     val securityOtpGatedDomainCategories: List<String> = emptyList(),
     val securityEstopEnabled: Boolean = false,
     val securityEstopRequireOtpToResume: Boolean = true,
+    val securityEstopStateFile: String = "estop-state.json",
     val memoryQdrantUrl: String = "",
     val memoryQdrantCollection: String = "zeroclaw_memories",
     val memoryQdrantApiKey: String = "",
@@ -387,6 +395,9 @@ data class GlobalTomlConfig(
 
         /** Default web search timeout in seconds. */
         const val DEFAULT_WEB_SEARCH_TIMEOUT_SECS = 15
+
+        /** Default audit log max file size in MB (aligned with upstream AuditConfig default). */
+        const val DEFAULT_AUDIT_MAX_SIZE_MB = 100
 
         /** Default resource limit: max memory in MB. */
         const val DEFAULT_RESOURCES_MAX_MEMORY_MB = 512
@@ -1114,18 +1125,22 @@ object ConfigTomlBuilder {
     /**
      * Appends the `[security.audit]` TOML section.
      *
-     * When the user disables audit, this explicitly emits `enabled = false`
-     * to override the daemon default of `enabled = true`. When audit is
-     * enabled, emission is skipped since the daemon default already matches.
+     * Always emits the full section so that `log_path`, `max_size_mb`, and
+     * `sign_events` are explicitly set rather than relying on upstream
+     * defaults (which assume `~` home-directory expansion unavailable on
+     * Android).
+     *
+     * Upstream fields: enabled, log_path, max_size_mb, sign_events.
      *
      * @param config Configuration to read audit values from.
      */
     private fun StringBuilder.appendSecurityAuditSection(config: GlobalTomlConfig) {
-        if (config.securityAuditEnabled) return
-
         appendLine()
         appendLine("[security.audit]")
-        appendLine("enabled = false")
+        appendLine("enabled = ${config.securityAuditEnabled}")
+        appendLine("log_path = ${tomlString(config.securityAuditLogPath)}")
+        appendLine("max_size_mb = ${config.securityAuditMaxSizeMb.coerceAtLeast(0)}")
+        appendLine("sign_events = ${config.securityAuditSignEvents}")
     }
 
     /**
@@ -1162,7 +1177,12 @@ object ConfigTomlBuilder {
     /**
      * Appends the `[security.estop]` TOML section when emergency stop is enabled.
      *
-     * Upstream fields: enabled, require_otp_to_resume.
+     * The `state_file` field is always emitted because upstream `EstopConfig`
+     * uses `deny_unknown_fields` and defaults to `~/.zeroclaw/estop-state.json`,
+     * which won't resolve on Android (Rust's `std::fs` does not expand `~`).
+     * The Android service sets this to an absolute path under `filesDir`.
+     *
+     * Upstream fields: enabled, state_file, require_otp_to_resume.
      *
      * @param config Configuration to read e-stop values from.
      */
@@ -1172,6 +1192,7 @@ object ConfigTomlBuilder {
         appendLine()
         appendLine("[security.estop]")
         appendLine("enabled = true")
+        appendLine("state_file = ${tomlString(config.securityEstopStateFile)}")
         appendLine("require_otp_to_resume = ${config.securityEstopRequireOtpToResume}")
     }
 

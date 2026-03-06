@@ -325,15 +325,17 @@ class ZeroClawDaemonService : Service() {
     private fun validateProviderKeyOrStop(config: GlobalTomlConfig): Boolean {
         if (config.provider.isBlank() || config.apiKey.isNotBlank()) return true
 
-        val resolved = ConfigTomlBuilder.resolveProvider(
-            config.provider,
-            config.baseUrl,
-        )
+        val resolved =
+            ConfigTomlBuilder.resolveProvider(
+                config.provider,
+                config.baseUrl,
+            )
         if (ConfigTomlBuilder.needsPlaceholderKey(resolved)) return true
 
-        val msg = "No API key found for provider " +
-            "'${config.provider}'. Configure one in " +
-            "Settings \u2192 API Keys before starting."
+        val msg =
+            "No API key found for provider " +
+                "'${config.provider}'. Configure one in " +
+                "Settings \u2192 API Keys before starting."
         Log.e(TAG, "Startup blocked: $msg")
         logRepository.append(LogSeverity.ERROR, TAG, msg)
         activityRepository.record(ActivityType.DAEMON_ERROR, msg)
@@ -489,6 +491,8 @@ class ZeroClawDaemonService : Service() {
             securityOtpGatedDomainCategories = splitCsv(settings.securityOtpGatedDomainCategories),
             securityEstopEnabled = settings.securityEstopEnabled,
             securityEstopRequireOtpToResume = settings.securityEstopRequireOtpToResume,
+            securityEstopStateFile = "${filesDir.absolutePath}/estop-state.json",
+            securityAuditLogPath = "${filesDir.absolutePath}/audit.log",
             memoryQdrantUrl = settings.memoryQdrantUrl,
             memoryQdrantCollection = settings.memoryQdrantCollection,
             memoryQdrantApiKey = settings.memoryQdrantApiKey,
@@ -592,7 +596,8 @@ class ZeroClawDaemonService : Service() {
      */
     private fun sha256Hex(input: String): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
-        return digest.digest(input.toByteArray(Charsets.UTF_8))
+        return digest
+            .digest(input.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
     }
 
@@ -612,22 +617,25 @@ class ZeroClawDaemonService : Service() {
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun mergeUpstreamPairedTokens(settings: AppSettings): AppSettings {
-        val rawTokens = try {
-            val configFile = java.io.File(filesDir, "config.toml")
-            if (!configFile.exists()) return settings
+        val rawTokens =
+            try {
+                val configFile = java.io.File(filesDir, "config.toml")
+                if (!configFile.exists()) return settings
 
-            val tomlText = configFile.readText()
-            val tokenRegex = Regex("""paired_tokens\s*=\s*\[([^\]]*)]""")
-            val matchResult = tokenRegex.find(tomlText)
-            matchResult?.groupValues?.get(1)
-                ?.split(",")
-                ?.map { it.trim().removeSurrounding("\"") }
-                ?.filter { it.isNotBlank() }
-                .orEmpty()
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to merge upstream paired tokens: ${e.message}")
-            return settings
-        }
+                val tomlText = configFile.readText()
+                val tokenRegex = Regex("""paired_tokens\s*=\s*\[([^\]]*)]""")
+                val matchResult = tokenRegex.find(tomlText)
+                matchResult
+                    ?.groupValues
+                    ?.get(1)
+                    ?.split(",")
+                    ?.map { it.trim().removeSurrounding("\"") }
+                    ?.filter { it.isNotBlank() }
+                    .orEmpty()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to merge upstream paired tokens: ${e.message}")
+                return settings
+            }
 
         if (rawTokens.isEmpty()) return settings
 
