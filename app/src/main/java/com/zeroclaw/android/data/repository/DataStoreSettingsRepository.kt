@@ -569,7 +569,7 @@ class DataStoreSettingsRepository(
 
     override suspend fun setProxyServiceSelectors(selectors: String) = edit { it[KEY_PROXY_SERVICE_SELECTORS] = selectors }
 
-    override suspend fun setReliabilityBackoffMs(ms: Int) = edit { it[KEY_RELIABILITY_BACKOFF_MS] = ms }
+    override suspend fun setReliabilityBackoffMs(ms: Long) = edit { it[KEY_RELIABILITY_BACKOFF_MS] = ms }
 
     override suspend fun setReliabilityApiKeysJson(json: String) = editSecure(SEC_RELIABILITY_API_KEYS_JSON, json)
 
@@ -741,7 +741,7 @@ class DataStoreSettingsRepository(
         val KEY_PROXY_NO_PROXY = stringPreferencesKey("proxy_no_proxy")
         val KEY_PROXY_SCOPE = stringPreferencesKey("proxy_scope")
         val KEY_PROXY_SERVICE_SELECTORS = stringPreferencesKey("proxy_service_selectors")
-        val KEY_RELIABILITY_BACKOFF_MS = intPreferencesKey("reliability_backoff_ms")
+        val KEY_RELIABILITY_BACKOFF_MS = longPreferencesKey("reliability_backoff_ms")
         val KEY_PREFS_MIGRATION_VERSION = intPreferencesKey("prefs_migration_version")
         val KEY_MIGRATION_NOTICE_PENDING = booleanPreferencesKey("migration_notice_pending")
     }

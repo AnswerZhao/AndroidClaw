@@ -232,7 +232,7 @@ internal class TestSettingsRepository : SettingsRepository {
 
     override suspend fun setProxyServiceSelectors(selectors: String) = _settings.update { it.copy(proxyServiceSelectors = selectors) }
 
-    override suspend fun setReliabilityBackoffMs(ms: Int) = _settings.update { it.copy(reliabilityBackoffMs = ms) }
+    override suspend fun setReliabilityBackoffMs(ms: Long) = _settings.update { it.copy(reliabilityBackoffMs = ms) }
 
     override suspend fun setReliabilityApiKeysJson(json: String) = _settings.update { it.copy(reliabilityApiKeysJson = json) }
 

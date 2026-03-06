@@ -320,7 +320,7 @@ private fun ReliabilitySection(
     OutlinedTextField(
         value = settings.reliabilityBackoffMs.toString(),
         onValueChange = { value ->
-            value.toIntOrNull()?.let { viewModel.updateReliabilityBackoffMs(it) }
+            value.toLongOrNull()?.let { viewModel.updateReliabilityBackoffMs(it) }
         },
         label = { Text("Provider backoff (ms)") },
         supportingText = { Text("Wait time before retrying a failed provider") },

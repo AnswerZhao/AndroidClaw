@@ -639,8 +639,8 @@ class ConfigTomlBuilderTest {
         }
 
         @Test
-        @DisplayName("autonomy section emits non_cli_excluded_tools")
-        fun `autonomy section emits non cli excluded tools`() {
+        @DisplayName("autonomy section omits non_cli_excluded_tools (upstream default)")
+        fun `autonomy section omits non cli excluded tools`() {
             val toml =
                 ConfigTomlBuilder.build(
                     GlobalTomlConfig(
@@ -650,7 +650,7 @@ class ConfigTomlBuilderTest {
                         baseUrl = "",
                     ),
                 )
-            assertTrue(toml.contains("""non_cli_excluded_tools = ["browser", "screenshot"]"""))
+            assertFalse(toml.contains("non_cli_excluded_tools"))
         }
     }
 

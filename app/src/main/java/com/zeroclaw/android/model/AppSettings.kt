@@ -253,7 +253,7 @@ data class AppSettings(
     val proxyNoProxy: String = "",
     val proxyScope: String = DEFAULT_PROXY_SCOPE,
     val proxyServiceSelectors: String = "",
-    val reliabilityBackoffMs: Int = DEFAULT_RELIABILITY_BACKOFF_MS,
+    val reliabilityBackoffMs: Long = DEFAULT_RELIABILITY_BACKOFF_MS,
     val reliabilityApiKeysJson: String = "{}",
     val lockEnabled: Boolean = false,
     val lockTimeoutMinutes: Int = DEFAULT_LOCK_TIMEOUT,
@@ -435,7 +435,7 @@ data class AppSettings(
         const val DEFAULT_PROXY_SCOPE = "zeroclaw"
 
         /** Default reliability backoff duration in milliseconds. */
-        const val DEFAULT_RELIABILITY_BACKOFF_MS = 500
+        const val DEFAULT_RELIABILITY_BACKOFF_MS = 500L
     }
 }
 

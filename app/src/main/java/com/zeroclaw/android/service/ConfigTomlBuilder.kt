@@ -298,7 +298,7 @@ data class GlobalTomlConfig(
     val skillsOpenSkillsEnabled: Boolean = false,
     val skillsOpenSkillsDir: String = "",
     val skillsPromptInjectionMode: String = "full",
-    val reliabilityBackoffMs: Int = DEFAULT_RELIABILITY_BACKOFF_MS,
+    val reliabilityBackoffMs: Long = DEFAULT_RELIABILITY_BACKOFF_MS,
     val reliabilityApiKeysJson: String = "{}",
 ) {
     /** Constants for [GlobalTomlConfig]. */
@@ -414,13 +414,16 @@ data class GlobalTomlConfig(
             )
 
         /** Default reliability backoff in milliseconds. */
-        const val DEFAULT_RELIABILITY_BACKOFF_MS = 500
+        const val DEFAULT_RELIABILITY_BACKOFF_MS = 500L
 
         /** Default HTTP request max response size in bytes (1 MB). */
         const val DEFAULT_HTTP_REQUEST_MAX_RESPONSE_SIZE = 1_000_000
 
         /** Default HTTP request timeout in seconds. */
         const val DEFAULT_HTTP_REQUEST_TIMEOUT_SECS = 30
+
+        /** Maximum value for a Rust `u8` field (used for `warn_at_percent` clamping). */
+        const val MAX_U8 = 255
 
         /** Valid upstream autonomy levels (from AutonomyLevel enum). */
         val VALID_AUTONOMY_LEVELS = setOf("readonly", "supervised", "full")
@@ -548,7 +551,7 @@ object ConfigTomlBuilder {
                 appendLine("enabled = true")
                 appendLine("daily_limit_usd = ${config.dailyLimitUsd}")
                 appendLine("monthly_limit_usd = ${config.monthlyLimitUsd}")
-                appendLine("warn_at_percent = ${config.costWarnAtPercent.coerceIn(0, 255)}")
+                appendLine("warn_at_percent = ${config.costWarnAtPercent.coerceIn(0, GlobalTomlConfig.MAX_U8)}")
             }
 
             appendReliabilitySection(config)
@@ -604,7 +607,7 @@ object ConfigTomlBuilder {
             appendLine("fallback_providers = [$list]")
         }
         if (hasCustomBackoff) {
-            appendLine("provider_backoff_ms = ${config.reliabilityBackoffMs.coerceAtLeast(0)}")
+            appendLine("provider_backoff_ms = ${config.reliabilityBackoffMs.coerceAtLeast(0L)}")
         }
         appendReliabilityApiKeys(config.reliabilityApiKeysJson)
     }
@@ -706,17 +709,19 @@ object ConfigTomlBuilder {
         appendLine("[autonomy]")
         appendLine("level = ${tomlString(level)}")
         appendLine("workspace_only = ${config.workspaceOnly}")
-        val cmdList = if (config.allowedCommands.isEmpty()) {
-            "[]"
-        } else {
-            "[${config.allowedCommands.joinToString(", ") { tomlString(it) }}]"
-        }
+        val cmdList =
+            if (config.allowedCommands.isEmpty()) {
+                "[]"
+            } else {
+                "[${config.allowedCommands.joinToString(", ") { tomlString(it) }}]"
+            }
         appendLine("allowed_commands = $cmdList")
-        val pathList = if (config.forbiddenPaths.isEmpty()) {
-            "[]"
-        } else {
-            "[${config.forbiddenPaths.joinToString(", ") { tomlString(it) }}]"
-        }
+        val pathList =
+            if (config.forbiddenPaths.isEmpty()) {
+                "[]"
+            } else {
+                "[${config.forbiddenPaths.joinToString(", ") { tomlString(it) }}]"
+            }
         appendLine("forbidden_paths = $pathList")
         appendLine("max_actions_per_hour = ${config.maxActionsPerHour.coerceAtLeast(0)}")
         appendLine("max_cost_per_day_cents = ${config.maxCostPerDayCents.coerceAtLeast(0)}")

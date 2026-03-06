@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/Natfii/ZeroClaw-Android/actions/workflows/ci.yml/badge.svg)](https://github.com/Natfii/ZeroClaw-Android/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![API 26+](https://img.shields.io/badge/API-26%2B-brightgreen.svg)](https://developer.android.com/about/versions/oreo)
+[![API 28+](https://img.shields.io/badge/API-28%2B-brightgreen.svg)](https://developer.android.com/about/versions/pie)
 [![Latest Release](https://img.shields.io/github/v/release/Natfii/ZeroClaw-Android?include_prereleases&label=release)](https://github.com/Natfii/ZeroClaw-Android/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Rust](https://img.shields.io/badge/Rust-stable-DEA584.svg?logo=rust&logoColor=white)](https://www.rust-lang.org)
@@ -308,7 +308,7 @@ The foreground service is idle most of the time, waking only when an agent needs
 Some OEMs (Xiaomi, Samsung, Huawei, OnePlus) aggressively kill background services. The app detects these manufacturers and shows a one-time banner linking to [dontkillmyapp.com](https://dontkillmyapp.com) with device-specific instructions.
 
 **What Android versions are supported?**
-Android 8.0 (API 26) and above. Material You dynamic theming requires Android 12+, but the app works with a static color scheme on older versions.
+Android 9 (API 28) and above. Material You dynamic theming requires Android 12+, but the app works with a static color scheme on older versions.
 
 **Can I use this without an API key?**
 Yes, if you connect to a local Ollama instance or use the Synthetic provider for testing. Most cloud providers require an API key.

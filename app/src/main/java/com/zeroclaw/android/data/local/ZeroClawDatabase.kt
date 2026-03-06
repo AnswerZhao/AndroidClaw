@@ -35,10 +35,9 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
  * Use [build] to create an instance with seed data callback.
  *
  * Migration strategy: explicit [Migration] objects in [MIGRATIONS] are
- * preferred for schema changes. [fallbackToDestructiveMigration] is
- * configured as a safety net during development to prevent crashes
- * when a migration is not yet written. Before production release,
- * all schema changes must have corresponding migrations.
+ * required for all schema changes. If a migration is missing, Room will
+ * throw [IllegalStateException] at startup rather than silently dropping
+ * data.
  */
 @Database(
     entities = [
@@ -326,8 +325,9 @@ abstract class ZeroClawDatabase : RoomDatabase() {
         /**
          * Builds a [ZeroClawDatabase] instance with seed data inserted on first creation.
          *
-         * Applies all registered [MIGRATIONS] first, then falls back to destructive
-         * migration as a development safety net for unhandled version jumps.
+         * Applies all registered [MIGRATIONS]. If a migration path is missing,
+         * Room throws [IllegalStateException] at startup rather than silently
+         * dropping user data.
          *
          * @param context Application context for database file location.
          * @param scope Coroutine scope for seed data insertion.
@@ -349,7 +349,6 @@ abstract class ZeroClawDatabase : RoomDatabase() {
                         DATABASE_NAME,
                     ).openHelperFactory(factory)
                     .apply { MIGRATIONS.forEach { addMigrations(it) } }
-                    .fallbackToDestructiveMigration()
                     .addCallback(
                         object : Callback() {
                             override fun onCreate(db: SupportSQLiteDatabase) {

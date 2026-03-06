@@ -448,7 +448,7 @@ private class InMemorySettingsRepository : SettingsRepository {
 
     override suspend fun setProxyServiceSelectors(selectors: String) { /* no-op */ }
 
-    override suspend fun setReliabilityBackoffMs(ms: Int) { /* no-op */ }
+    override suspend fun setReliabilityBackoffMs(ms: Long) { /* no-op */ }
 
     override suspend fun setReliabilityApiKeysJson(json: String) { /* no-op */ }
 

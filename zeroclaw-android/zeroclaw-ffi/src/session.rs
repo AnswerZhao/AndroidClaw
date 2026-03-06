@@ -1037,29 +1037,53 @@ impl SessionStateGuard {
     }
 
     /// Returns mutable references to the held history and tools.
-    fn state_mut(&mut self) -> (&mut Vec<ChatMessage>, &[Box<dyn Tool>]) {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FfiError::StateCorrupted`] if called after [`take`](Self::take)
+    /// or [`defuse`](Self::defuse) already consumed the held state.
+    #[allow(clippy::type_complexity)]
+    fn state_mut(&mut self) -> Result<(&mut Vec<ChatMessage>, &[Box<dyn Tool>]), FfiError> {
         debug_assert!(
             self.history.is_some() && self.tools.is_some(),
             "SessionStateGuard::state_mut called after take/defuse"
         );
-        (
-            self.history.as_mut().expect("guard already defused"),
-            self.tools.as_deref().expect("guard already defused"),
-        )
+        let history = self
+            .history
+            .as_mut()
+            .ok_or_else(|| FfiError::StateCorrupted {
+                detail: "SessionStateGuard::state_mut called after take/defuse (history)".into(),
+            })?;
+        let tools = self
+            .tools
+            .as_deref()
+            .ok_or_else(|| FfiError::StateCorrupted {
+                detail: "SessionStateGuard::state_mut called after take/defuse (tools)".into(),
+            })?;
+        Ok((history, tools))
     }
 
     /// Consumes the held state, returning ownership to the caller.
     ///
     /// After this call the guard's [`Drop`] is a no-op.
-    fn take(mut self) -> (Vec<ChatMessage>, Vec<Box<dyn Tool>>) {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FfiError::StateCorrupted`] if called after a previous
+    /// [`take`](Self::take) or [`defuse`](Self::defuse) already consumed
+    /// the held state.
+    #[allow(clippy::type_complexity)]
+    fn take(mut self) -> Result<(Vec<ChatMessage>, Vec<Box<dyn Tool>>), FfiError> {
         debug_assert!(
             self.history.is_some() && self.tools.is_some(),
             "SessionStateGuard::take called after take/defuse"
         );
-        (
-            self.history.take().expect("guard already defused"),
-            self.tools.take().expect("guard already defused"),
-        )
+        match (self.history.take(), self.tools.take()) {
+            (Some(history), Some(tools)) => Ok((history, tools)),
+            _ => Err(FfiError::StateCorrupted {
+                detail: "SessionStateGuard::take called after take/defuse".into(),
+            }),
+        }
     }
 }
 
@@ -1450,7 +1474,7 @@ pub(crate) fn session_send_inner(
         )
     };
 
-    let (history, tools) = state_guard.state_mut();
+    let (history, tools) = state_guard.state_mut()?;
     let history_len_before = history.len();
     let handle = crate::runtime::get_or_create_runtime()?;
 
@@ -1525,7 +1549,7 @@ pub(crate) fn session_send_inner(
     // Consume the guard (disarms Drop) and put state back explicitly.
     // If we reach this point, no panic occurred, so we handle all
     // three outcomes and restore state ourselves.
-    let (mut history, tools) = state_guard.take();
+    let (mut history, tools) = state_guard.take()?;
 
     match result {
         Ok(full_response) => {
@@ -1859,8 +1883,18 @@ async fn run_agent_loop(
             // Upstream's Provider::chat() returns tool_calls=[] for
             // prompt-guided mode, so we must do the parsing ourselves.
             if !use_native_tools {
-                let (text_without_calls, xml_calls) = parse_xml_tool_calls(&clean_text);
+                let (text_without_calls, mut xml_calls) = parse_xml_tool_calls(&clean_text);
                 if !xml_calls.is_empty() {
+                    // Filter out tool names not in the registry to prevent
+                    // prompt-injection from invoking arbitrary tool names.
+                    let before = xml_calls.len();
+                    xml_calls.retain(|c| tools.iter().any(|t| t.name() == c.name));
+                    if xml_calls.len() < before {
+                        tracing::warn!(
+                            dropped = before - xml_calls.len(),
+                            "agent_loop: filtered unrecognised XML tool calls"
+                        );
+                    }
                     tracing::info!(
                         count = xml_calls.len(),
                         "agent_loop: parsed prompt-guided <tool_call> tags"
@@ -3424,7 +3458,7 @@ mod tests {
         let history = vec![ChatMessage::user("hello")];
         let guard = SessionStateGuard::new(history, vec![]);
 
-        let (h, t) = guard.take();
+        let (h, t) = guard.take().unwrap();
         assert_eq!(h.len(), 1);
         assert!(t.is_empty());
         // Drop runs here but is a no-op (defused).
@@ -3435,11 +3469,11 @@ mod tests {
         let history = vec![ChatMessage::user("one")];
         let mut guard = SessionStateGuard::new(history, vec![]);
 
-        let (h, _t) = guard.state_mut();
+        let (h, _t) = guard.state_mut().unwrap();
         h.push(ChatMessage::assistant("two"));
         assert_eq!(h.len(), 2);
 
-        let (taken_h, _) = guard.take();
+        let (taken_h, _) = guard.take().unwrap();
         assert_eq!(taken_h.len(), 2);
         assert_eq!(taken_h[1].content, "two");
     }

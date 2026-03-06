@@ -11,11 +11,9 @@ import android.net.ConnectivityManager
 import com.zeroclaw.android.model.DiscoveredServer
 import com.zeroclaw.android.model.LocalServerType
 import com.zeroclaw.android.model.ScanState
-import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.net.URL
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -59,6 +57,9 @@ object NetworkScanner {
 
     /** HTTP read timeout for identification probes in milliseconds. */
     private const val HTTP_TIMEOUT_MS = 3000
+
+    /** Maximum HTTP response body size in bytes (1 MB). */
+    private const val MAX_RESPONSE_BYTES = 1_048_576
 
     /** Total number of hosts in a /24 subnet (excluding network and broadcast). */
     private const val SUBNET_HOST_COUNT = 254
@@ -252,7 +253,7 @@ object NetworkScanner {
         port: Int,
     ): DiscoveredServer? =
         try {
-            val json = httpGet("http://$ip:$port/api/tags")
+            val json = rawHttpGet(ip, port, "/api/tags")
             val root = JSONObject(json)
             val modelsArray = root.optJSONArray("models") ?: return null
             val models =
@@ -280,7 +281,7 @@ object NetworkScanner {
         port: Int,
     ): DiscoveredServer? =
         try {
-            val json = httpGet("http://$ip:$port/v1/models")
+            val json = rawHttpGet(ip, port, "/v1/models")
             val root = JSONObject(json)
             val dataArray = root.optJSONArray("data") ?: return null
             val models =
@@ -296,34 +297,148 @@ object NetworkScanner {
         }
 
     /**
-     * Performs a simple HTTP GET and returns the response body.
+     * Reads up to [maxBytes] from [input], throwing [java.io.IOException]
+     * if the stream contains more data than allowed.
      *
-     * @param url Full URL to fetch.
-     * @return Response body as a string.
-     * @throws java.io.IOException on network or HTTP errors.
+     * Uses a manual read loop instead of [java.io.InputStream.readNBytes]
+     * which requires API 33+. This method works on API 1+.
+     *
+     * @param input Stream to read from.
+     * @param maxBytes Maximum allowed bytes.
+     * @return The read bytes.
+     * @throws java.io.IOException if the stream exceeds [maxBytes].
      */
-    private fun httpGet(url: String): String {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "GET"
-            connection.connectTimeout = HTTP_TIMEOUT_MS
-            connection.readTimeout = HTTP_TIMEOUT_MS
-            connection.setRequestProperty("Accept", "application/json")
+    @JvmStatic
+    @Suppress("LoopWithTooManyJumpStatements")
+    internal fun readCapped(
+        input: java.io.InputStream,
+        maxBytes: Int,
+    ): ByteArray {
+        val buffer = java.io.ByteArrayOutputStream()
+        val chunk = ByteArray(READ_CHUNK_SIZE)
+        var totalRead = 0
+        while (true) {
+            val remaining = maxBytes + 1 - totalRead
+            if (remaining <= 0) break
+            val n = input.read(chunk, 0, minOf(chunk.size, remaining))
+            if (n == -1) break
+            buffer.write(chunk, 0, n)
+            totalRead += n
+        }
+        if (totalRead > maxBytes) {
+            throw java.io.IOException("Response exceeds $maxBytes bytes")
+        }
+        return buffer.toByteArray()
+    }
 
-            if (connection.responseCode != HTTP_OK) {
-                throw java.io.IOException("HTTP ${connection.responseCode}")
+    /**
+     * Performs an HTTP GET using a raw TCP socket, bypassing Android's
+     * network security cleartext traffic policy.
+     *
+     * Sends an HTTP/1.1 request with `Connection: close` and reads the
+     * full response. Supports both `Content-Length` and read-until-close
+     * response modes. Chunked transfer encoding is decoded if present.
+     *
+     * @param ip Target IP address.
+     * @param port Target port number.
+     * @param path HTTP request path (e.g. "/api/tags").
+     * @return Response body as a string.
+     * @throws java.io.IOException on network errors, non-200 status, or
+     *     responses exceeding [MAX_RESPONSE_BYTES].
+     */
+    @JvmStatic
+    internal fun rawHttpGet(
+        ip: String,
+        port: Int,
+        path: String,
+    ): String {
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(ip, port), CONNECT_TIMEOUT_MS)
+            socket.soTimeout = HTTP_TIMEOUT_MS
+
+            val writer = socket.getOutputStream().bufferedWriter(Charsets.US_ASCII)
+            writer.write("GET $path HTTP/1.1\r\n")
+            writer.write("Host: $ip:$port\r\n")
+            writer.write("Accept: application/json\r\n")
+            writer.write("Connection: close\r\n")
+            writer.write("\r\n")
+            writer.flush()
+
+            val raw = readCapped(socket.getInputStream(), MAX_RESPONSE_BYTES)
+            val response = String(raw, Charsets.UTF_8)
+
+            val headerEnd = response.indexOf("\r\n\r\n")
+            if (headerEnd == -1) {
+                throw java.io.IOException("Malformed HTTP response: no header terminator")
             }
-            return connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
+
+            val statusLine = response.substringBefore("\r\n")
+            val statusCode =
+                statusLine
+                    .split(" ", limit = STATUS_LINE_PARTS)
+                    .getOrNull(1)
+            if (statusCode != "200") {
+                val safeStatus =
+                    statusLine
+                        .take(MAX_STATUS_LINE_LENGTH)
+                        .filter { it.isLetterOrDigit() || it in " /.:-" }
+                throw java.io.IOException("HTTP error: $safeStatus")
+            }
+
+            val headers = response.substring(0, headerEnd).lowercase()
+            val body = response.substring(headerEnd + HEADER_TERMINATOR_LENGTH)
+
+            return if (headers.contains("transfer-encoding: chunked")) {
+                decodeChunked(body)
+            } else {
+                body
+            }
         }
     }
 
+    /**
+     * Decodes an HTTP chunked transfer-encoded body.
+     *
+     * Parses `<hex-size>\r\n<data>\r\n` chunks per RFC 7230 section 4.1
+     * until the terminating `0\r\n` chunk.
+     *
+     * @param body The raw chunked body (after headers have been stripped).
+     * @return Decoded body content.
+     */
+    @JvmStatic
+    @Suppress("LoopWithTooManyJumpStatements")
+    internal fun decodeChunked(body: String): String {
+        val result = StringBuilder()
+        var pos = 0
+        while (pos < body.length) {
+            val sizeEnd = body.indexOf("\r\n", pos)
+            if (sizeEnd == -1) break
+            val chunkSize =
+                body.substring(pos, sizeEnd).trim().toIntOrNull(radix = 16) ?: break
+            if (chunkSize == 0) break
+            val dataStart = sizeEnd + 2
+            val dataEnd = dataStart + chunkSize
+            if (dataEnd > body.length) break
+            result.append(body, dataStart, dataEnd)
+            pos = dataEnd + 2
+        }
+        return result.toString()
+    }
+
+    /** Length of the HTTP header terminator sequence (`\r\n\r\n`). */
+    private const val HEADER_TERMINATOR_LENGTH = 4
+
+    /** Maximum characters kept from a server status line for error messages. */
+    private const val MAX_STATUS_LINE_LENGTH = 64
+
+    /** Expected minimum number of space-delimited parts in an HTTP status line. */
+    private const val STATUS_LINE_PARTS = 3
+
+    /** Read buffer size for [readCapped]. */
+    private const val READ_CHUNK_SIZE = 8192
+
     /** Progress update emission interval during scanning. */
     private const val PROGRESS_UPDATE_INTERVAL_MS = 250L
-
-    /** HTTP 200 status code. */
-    private const val HTTP_OK = 200
 
     /** Number of octets in an IPv4 address. */
     private const val OCTET_COUNT = 4

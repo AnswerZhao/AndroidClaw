@@ -613,7 +613,7 @@ class SettingsViewModel(
     }
 
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setReliabilityBackoffMs */
-    fun updateReliabilityBackoffMs(ms: Int) {
+    fun updateReliabilityBackoffMs(ms: Long) {
         updateDaemonSetting { setReliabilityBackoffMs(ms) }
     }
 

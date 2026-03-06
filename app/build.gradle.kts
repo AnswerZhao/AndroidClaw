@@ -38,7 +38,7 @@ android {
 
     defaultConfig {
         applicationId = "com.zeroclaw.android"
-        minSdk = 26
+        minSdk = 28
         targetSdk = 35
         versionCode = 39
         versionName = "0.0.37"

@@ -839,7 +839,7 @@ interface SettingsRepository {
      *
      * @param ms Backoff duration in milliseconds.
      */
-    suspend fun setReliabilityBackoffMs(ms: Int)
+    suspend fun setReliabilityBackoffMs(ms: Long)
 
     /**
      * Updates the reliability API keys JSON.
