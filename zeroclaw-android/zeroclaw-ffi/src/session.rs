@@ -2510,7 +2510,7 @@ const THINKING_TAG_NAMES: &[&str] = &[
 ///
 /// Matching is case-insensitive.  Nested or overlapping tags of the same
 /// kind are handled greedily (the outermost pair wins).
-fn extract_thinking_from_text(text: &str) -> (String, String) {
+pub(crate) fn extract_thinking_from_text(text: &str) -> (String, String) {
     let mut clean = text.to_string();
     let mut thinking = String::new();
 

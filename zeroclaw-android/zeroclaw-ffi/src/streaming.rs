@@ -22,6 +22,7 @@ use zeroclaw::providers::traits::StreamOptions;
 
 use crate::error::FfiError;
 use crate::runtime::with_daemon_config;
+use crate::session::extract_thinking_from_text;
 
 /// Global cancellation flag for the current streaming operation.
 ///
@@ -122,7 +123,15 @@ pub(crate) fn send_message_streaming_inner(
             }
         }
 
-        listener.on_complete(full_response);
+        // Extract thinking/reasoning blocks before delivering the final response.
+        // Models like Qwen 3.5 and DeepSeek-R1 leak <think>...</think> tags even
+        // with enable_thinking=false.  Route extracted content to the thinking
+        // card and deliver only clean text as the completed response.
+        let (clean_text, thinking) = extract_thinking_from_text(&full_response);
+        if !thinking.is_empty() {
+            listener.on_thinking_chunk(thinking);
+        }
+        listener.on_complete(clean_text);
         Ok(())
     })
 }
@@ -202,6 +211,47 @@ mod tests {
         assert_eq!(chunks[0], "think:hmm");
         assert_eq!(chunks[1], "resp:hello");
         assert_eq!(chunks[2], "done:hello world");
+    }
+
+    #[test]
+    fn test_extract_thinking_applied_to_complete() {
+        // Simulate what would happen when streaming delivers a response
+        // containing thinking tags — the extraction should separate them.
+        let raw = "<think>internal reasoning</think>The answer is 42.";
+        let (clean, thinking) = crate::session::extract_thinking_from_text(raw);
+        assert_eq!(clean, "The answer is 42.");
+        assert_eq!(thinking, "internal reasoning");
+
+        // Verify listener routing: thinking goes to on_thinking_chunk,
+        // clean text goes to on_complete.
+        let listener = MockListener::new();
+        if !thinking.is_empty() {
+            listener.on_thinking_chunk(thinking);
+        }
+        listener.on_complete(clean);
+
+        let chunks = listener.chunks.lock().unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0], "think:internal reasoning");
+        assert_eq!(chunks[1], "done:The answer is 42.");
+    }
+
+    #[test]
+    fn test_no_thinking_tags_passes_through() {
+        let raw = "Just a normal response.";
+        let (clean, thinking) = crate::session::extract_thinking_from_text(raw);
+        assert_eq!(clean, "Just a normal response.");
+        assert!(thinking.is_empty());
+
+        let listener = MockListener::new();
+        if !thinking.is_empty() {
+            listener.on_thinking_chunk(thinking);
+        }
+        listener.on_complete(clean);
+
+        let chunks = listener.chunks.lock().unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], "done:Just a normal response.");
     }
 
     #[test]
