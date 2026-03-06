@@ -52,27 +52,29 @@ pub use error::FfiError;
 /// silently ignored by the subscriber registry.
 #[uniffi::export]
 pub fn init_logging() {
-    #[cfg(target_os = "android")]
-    {
-        use tracing_subscriber::EnvFilter;
-        use tracing_subscriber::prelude::*;
+    let _ = std::panic::catch_unwind(|| {
+        #[cfg(target_os = "android")]
+        {
+            use tracing_subscriber::EnvFilter;
+            use tracing_subscriber::prelude::*;
 
-        // Noisy HTTP/TLS crates → WARN only; everything else → DEBUG.
-        let filter = if cfg!(debug_assertions) {
-            EnvFilter::new(
-                "debug,hyper=warn,hyper_util=warn,reqwest=warn,rustls=warn,h2=warn,tower=warn",
-            )
-        } else {
-            EnvFilter::new("warn")
-        };
+            // Noisy HTTP/TLS crates → WARN only; everything else → DEBUG.
+            let filter = if cfg!(debug_assertions) {
+                EnvFilter::new(
+                    "debug,hyper=warn,hyper_util=warn,reqwest=warn,rustls=warn,h2=warn,tower=warn",
+                )
+            } else {
+                EnvFilter::new("warn")
+            };
 
-        if let Ok(layer) = tracing_android::layer("zeroclaw_ffi") {
-            let _ = tracing_subscriber::registry()
-                .with(layer.with_filter(filter))
-                .try_init();
-            tracing::info!("Rust tracing initialised");
+            if let Ok(layer) = tracing_android::layer("zeroclaw_ffi") {
+                let _ = tracing_subscriber::registry()
+                    .with(layer.with_filter(filter))
+                    .try_init();
+                tracing::info!("Rust tracing initialised");
+            }
         }
-    }
+    });
 }
 
 /// Extracts a human-readable message from a caught panic payload.

@@ -514,7 +514,7 @@ pub(crate) fn get_status_inner() -> Result<String, FfiError> {
 pub(crate) fn send_message_inner(message: String) -> Result<String, FfiError> {
     const MAX_MESSAGE_BYTES: usize = 1_048_576;
     if message.len() > MAX_MESSAGE_BYTES {
-        return Err(FfiError::ConfigError {
+        return Err(FfiError::InvalidArgument {
             detail: format!(
                 "message too large ({} bytes, max {MAX_MESSAGE_BYTES})",
                 message.len()

@@ -351,7 +351,7 @@ class DaemonServiceBridge(
             } catch (
                 @Suppress("SwallowedException") e: IllegalStateException,
             ) {
-                throw FfiException.StateException(
+                throw FfiException.SpawnException(
                     e.message ?: "malformed status JSON",
                 )
             }

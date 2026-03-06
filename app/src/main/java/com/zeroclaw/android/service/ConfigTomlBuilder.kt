@@ -548,7 +548,7 @@ object ConfigTomlBuilder {
                 appendLine("enabled = true")
                 appendLine("daily_limit_usd = ${config.dailyLimitUsd}")
                 appendLine("monthly_limit_usd = ${config.monthlyLimitUsd}")
-                appendLine("warn_at_percent = ${config.costWarnAtPercent.coerceAtLeast(0)}")
+                appendLine("warn_at_percent = ${config.costWarnAtPercent.coerceIn(0, 255)}")
             }
 
             appendReliabilitySection(config)
@@ -706,21 +706,22 @@ object ConfigTomlBuilder {
         appendLine("[autonomy]")
         appendLine("level = ${tomlString(level)}")
         appendLine("workspace_only = ${config.workspaceOnly}")
-        if (config.allowedCommands.isNotEmpty()) {
-            val list = config.allowedCommands.joinToString(", ") { tomlString(it) }
-            appendLine("allowed_commands = [$list]")
+        val cmdList = if (config.allowedCommands.isEmpty()) {
+            "[]"
+        } else {
+            "[${config.allowedCommands.joinToString(", ") { tomlString(it) }}]"
         }
-        if (config.forbiddenPaths.isNotEmpty()) {
-            val list = config.forbiddenPaths.joinToString(", ") { tomlString(it) }
-            appendLine("forbidden_paths = [$list]")
+        appendLine("allowed_commands = $cmdList")
+        val pathList = if (config.forbiddenPaths.isEmpty()) {
+            "[]"
+        } else {
+            "[${config.forbiddenPaths.joinToString(", ") { tomlString(it) }}]"
         }
+        appendLine("forbidden_paths = $pathList")
         appendLine("max_actions_per_hour = ${config.maxActionsPerHour.coerceAtLeast(0)}")
         appendLine("max_cost_per_day_cents = ${config.maxCostPerDayCents.coerceAtLeast(0)}")
         appendLine("require_approval_for_medium_risk = ${config.requireApprovalMediumRisk}")
         appendLine("block_high_risk_commands = ${config.blockHighRiskCommands}")
-        val excludedTools = listOf("browser", "screenshot")
-        val toolsList = excludedTools.joinToString(", ") { tomlString(it) }
-        appendLine("non_cli_excluded_tools = [$toolsList]")
     }
 
     /**

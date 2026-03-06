@@ -310,9 +310,9 @@ fn is_non_global_v4(v4: Ipv4Addr) -> bool {
         // Documentation (TEST-NET-1) — 192.0.2.0/24
         || (a == 192 && b == 0 && (c == 0 || c == 2))
         // Documentation (TEST-NET-2) — 198.51.100.0/24
-        || (a == 198 && b == 51)
+        || (a == 198 && b == 51 && c == 100)
         // Documentation (TEST-NET-3) — 203.0.113.0/24
-        || (a == 203 && b == 0)
+        || (a == 203 && b == 0 && c == 113)
         // Benchmarking — 198.18.0.0/15
         || (a == 198 && (18..=19).contains(&b))
 }

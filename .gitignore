@@ -54,4 +54,4 @@ agents.md
 
 # Git worktrees
 .worktrees/
-
+.tmp/

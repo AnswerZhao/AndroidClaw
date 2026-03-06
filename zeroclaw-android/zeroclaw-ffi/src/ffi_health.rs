@@ -67,76 +67,73 @@ fn state() -> &'static Mutex<HealthState> {
     })
 }
 
+/// Acquires the health mutex, recovering from poison if a prior thread
+/// panicked while holding it.  Same pattern as [`crate::runtime::lock_daemon`].
+fn lock_health() -> std::sync::MutexGuard<'static, HealthState> {
+    state().lock().unwrap_or_else(|e| {
+        tracing::warn!("Health mutex was poisoned; recovering: {e}");
+        e.into_inner()
+    })
+}
+
 /// Marks the named component as healthy.
 pub fn mark_component_ok(name: &str) {
-    if let Ok(mut guard) = state().lock() {
-        let entry = guard
-            .components
-            .entry(name.to_string())
-            .or_insert_with(|| ComponentState {
-                status: "ok".into(),
-                last_error: None,
-                restart_count: 0,
-            });
-        entry.status = "ok".into();
-    }
+    let mut guard = lock_health();
+    let entry = guard
+        .components
+        .entry(name.to_string())
+        .or_insert_with(|| ComponentState {
+            status: "ok".into(),
+            last_error: None,
+            restart_count: 0,
+        });
+    entry.status = "ok".into();
 }
 
 /// Marks the named component as in error state with a detail message.
 pub fn mark_component_error(name: &str, detail: impl ToString) {
-    if let Ok(mut guard) = state().lock() {
-        let entry = guard
-            .components
-            .entry(name.to_string())
-            .or_insert_with(|| ComponentState {
-                status: "error".into(),
-                last_error: None,
-                restart_count: 0,
-            });
-        entry.status = "error".into();
-        entry.last_error = Some(detail.to_string());
-    }
+    let mut guard = lock_health();
+    let entry = guard
+        .components
+        .entry(name.to_string())
+        .or_insert_with(|| ComponentState {
+            status: "error".into(),
+            last_error: None,
+            restart_count: 0,
+        });
+    entry.status = "error".into();
+    entry.last_error = Some(detail.to_string());
 }
 
 /// Increments the restart counter for the named component.
 pub fn bump_component_restart(name: &str) {
-    if let Ok(mut guard) = state().lock()
-        && let Some(entry) = guard.components.get_mut(name)
-    {
+    let mut guard = lock_health();
+    if let Some(entry) = guard.components.get_mut(name) {
         entry.restart_count = entry.restart_count.saturating_add(1);
     }
 }
 
 /// Returns a point-in-time snapshot of all component health.
 pub fn snapshot() -> HealthSnapshot {
-    let guard = state().lock();
-    match guard {
-        Ok(g) => {
-            let components = g
-                .components
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        k.clone(),
-                        ComponentHealth {
-                            status: v.status.clone(),
-                            last_error: v.last_error.clone(),
-                            restart_count: v.restart_count,
-                        },
-                    )
-                })
-                .collect();
-            HealthSnapshot {
-                pid: std::process::id(),
-                uptime_seconds: g.start_time.elapsed().as_secs(),
-                components,
-            }
-        }
-        Err(_) => HealthSnapshot {
-            pid: std::process::id(),
-            uptime_seconds: 0,
-            components: HashMap::new(),
-        },
+    let g = lock_health();
+    let components = g
+        .components
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                ComponentHealth {
+                    status: v.status.clone(),
+                    last_error: v.last_error.clone(),
+                    restart_count: v.restart_count,
+                },
+            )
+        })
+        .collect();
+    HealthSnapshot {
+        pid: std::process::id(),
+        uptime_seconds: g.start_time.elapsed().as_secs(),
+        components,
     }
 }
 

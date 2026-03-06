@@ -45,6 +45,9 @@ use crate::url_helpers;
 /// Maximum user message size in bytes (1 MiB).
 const MAX_MESSAGE_BYTES: usize = 1_048_576;
 
+/// Default HTTP user-agent for web search, web fetch, and HTTP request tools.
+const DEFAULT_USER_AGENT: &str = "ZeroClaw/1.0 (Android)";
+
 /// Default maximum agentic tool-use iterations per user message.
 const DEFAULT_MAX_TOOL_ITERATIONS: usize = 10;
 
@@ -287,6 +290,7 @@ fn decode_ddg_redirect_url(raw_url: &str) -> String {
 fn strip_html_tags(content: &str) -> String {
     use std::sync::OnceLock;
     static TAG_RE: OnceLock<regex::Regex> = OnceLock::new();
+    // INFALLIBLE: compile-time-constant pattern, verified by test_strip_html_tags.
     let re = TAG_RE.get_or_init(|| regex::Regex::new(r"<[^>]+>").expect("valid tag regex"));
     re.replace_all(content, "").to_string()
 }
@@ -301,6 +305,7 @@ impl FfiWebSearchTool {
         static LINK_RE: OnceLock<regex::Regex> = OnceLock::new();
         static SNIPPET_RE: OnceLock<regex::Regex> = OnceLock::new();
 
+        // INFALLIBLE: compile-time-constant patterns, verified by test_parse_duckduckgo.
         let link_re = LINK_RE.get_or_init(|| {
             regex::Regex::new(
                 r#"<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)</a>"#,
@@ -855,6 +860,7 @@ impl Tool for FfiHttpRequestTool {
 /// silently dropped and a warning is logged.
 const MAX_SESSION_TOOLS: usize = 20;
 
+#[allow(clippy::too_many_lines)]
 fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> Vec<Box<dyn Tool>> {
     let config_arc = Arc::new(config.clone());
     let mut tools: Vec<Box<dyn Tool>> = vec![
@@ -868,15 +874,21 @@ fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> V
     ];
 
     if config.web_search.enabled {
-        let client = reqwest::Client::builder()
+        match reqwest::Client::builder()
             .timeout(Duration::from_secs(config.web_search.timeout_secs))
-            .user_agent(&config.web_search.user_agent)
+            .user_agent(DEFAULT_USER_AGENT)
             .build()
-            .unwrap_or_default();
-        tools.push(Box::new(FfiWebSearchTool {
-            max_results: config.web_search.max_results,
-            client,
-        }));
+        {
+            Ok(client) => {
+                tools.push(Box::new(FfiWebSearchTool {
+                    max_results: config.web_search.max_results,
+                    client,
+                }));
+            }
+            Err(e) => {
+                tracing::error!("Failed to build web_search HTTP client: {e}; tool disabled");
+            }
+        }
     }
 
     if config.web_fetch.enabled {
@@ -908,19 +920,25 @@ fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> V
             }
             attempt.follow()
         });
-        let client = reqwest::Client::builder()
+        match reqwest::Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .connect_timeout(Duration::from_secs(10))
             .redirect(redirect_policy)
-            .user_agent(&config.web_fetch.user_agent)
+            .user_agent(DEFAULT_USER_AGENT)
             .build()
-            .unwrap_or_default();
-        tools.push(Box::new(FfiWebFetchTool {
-            allowed_domains: fetch_allowed,
-            blocked_domains: fetch_blocked,
-            max_response_size: config.web_fetch.max_response_size,
-            client,
-        }));
+        {
+            Ok(client) => {
+                tools.push(Box::new(FfiWebFetchTool {
+                    allowed_domains: fetch_allowed,
+                    blocked_domains: fetch_blocked,
+                    max_response_size: config.web_fetch.max_response_size,
+                    client,
+                }));
+            }
+            Err(e) => {
+                tracing::error!("Failed to build web_fetch HTTP client: {e}; tool disabled");
+            }
+        }
     }
 
     if config.http_request.enabled {
@@ -929,19 +947,25 @@ fn build_tools_registry(config: &zeroclaw::Config, memory: Arc<dyn Memory>) -> V
         } else {
             config.http_request.timeout_secs
         };
-        let client = reqwest::Client::builder()
+        match reqwest::Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .connect_timeout(Duration::from_secs(10))
             .redirect(reqwest::redirect::Policy::none())
             .build()
-            .unwrap_or_default();
-        tools.push(Box::new(FfiHttpRequestTool {
-            allowed_domains: url_helpers::normalize_allowed_domains(
-                config.http_request.allowed_domains.clone(),
-            ),
-            max_response_size: config.http_request.max_response_size,
-            client,
-        }));
+        {
+            Ok(client) => {
+                tools.push(Box::new(FfiHttpRequestTool {
+                    allowed_domains: url_helpers::normalize_allowed_domains(
+                        config.http_request.allowed_domains.clone(),
+                    ),
+                    max_response_size: config.http_request.max_response_size,
+                    client,
+                }));
+            }
+            Err(e) => {
+                tracing::error!("Failed to build http_request HTTP client: {e}; tool disabled");
+            }
+        }
     }
 
     if tools.len() > MAX_SESSION_TOOLS {
@@ -1462,10 +1486,6 @@ pub(crate) fn session_send_inner(
             zeroclaw_dir: config.config_path.parent().map(std::path::PathBuf::from),
             secrets_encrypt: config.secrets.encrypt,
             reasoning_enabled: config.runtime.reasoning_enabled,
-            reasoning_level: None,
-            custom_provider_api_mode: None,
-            max_tokens_override: None,
-            model_support_vision: None,
         };
 
         let provider = zeroclaw::providers::create_routed_provider_with_options(
@@ -1617,9 +1637,6 @@ pub(crate) fn session_seed_inner(messages: Vec<SessionMessage>) -> Result<(), Ff
 /// this token between iterations and tool executions, aborting with an
 /// [`AgentLoopOutcome::Cancelled`] result. If no send is in progress,
 /// this is a no-op.
-///
-/// # Errors
-///
 pub(crate) fn session_cancel_inner() {
     let guard = lock_cancel_token();
     if let Some(token) = guard.as_ref() {
@@ -1687,12 +1704,18 @@ pub(crate) fn session_history_inner() -> Result<Vec<SessionMessage>, FfiError> {
 /// [`session_start_inner`]. Any in-flight [`session_send_inner`] call is
 /// cancelled first via the [`CANCEL_TOKEN`].
 ///
+/// # Thread Safety
+///
+/// The cancel and destroy operations are not atomic: the cancel token
+/// is in a separate mutex from the session state. This is safe because
+/// the Kotlin layer serialises all session lifecycle calls on a single
+/// `Dispatchers.IO` coroutine (no concurrent callers).
+///
 /// # Errors
 ///
-/// Returns [`FfiError::StateError`] if no session is active, or
-/// [`FfiError::StateCorrupted`] if the session mutex is poisoned.
+/// Returns [`FfiError::StateError`] if no session is active.
 pub(crate) fn session_destroy_inner() -> Result<(), FfiError> {
-    // Cancel any in-flight send.
+    // Cancel any in-flight send (separate mutex, no deadlock).
     session_cancel_inner();
 
     let mut guard = lock_session();
@@ -2484,7 +2507,7 @@ fn extract_thinking_from_text(text: &str) -> (String, String) {
         }
     }
 
-    let clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+    let clean = clean.trim().to_string();
     (clean, thinking)
 }
 
@@ -2550,9 +2573,8 @@ fn parse_xml_tool_calls(text: &str) -> (String, Vec<ToolCall>) {
         clean.replace_range(open_idx..end, "");
     }
 
-    // Collapse leftover whitespace runs.
     if !calls.is_empty() {
-        clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+        clean = clean.trim().to_string();
     }
 
     (clean, calls)
@@ -3571,10 +3593,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_thinking_collapses_whitespace() {
+    fn test_extract_thinking_preserves_whitespace() {
         let input = "Before  <think>Thought</think>  After";
         let (clean, thinking) = extract_thinking_from_text(input);
-        assert_eq!(clean, "Before After");
+        assert_eq!(clean, "Before    After");
         assert_eq!(thinking, "Thought");
     }
 
@@ -3652,7 +3674,7 @@ mod tests {
         let (clean, calls) = parse_xml_tool_calls(input);
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].name, "web_search");
-        assert_eq!(clean, "Let me search for that. I found the results.");
+        assert_eq!(clean, "Let me search for that.  I found the results.");
     }
 
     #[test]

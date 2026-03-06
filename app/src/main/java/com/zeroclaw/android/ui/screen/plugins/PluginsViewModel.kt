@@ -270,7 +270,6 @@ class PluginsViewModel(
                 settingsRepository.setWebSearchEnabled(false)
                 settingsRepository.setWebFetchEnabled(false)
                 settingsRepository.setHttpRequestEnabled(false)
-                settingsRepository.setBrowserEnabled(false)
                 settingsRepository.setComposioEnabled(false)
                 settingsRepository.setTranscriptionEnabled(false)
                 settingsRepository.setQueryClassificationEnabled(false)
