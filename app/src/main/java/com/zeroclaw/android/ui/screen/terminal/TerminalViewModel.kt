@@ -669,10 +669,12 @@ class TerminalViewModel(
         }
 
         override fun onResponseChunk(text: String) {
+            val cleaned = STREAMING_THINKING_TAG_REGEX.replace(text, "")
+            if (cleaned.isEmpty()) return
             _streamingState.update { current ->
                 current.copy(
                     phase = StreamingPhase.RESPONDING,
-                    responseText = current.responseText + text,
+                    responseText = current.responseText + cleaned,
                     providerRound = 0,
                     toolCallCount = 0,
                     llmDurationSecs = 0,
@@ -895,6 +897,12 @@ class TerminalViewModel(
                     "|<(?:tool_call|function_call)[\\s\\S]*$",
                 RegexOption.IGNORE_CASE,
             )
+
+        /** Strips leaked thinking tags from streamed response chunks. */
+        private val STREAMING_THINKING_TAG_REGEX = Regex(
+            "</?(?:think|thinking|reasoning|analysis|reflection|inner_monologue)>",
+            RegexOption.IGNORE_CASE,
+        )
 
         /** Pattern matching successful REPL bind results. */
         val BIND_RESULT_PATTERN: Regex =
