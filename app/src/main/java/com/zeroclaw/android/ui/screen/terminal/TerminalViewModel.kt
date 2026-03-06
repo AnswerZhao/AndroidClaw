@@ -868,16 +868,17 @@ class TerminalViewModel(
          * Pattern matching chain-of-thought and internal reasoning tags
          * across models.
          *
-         * Covers `<think>`, `<thinking>`, `<commentary>`, `<tool_output>`,
-         * `<analysis>`, `<reflection>`, and `<inner_monologue>` tag pairs.
+         * Covers `<think>`, `<thinking>`, `<reasoning>`, `<commentary>`,
+         * `<tool_output>`, `<analysis>`, `<reflection>`, and
+         * `<inner_monologue>` tag pairs.
          */
         private val THINKING_TAG_REGEX =
             Regex(
-                "<(?:think|thinking|commentary|tool_output|analysis" +
-                    "|reflection|inner_monologue)>" +
+                "<(?:think|thinking|reasoning|commentary|tool_output" +
+                    "|analysis|reflection|inner_monologue)>" +
                     "[\\s\\S]*?" +
-                    "</(?:think|thinking|commentary|tool_output|analysis" +
-                    "|reflection|inner_monologue)>",
+                    "</(?:think|thinking|reasoning|commentary|tool_output" +
+                    "|analysis|reflection|inner_monologue)>",
                 RegexOption.IGNORE_CASE,
             )
 
@@ -899,10 +900,11 @@ class TerminalViewModel(
             )
 
         /** Strips leaked thinking tags from streamed response chunks. */
-        private val STREAMING_THINKING_TAG_REGEX = Regex(
-            "</?(?:think|thinking|reasoning|analysis|reflection|inner_monologue)>",
-            RegexOption.IGNORE_CASE,
-        )
+        private val STREAMING_THINKING_TAG_REGEX =
+            Regex(
+                "</?(?:think|thinking|reasoning|analysis|reflection|inner_monologue)>",
+                RegexOption.IGNORE_CASE,
+            )
 
         /** Pattern matching successful REPL bind results. */
         val BIND_RESULT_PATTERN: Regex =
