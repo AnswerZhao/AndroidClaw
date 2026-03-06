@@ -34,6 +34,7 @@ class SettingsViewModel(
     private val repository = (application as ZeroClawApplication).settingsRepository
     private val onboardingRepository = (application as ZeroClawApplication).onboardingRepository
     private val daemonBridge = (application as ZeroClawApplication).daemonBridge
+    private val agentRepository = (application as ZeroClawApplication).agentRepository
 
     /** Current application settings, collected as state. */
     val settings: StateFlow<AppSettings> =
@@ -75,11 +76,13 @@ class SettingsViewModel(
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setDefaultProvider */
     fun updateDefaultProvider(provider: String) {
         updateDaemonSetting { setDefaultProvider(provider) }
+        viewModelScope.launch { agentRepository.updatePrimaryAgentProvider(provider) }
     }
 
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setDefaultModel */
     fun updateDefaultModel(model: String) {
         updateDaemonSetting { setDefaultModel(model) }
+        viewModelScope.launch { agentRepository.updatePrimaryAgentModel(model) }
     }
 
     /** @see com.zeroclaw.android.data.repository.SettingsRepository.setDefaultTemperature */

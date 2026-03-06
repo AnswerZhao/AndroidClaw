@@ -44,4 +44,22 @@ interface AgentRepository {
      * @param id Unique agent identifier.
      */
     suspend fun toggleEnabled(id: String)
+
+    /**
+     * Updates the model name of the first enabled agent with a non-blank provider.
+     *
+     * Does nothing if no qualifying agent exists.
+     *
+     * @param model New model name to apply.
+     */
+    suspend fun updatePrimaryAgentModel(model: String)
+
+    /**
+     * Updates the provider of the first enabled agent with a non-blank provider.
+     *
+     * Does nothing if no qualifying agent exists.
+     *
+     * @param provider New provider ID to apply.
+     */
+    suspend fun updatePrimaryAgentProvider(provider: String)
 }

@@ -11,6 +11,7 @@ import com.zeroclaw.android.data.local.entity.toEntity
 import com.zeroclaw.android.data.local.entity.toModel
 import com.zeroclaw.android.model.Agent
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
@@ -39,5 +40,19 @@ class RoomAgentRepository(
 
     override suspend fun toggleEnabled(id: String) {
         dao.toggleEnabled(id)
+    }
+
+    override suspend fun updatePrimaryAgentModel(model: String) {
+        val primary = agents.first().firstOrNull {
+            it.isEnabled && it.provider.isNotBlank()
+        } ?: return
+        save(primary.copy(modelName = model))
+    }
+
+    override suspend fun updatePrimaryAgentProvider(provider: String) {
+        val primary = agents.first().firstOrNull {
+            it.isEnabled && it.provider.isNotBlank()
+        } ?: return
+        save(primary.copy(provider = provider))
     }
 }
