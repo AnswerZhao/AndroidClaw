@@ -202,6 +202,9 @@ class OnboardingCoordinator(
     /** Debounce job for model fetching after provider/key changes. */
     private var modelFetchJob: Job? = null
 
+    /** Set to true when the user explicitly changes the provider via [setProvider]. */
+    private var userChangedProvider = false
+
     /**
      * Derived configuration summary combining all step states.
      *
@@ -294,6 +297,7 @@ class OnboardingCoordinator(
      * @param id Canonical provider ID from the registry.
      */
     fun setProvider(id: String) {
+        userChangedProvider = true
         val info = ProviderRegistry.findById(id)
         _providerState.value =
             _providerState.value.copy(
@@ -978,7 +982,7 @@ class OnboardingCoordinator(
         viewModelScope.launch {
             val settings = settingsRepository.settings.first()
 
-            if (settings.defaultProvider.isNotBlank()) {
+            if (!userChangedProvider && settings.defaultProvider.isNotBlank()) {
                 val info = ProviderRegistry.findById(settings.defaultProvider)
                 _providerState.value =
                     _providerState.value.copy(
