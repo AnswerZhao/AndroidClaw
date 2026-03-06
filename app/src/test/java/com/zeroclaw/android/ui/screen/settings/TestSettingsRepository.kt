@@ -254,6 +254,10 @@ internal class TestSettingsRepository : SettingsRepository {
 
     override suspend fun setTheme(theme: ThemeMode) = _settings.update { it.copy(theme = theme) }
 
+    override suspend fun setGatewayBearerToken(token: String) { /* no-op */ }
+
+    override suspend fun getGatewayBearerToken(): String = ""
+
     override suspend fun setTranscriptionEnabled(enabled: Boolean) = _settings.update { it.copy(transcriptionEnabled = enabled) }
 
     override suspend fun setTranscriptionApiUrl(url: String) = _settings.update { it.copy(transcriptionApiUrl = url) }

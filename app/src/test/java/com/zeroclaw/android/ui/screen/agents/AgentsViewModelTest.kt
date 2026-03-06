@@ -140,4 +140,8 @@ private class TestAgentRepository(
             current.map { if (it.id == id) it.copy(isEnabled = !it.isEnabled) else it }
         }
     }
+
+    override suspend fun updatePrimaryAgentModel(model: String) { /* no-op */ }
+
+    override suspend fun updatePrimaryAgentProvider(provider: String) { /* no-op */ }
 }

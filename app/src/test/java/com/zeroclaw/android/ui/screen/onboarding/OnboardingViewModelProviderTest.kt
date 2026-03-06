@@ -515,6 +515,10 @@ private class TestSettingsRepository : SettingsRepository {
 
     override suspend fun setTheme(theme: com.zeroclaw.android.model.ThemeMode) { /* no-op */ }
 
+    override suspend fun setGatewayBearerToken(token: String) { /* no-op */ }
+
+    override suspend fun getGatewayBearerToken(): String = ""
+
     override val migrationNoticePending: Flow<Boolean> = MutableStateFlow(false)
 
     override suspend fun clearMigrationNotice() { /* no-op */ }
