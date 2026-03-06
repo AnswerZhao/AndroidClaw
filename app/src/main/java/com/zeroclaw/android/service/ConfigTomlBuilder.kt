@@ -1420,7 +1420,7 @@ object ConfigTomlBuilder {
      * @param resolvedProvider The resolved TOML provider string.
      * @return True if [PLACEHOLDER_API_KEY] should be injected.
      */
-    private fun needsPlaceholderKey(resolvedProvider: String): Boolean = resolvedProvider.startsWith("custom:") || resolvedProvider == "ollama"
+    internal fun needsPlaceholderKey(resolvedProvider: String): Boolean = resolvedProvider.startsWith("custom:") || resolvedProvider == "ollama"
 
     /**
      * Formats a value as a quoted TOML key.

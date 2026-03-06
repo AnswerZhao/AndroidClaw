@@ -225,6 +225,9 @@ class ZeroClawDaemonService : Service() {
 
             val globalConfig =
                 buildGlobalTomlConfig(effectiveSettings, apiKey)
+
+            if (!validateProviderKeyOrStop(globalConfig)) return@launch
+
             val baseToml = ConfigTomlBuilder.build(globalConfig)
             val channelsToml =
                 ConfigTomlBuilder.buildChannelsToml(
@@ -301,6 +304,45 @@ class ZeroClawDaemonService : Service() {
             return false
         }
         return true
+    }
+
+    /**
+     * Validates that the provider has an API key when one is required.
+     *
+     * Self-hosted providers (Ollama, LM Studio, vLLM, LocalAI with a
+     * custom base URL) do not need a real key and receive a placeholder.
+     * All other providers require the user to configure an API key in
+     * Settings before the daemon can start. When validation fails, an
+     * error is logged, the notification is updated, and the service
+     * stops itself.
+     *
+     * @param config The assembled [GlobalTomlConfig] with provider and key.
+     * @return `true` if the provider has credentials (or doesn't need them),
+     *   `false` if startup should be aborted (caller should `return@launch`).
+     */
+    private fun validateProviderKeyOrStop(config: GlobalTomlConfig): Boolean {
+        if (config.provider.isBlank() || config.apiKey.isNotBlank()) return true
+
+        val resolved = ConfigTomlBuilder.resolveProvider(
+            config.provider,
+            config.baseUrl,
+        )
+        if (ConfigTomlBuilder.needsPlaceholderKey(resolved)) return true
+
+        val msg = "No API key found for provider " +
+            "'${config.provider}'. Configure one in " +
+            "Settings \u2192 API Keys before starting."
+        Log.e(TAG, "Startup blocked: $msg")
+        logRepository.append(LogSeverity.ERROR, TAG, msg)
+        activityRepository.record(ActivityType.DAEMON_ERROR, msg)
+        notificationManager.updateNotification(
+            ServiceState.ERROR,
+            errorDetail = msg,
+        )
+        releaseWakeLock()
+        stopForeground(STOP_FOREGROUND_DETACH)
+        stopSelf()
+        return false
     }
 
     /**
