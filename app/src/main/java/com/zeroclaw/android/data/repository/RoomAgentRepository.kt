@@ -43,16 +43,18 @@ class RoomAgentRepository(
     }
 
     override suspend fun updatePrimaryAgentModel(model: String) {
-        val primary = agents.first().firstOrNull {
-            it.isEnabled && it.provider.isNotBlank()
-        } ?: return
+        val primary =
+            agents.first().firstOrNull {
+                it.isEnabled && it.provider.isNotBlank()
+            } ?: return
         save(primary.copy(modelName = model))
     }
 
     override suspend fun updatePrimaryAgentProvider(provider: String) {
-        val primary = agents.first().firstOrNull {
-            it.isEnabled && it.provider.isNotBlank()
-        } ?: return
+        val primary =
+            agents.first().firstOrNull {
+                it.isEnabled && it.provider.isNotBlank()
+            } ?: return
         save(primary.copy(provider = provider))
     }
 }

@@ -412,8 +412,7 @@ class DataStoreSettingsRepository(
 
     override suspend fun setGatewayBearerToken(token: String) = editSecure(SEC_GW_BEARER_TOKEN, token)
 
-    override suspend fun getGatewayBearerToken(): String =
-        securePrefs.getString(SEC_GW_BEARER_TOKEN, "") ?: ""
+    override suspend fun getGatewayBearerToken(): String = securePrefs.getString(SEC_GW_BEARER_TOKEN, "") ?: ""
 
     override suspend fun setGatewayPairRateLimit(limit: Int) = edit { it[KEY_GW_PAIR_RATE] = limit }
 
