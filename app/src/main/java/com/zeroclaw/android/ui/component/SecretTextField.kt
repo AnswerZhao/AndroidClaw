@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 
 /**
  * Text field for API keys, tokens, and other secrets with paste support.
@@ -58,6 +60,12 @@ fun SecretTextField(
     imeAction: ImeAction = ImeAction.Done,
 ) {
     var revealed by rememberSaveable { mutableStateOf(false) }
+    val toggleContentDescription =
+        if (revealed) {
+            stringResource(R.string.secret_text_field_hide_label, label)
+        } else {
+            stringResource(R.string.secret_text_field_show_label, label)
+        }
 
     OutlinedTextField(
         value = value,
@@ -79,10 +87,7 @@ fun SecretTextField(
                 modifier =
                     Modifier
                         .size(48.dp)
-                        .semantics {
-                            contentDescription =
-                                if (revealed) "Hide $label" else "Show $label"
-                        },
+                        .semantics { contentDescription = toggleContentDescription },
             ) {
                 Icon(
                     imageVector =

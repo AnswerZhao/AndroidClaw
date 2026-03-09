@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.agents
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -100,6 +102,8 @@ fun AddAgentScreen(
 
     val providerInfo = ProviderRegistry.findById(providerId)
     val suggestedModels = providerInfo?.suggestedModels.orEmpty()
+    val temperatureContentDescription = stringResource(R.string.agent_temperature_content_description)
+    val createConnectionContentDescription = stringResource(R.string.agent_create_connection_content_description)
 
     var liveModels by remember { mutableStateOf(emptyList<String>()) }
     var isLoadingLive by remember { mutableStateOf(false) }
@@ -129,7 +133,7 @@ fun AddAgentScreen(
                 liveModels = models
                 isLiveData = true
             }.onFailure { e ->
-                modelFetchError = e.message ?: "Failed to fetch models"
+                modelFetchError = e.message ?: ""
             }
     }
 
@@ -143,7 +147,7 @@ fun AddAgentScreen(
         Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
 
         Text(
-            text = "Add Connection",
+            text = stringResource(R.string.agent_add_connection_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
@@ -151,7 +155,7 @@ fun AddAgentScreen(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Nickname") },
+            label = { Text(stringResource(R.string.agent_nickname_label)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -181,7 +185,7 @@ fun AddAgentScreen(
         )
         if (modelFetchError != null) {
             Text(
-                text = "Could not fetch models: $modelFetchError",
+                text = stringResource(R.string.agent_could_not_fetch_models, modelFetchError.orEmpty()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = FETCH_ERROR_TOP_PADDING),
@@ -192,7 +196,7 @@ fun AddAgentScreen(
         OutlinedTextField(
             value = systemPrompt,
             onValueChange = { systemPrompt = it },
-            label = { Text("System Prompt (optional)") },
+            label = { Text(stringResource(R.string.agent_system_prompt_optional)) },
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -201,7 +205,7 @@ fun AddAgentScreen(
         val maxDepthValue = maxDepth.toIntOrNull()
         val maxDepthError = maxDepth.isNotEmpty() && (maxDepthValue == null || maxDepthValue < 1)
 
-        CollapsibleSection(title = "Advanced") {
+        CollapsibleSection(title = stringResource(R.string.agent_section_advanced)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -211,13 +215,13 @@ fun AddAgentScreen(
                     onCheckedChange = { useGlobalTemperature = it },
                 )
                 Text(
-                    text = "Use global default temperature",
+                    text = stringResource(R.string.agent_use_global_default_temperature),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
             if (!useGlobalTemperature) {
                 Text(
-                    text = "Temperature: ${"%.1f".format(temperature)}",
+                    text = stringResource(R.string.agent_temperature_value, temperature),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Slider(
@@ -228,7 +232,7 @@ fun AddAgentScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .semantics { contentDescription = "Temperature" },
+                            .semantics { contentDescription = temperatureContentDescription },
                 )
             }
             Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
@@ -236,12 +240,12 @@ fun AddAgentScreen(
             OutlinedTextField(
                 value = maxDepth,
                 onValueChange = { maxDepth = it },
-                label = { Text("Max depth") },
+                label = { Text(stringResource(R.string.agent_max_depth_label)) },
                 singleLine = true,
                 isError = maxDepthError,
                 supportingText =
                     if (maxDepthError) {
-                        { Text("Must be a positive integer") }
+                        { Text(stringResource(R.string.agent_positive_integer_error)) }
                     } else {
                         null
                     },
@@ -271,9 +275,9 @@ fun AddAgentScreen(
                 Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 48.dp)
-                    .semantics { contentDescription = "Create connection" },
+                    .semantics { contentDescription = createConnectionContentDescription },
         ) {
-            Text("Create Connection")
+            Text(stringResource(R.string.agent_create_connection))
         }
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
     }

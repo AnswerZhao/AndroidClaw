@@ -10,6 +10,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.ConnectedChannel
@@ -80,7 +81,7 @@ class ChannelsViewModel(
                 _saveState.value = SaveState.Saved
             } catch (e: Exception) {
                 Log.e(TAG, "Channel save failed", e)
-                _saveState.value = SaveState.Error("Save failed")
+                _saveState.value = SaveState.Error(getString(R.string.channels_save_failed))
             }
         }
     }
@@ -95,10 +96,10 @@ class ChannelsViewModel(
         viewModelScope.launch {
             try {
                 repository.delete(id)
-                _snackbarMessage.value = "Channel deleted"
+                _snackbarMessage.value = getString(R.string.channels_deleted)
             } catch (e: Exception) {
                 Log.e(TAG, "Channel delete failed", e)
-                _snackbarMessage.value = "Delete failed"
+                _snackbarMessage.value = getString(R.string.channels_delete_failed)
             }
         }
     }
@@ -143,6 +144,11 @@ class ChannelsViewModel(
     fun dismissSnackbar() {
         _snackbarMessage.value = null
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Constants for [ChannelsViewModel]. */
     companion object {

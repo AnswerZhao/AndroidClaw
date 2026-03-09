@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,6 +66,7 @@ fun ModelRoutesScreen(
 ) {
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val routes = remember(settings.modelRoutesJson) { parseRoutes(settings.modelRoutesJson) }
+    val addModelRouteContentDescription = stringResource(R.string.model_routes_add_route_content_description)
 
     Column(
         modifier =
@@ -73,10 +76,10 @@ fun ModelRoutesScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Model Routes")
+        SectionHeader(title = stringResource(R.string.model_routes_section_title))
 
         Text(
-            text = "Route requests to specific providers based on hint keywords.",
+            text = stringResource(R.string.model_routes_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -115,10 +118,10 @@ fun ModelRoutesScreen(
                 Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
-                    .semantics { contentDescription = "Add model route" },
+                    .semantics { contentDescription = addModelRouteContentDescription },
         ) {
             Icon(Icons.Filled.Add, contentDescription = null)
-            Text("Add Route", modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(R.string.common_add_route), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
@@ -140,6 +143,7 @@ private fun ModelRouteCard(
     var provider by remember(route) { mutableStateOf(route.provider) }
     var model by remember(route) { mutableStateOf(route.model) }
     var apiKey by remember(route) { mutableStateOf(route.apiKey) }
+    val deleteRouteContentDescription = stringResource(R.string.model_routes_delete_route_content_description)
 
     Card(
         colors =
@@ -156,11 +160,11 @@ private fun ModelRouteCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Route", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.model_routes_route_title), style = MaterialTheme.typography.titleSmall)
                 IconButton(
                     onClick = onDelete,
                     modifier =
-                        Modifier.semantics { contentDescription = "Delete route" },
+                        Modifier.semantics { contentDescription = deleteRouteContentDescription },
                 ) {
                     Icon(Icons.Filled.Delete, contentDescription = null)
                 }
@@ -171,8 +175,8 @@ private fun ModelRouteCard(
                     hint = it
                     onUpdate(route.copy(hint = it))
                 },
-                label = { Text("Hint") },
-                supportingText = { Text("e.g. reasoning, fast, code") },
+                label = { Text(stringResource(R.string.common_hint)) },
+                supportingText = { Text(stringResource(R.string.model_routes_hint_example)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -182,7 +186,7 @@ private fun ModelRouteCard(
                     provider = it
                     onUpdate(route.copy(provider = it))
                 },
-                label = { Text("Provider") },
+                label = { Text(stringResource(R.string.common_provider)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -192,7 +196,7 @@ private fun ModelRouteCard(
                     model = it
                     onUpdate(route.copy(model = it))
                 },
-                label = { Text("Model") },
+                label = { Text(stringResource(R.string.common_model)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -202,8 +206,8 @@ private fun ModelRouteCard(
                     apiKey = it
                     onUpdate(route.copy(apiKey = it))
                 },
-                label = "API Key",
-                supportingText = { Text("Optional per-route key") },
+                label = stringResource(R.string.provider_credential_api_key_label),
+                supportingText = { Text(stringResource(R.string.common_optional_per_route_key)) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,14 +45,14 @@ fun ConfirmDeleteDialog(
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
-                    text = "Delete",
+                    text = stringResource(R.string.common_delete),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.common_cancel))
             }
         },
     )

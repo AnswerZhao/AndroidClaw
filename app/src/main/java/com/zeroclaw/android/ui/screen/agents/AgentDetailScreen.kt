@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.agents
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -147,6 +149,7 @@ fun AgentDetailScreen(
     val suggestedModels = providerInfo?.suggestedModels.orEmpty()
 
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val temperatureContentDescription = stringResource(R.string.agent_temperature_content_description)
 
     var liveModels by remember { mutableStateOf(emptyList<String>()) }
     var isLoadingLive by remember { mutableStateOf(false) }
@@ -185,7 +188,7 @@ fun AgentDetailScreen(
         Spacer(modifier = Modifier.height(HEADING_SPACING_DP.dp))
 
         Text(
-            text = "Connection Details",
+            text = stringResource(R.string.agent_connection_details_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(HEADING_SPACING_DP.dp))
@@ -201,8 +204,8 @@ fun AgentDetailScreen(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Nickname") },
-            supportingText = { Text("Display name only \u2014 does not change the daemon identity") },
+            label = { Text(stringResource(R.string.agent_nickname_label)) },
+            supportingText = { Text(stringResource(R.string.agent_display_name_only_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -231,18 +234,18 @@ fun AgentDetailScreen(
         )
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
 
-        CollapsibleSection(title = "System Prompt") {
+        CollapsibleSection(title = stringResource(R.string.agent_section_system_prompt)) {
             OutlinedTextField(
                 value = systemPrompt,
                 onValueChange = { systemPrompt = it },
-                label = { Text("System prompt") },
+                label = { Text(stringResource(R.string.agent_system_prompt_label)) },
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
 
-        CollapsibleSection(title = "Advanced") {
+        CollapsibleSection(title = stringResource(R.string.agent_section_advanced)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -252,13 +255,13 @@ fun AgentDetailScreen(
                     onCheckedChange = { useGlobalTemperature = it },
                 )
                 Text(
-                    text = "Use global default temperature",
+                    text = stringResource(R.string.agent_use_global_default_temperature),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
             if (!useGlobalTemperature) {
                 Text(
-                    text = "Temperature: ${"%.1f".format(temperature)}",
+                    text = stringResource(R.string.agent_temperature_value, temperature),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Slider(
@@ -269,14 +272,14 @@ fun AgentDetailScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .semantics { contentDescription = "Temperature" },
+                            .semantics { contentDescription = temperatureContentDescription },
                 )
             }
             Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
             OutlinedTextField(
                 value = maxDepth,
                 onValueChange = { maxDepth = it },
-                label = { Text("Max depth") },
+                label = { Text(stringResource(R.string.agent_max_depth_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
@@ -284,17 +287,22 @@ fun AgentDetailScreen(
         }
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
 
-        CollapsibleSection(title = "Channels") {
+        CollapsibleSection(title = stringResource(R.string.agent_section_channels)) {
             if (loadedAgent.channels.isEmpty()) {
                 Text(
-                    text = "No channels configured.",
+                    text = stringResource(R.string.agent_no_channels_configured),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 loadedAgent.channels.forEach { channel ->
                     Text(
-                        text = "${channel.type}: ${channel.endpoint}",
+                        text =
+                            stringResource(
+                                R.string.agent_channel_value,
+                                channel.type,
+                                channel.endpoint,
+                            ),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(modifier = Modifier.height(CHANNEL_SPACING_DP.dp))
@@ -319,7 +327,7 @@ fun AgentDetailScreen(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Save Changes")
+            Text(stringResource(R.string.agent_save_changes))
         }
         Spacer(modifier = Modifier.height(SMALL_SPACING_DP.dp))
         OutlinedButton(
@@ -327,7 +335,7 @@ fun AgentDetailScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
-                text = "Delete Connection",
+                text = stringResource(R.string.agent_delete_connection),
                 color = MaterialTheme.colorScheme.error,
             )
         }
@@ -337,8 +345,8 @@ fun AgentDetailScreen(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Connection") },
-            text = { Text("Are you sure you want to delete \"$name\"? This cannot be undone.") },
+            title = { Text(stringResource(R.string.agent_delete_connection)) },
+            text = { Text(stringResource(R.string.agent_delete_connection_confirm, name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -348,14 +356,14 @@ fun AgentDetailScreen(
                     },
                 ) {
                     Text(
-                        text = "Delete",
+                        text = stringResource(R.string.common_delete),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )

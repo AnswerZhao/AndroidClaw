@@ -19,6 +19,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.repository.ActivityRepository
 import com.zeroclaw.android.data.repository.AgentRepository
@@ -287,7 +288,10 @@ class ZeroClawDaemonService : Service() {
                 val safeMsg = LogSanitizer.sanitizeLogMessage(validationResult)
                 Log.e(TAG, "Config validation failed: $safeMsg")
                 logRepository.append(LogSeverity.ERROR, TAG, "Config validation failed: $safeMsg")
-                activityRepository.record(ActivityType.DAEMON_ERROR, "Config validation failed: $safeMsg")
+                activityRepository.record(
+                    ActivityType.DAEMON_ERROR,
+                    getString(R.string.daemon_activity_config_validation_failed, safeMsg),
+                )
                 notificationManager.updateNotification(ServiceState.ERROR, errorDetail = safeMsg)
                 releaseWakeLock()
                 stopForeground(STOP_FOREGROUND_DETACH)
@@ -298,7 +302,10 @@ class ZeroClawDaemonService : Service() {
             val safeMsg = LogSanitizer.sanitizeLogMessage(e.message ?: "Unknown error")
             Log.e(TAG, "Config validation threw: $safeMsg")
             logRepository.append(LogSeverity.ERROR, TAG, "Config validation error: $safeMsg")
-            activityRepository.record(ActivityType.DAEMON_ERROR, "Config validation error: $safeMsg")
+            activityRepository.record(
+                ActivityType.DAEMON_ERROR,
+                getString(R.string.daemon_activity_config_validation_error, safeMsg),
+            )
             notificationManager.updateNotification(ServiceState.ERROR, errorDetail = safeMsg)
             releaseWakeLock()
             stopForeground(STOP_FOREGROUND_DETACH)
@@ -332,10 +339,7 @@ class ZeroClawDaemonService : Service() {
             )
         if (ConfigTomlBuilder.needsPlaceholderKey(resolved)) return true
 
-        val msg =
-            "No API key found for provider " +
-                "'${config.provider}'. Configure one in " +
-                "Settings \u2192 API Keys before starting."
+        val msg = getString(R.string.daemon_start_blocked_no_api_key, config.provider)
         Log.e(TAG, "Startup blocked: $msg")
         logRepository.append(LogSeverity.ERROR, TAG, msg)
         activityRepository.record(ActivityType.DAEMON_ERROR, msg)
@@ -664,7 +668,7 @@ class ZeroClawDaemonService : Service() {
                 bridge.stop()
                 activityRepository.record(
                     ActivityType.DAEMON_STOPPED,
-                    "Daemon stopped by user",
+                    getString(R.string.daemon_activity_stopped_by_user),
                 )
             } catch (e: FfiException) {
                 val safeMsg = LogSanitizer.sanitizeLogMessage(e.message ?: "Unknown error")
@@ -672,7 +676,7 @@ class ZeroClawDaemonService : Service() {
                 logRepository.append(LogSeverity.ERROR, TAG, "Stop failed: $safeMsg")
                 activityRepository.record(
                     ActivityType.DAEMON_ERROR,
-                    "Stop failed: $safeMsg",
+                    getString(R.string.daemon_activity_stop_failed, safeMsg),
                 )
             } finally {
                 releaseWakeLock()
@@ -755,7 +759,7 @@ class ZeroClawDaemonService : Service() {
         Log.i(TAG, "Rebuilding daemon config after process death")
         activityRepository.record(
             ActivityType.DAEMON_STARTED,
-            "Daemon restored after process death",
+            getString(R.string.daemon_activity_restored_after_process_death),
         )
         handleStartFromSettings()
     }
@@ -793,7 +797,7 @@ class ZeroClawDaemonService : Service() {
                             retryPolicy.reset()
                             activityRepository.record(
                                 ActivityType.DAEMON_STARTED,
-                                "Daemon started on $host:$port",
+                                getString(R.string.daemon_activity_started_on_host_port, host, port.toInt()),
                             )
                             startStatusPolling()
                             runMemoryHealthCheck(memoryBackend)
@@ -840,7 +844,7 @@ class ZeroClawDaemonService : Service() {
         logRepository.append(LogSeverity.ERROR, TAG, "Start failed: $errorMsg")
         activityRepository.record(
             ActivityType.DAEMON_ERROR,
-            "Start failed: $errorMsg",
+            getString(R.string.daemon_activity_start_failed, errorMsg),
         )
         notificationManager.updateNotification(
             ServiceState.ERROR,
@@ -939,12 +943,12 @@ class ZeroClawDaemonService : Service() {
                         Log.w(TAG, "Network connectivity lost while daemon running")
                         activityRepository.record(
                             ActivityType.NETWORK_CHANGE,
-                            "Network connectivity lost",
+                            getString(R.string.daemon_activity_network_connectivity_lost),
                         )
                     } else {
                         activityRepository.record(
                             ActivityType.NETWORK_CHANGE,
-                            "Network connectivity restored",
+                            getString(R.string.daemon_activity_network_connectivity_restored),
                         )
                     }
                 }

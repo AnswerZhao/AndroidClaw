@@ -161,7 +161,7 @@ class ToolsBrowserViewModel(
         } catch (e: Exception) {
             _uiState.value =
                 ToolsUiState.Error(
-                    ErrorSanitizer.sanitizeForUi(e),
+                    ErrorSanitizer.sanitizeForUi(getApplication(), e),
                 )
         }
     }

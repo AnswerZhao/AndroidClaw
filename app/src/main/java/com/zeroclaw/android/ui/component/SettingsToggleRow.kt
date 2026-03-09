@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,8 +52,23 @@ fun SettingsToggleRow(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val stateText = if (checked) "enabled" else "disabled"
-    val a11yDescription = "$contentDescription: $stateText"
+    val stateText =
+        if (checked) {
+            stringResource(R.string.common_enabled)
+        } else {
+            stringResource(R.string.common_disabled)
+        }
+    val a11yDescription =
+        stringResource(
+            R.string.settings_toggle_row_content_description,
+            contentDescription,
+            stateText,
+        )
+    val toggleContentDescription =
+        stringResource(
+            R.string.settings_toggle_switch_content_description,
+            contentDescription,
+        )
 
     Row(
         modifier =
@@ -87,7 +104,7 @@ fun SettingsToggleRow(
             enabled = enabled,
             modifier =
                 Modifier.semantics {
-                    this.contentDescription = "$contentDescription toggle"
+                    this.contentDescription = toggleContentDescription
                 },
         )
     }

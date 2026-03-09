@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.setup
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -120,6 +122,13 @@ internal fun SetupContent(
     modifier: Modifier = Modifier,
 ) {
     val powerSave = LocalPowerSaveMode.current
+    val setupTitle = stringResource(R.string.setup_screen_title)
+    val setupSubtitle = stringResource(R.string.setup_screen_subtitle)
+    val validatingConfigurationLabel = stringResource(R.string.setup_step_validating_configuration)
+    val creatingWorkspaceLabel = stringResource(R.string.setup_step_creating_workspace)
+    val startingDaemonLabel = stringResource(R.string.setup_step_starting_daemon)
+    val checkingDaemonHealthLabel = stringResource(R.string.setup_step_checking_daemon_health)
+    val channelsTitle = stringResource(R.string.setup_section_channels)
 
     Scaffold(
         modifier = modifier,
@@ -143,11 +152,11 @@ internal fun SetupContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Setting up ZeroClaw",
+                text = setupTitle,
                 style = MaterialTheme.typography.headlineMedium,
             )
             Text(
-                text = "Please don't close the app",
+                text = setupSubtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -155,22 +164,22 @@ internal fun SetupContent(
             Spacer(modifier = Modifier.height(8.dp))
 
             SetupStepRow(
-                label = "Validating configuration",
+                label = validatingConfigurationLabel,
                 status = progress.configValidation,
                 powerSave = powerSave,
             )
             SetupStepRow(
-                label = "Creating workspace",
+                label = creatingWorkspaceLabel,
                 status = progress.workspaceScaffold,
                 powerSave = powerSave,
             )
             SetupStepRow(
-                label = "Starting daemon",
+                label = startingDaemonLabel,
                 status = progress.daemonStart,
                 powerSave = powerSave,
             )
             SetupStepRow(
-                label = "Checking daemon health",
+                label = checkingDaemonHealthLabel,
                 status = progress.daemonHealth,
                 powerSave = powerSave,
             )
@@ -181,7 +190,7 @@ internal fun SetupContent(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Channels",
+                    text = channelsTitle,
                     style = MaterialTheme.typography.titleSmall,
                 )
 
@@ -228,11 +237,13 @@ private fun SetupStepRow(
 ) {
     val statusText =
         when (status) {
-            SetupStepStatus.Pending -> "pending"
-            SetupStepStatus.Running -> "running"
-            SetupStepStatus.Success -> "success"
-            is SetupStepStatus.Failed -> "failed"
+            SetupStepStatus.Pending -> stringResource(R.string.setup_status_pending)
+            SetupStepStatus.Running -> stringResource(R.string.setup_status_running)
+            SetupStepStatus.Success -> stringResource(R.string.setup_status_success)
+            is SetupStepStatus.Failed -> stringResource(R.string.setup_status_failed)
         }
+    val stepContentDescription =
+        stringResource(R.string.setup_step_content_description, label, statusText)
 
     Row(
         modifier =
@@ -240,7 +251,7 @@ private fun SetupStepRow(
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = MinButtonHeight)
                 .padding(vertical = StepRowVerticalPadding)
-                .semantics { contentDescription = "$label: $statusText" },
+                .semantics { contentDescription = stepContentDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StepStatusIcon(status = status, powerSave = powerSave)
@@ -290,7 +301,7 @@ private fun StepStatusIcon(
         SetupStepStatus.Running -> {
             if (powerSave) {
                 Text(
-                    text = "\u2026",
+                    text = stringResource(R.string.common_ellipsis),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.size(StepIconSize),
                 )
@@ -361,7 +372,7 @@ private fun SetupBottomBar(
                 onClick = onComplete,
                 modifier = Modifier.defaultMinSize(minHeight = MinButtonHeight),
             ) {
-                Text("Skip")
+                Text(stringResource(R.string.common_skip))
             }
         }
 
@@ -376,7 +387,7 @@ private fun SetupBottomBar(
                 onClick = onComplete,
                 modifier = Modifier.defaultMinSize(minHeight = MinButtonHeight),
             ) {
-                Text("Done")
+                Text(stringResource(R.string.common_done))
             }
         }
     }
@@ -398,6 +409,7 @@ private fun PurgedChannelsBanner(
     purgedChannels: List<String>,
     modifier: Modifier = Modifier,
 ) {
+    val title = stringResource(R.string.setup_purged_channels_title)
     Card(
         modifier = modifier.fillMaxWidth(),
         colors =
@@ -421,17 +433,20 @@ private fun PurgedChannelsBanner(
             )
             Column {
                 Text(
-                    text = "Some channels were disabled",
+                    text = title,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 val channelNames =
                     purgedChannels.joinToString { it.replaceFirstChar { c -> c.uppercase() } }
+                val disabledMessage =
+                    stringResource(
+                        R.string.setup_purged_channels_message,
+                        channelNames,
+                    )
                 Text(
-                    text =
-                        "$channelNames failed to start and were disabled. " +
-                            "You can re-enable them in Settings > Connections.",
+                    text = disabledMessage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )

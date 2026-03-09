@@ -8,6 +8,8 @@
 
 package com.zeroclaw.android.ui.screen.agents
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -114,11 +116,13 @@ internal fun AgentsContent(
 ) {
     Scaffold(
         floatingActionButton = {
+            val addConnectionContentDescription =
+                stringResource(R.string.agents_add_new_connection_content_description)
             FloatingActionButton(
                 onClick = onNavigateToAdd,
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Add new connection"
+                        contentDescription = addConnectionContentDescription
                     },
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null)
@@ -136,7 +140,7 @@ internal fun AgentsContent(
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = onSearchChange,
-                label = { Text("Search connections") },
+                label = { Text(stringResource(R.string.agents_search_connections)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -147,9 +151,9 @@ internal fun AgentsContent(
                     icon = Icons.Outlined.SmartToy,
                     message =
                         if (state.searchQuery.isBlank()) {
-                            "No connections configured yet"
+                            stringResource(R.string.agents_empty_no_connections)
                         } else {
-                            "No connections match your search"
+                            stringResource(R.string.agents_empty_no_match)
                         },
                 )
             } else {
@@ -196,6 +200,15 @@ private fun AgentListItem(
     onToggle: () -> Unit,
     onClick: () -> Unit,
 ) {
+    val stateLabel =
+        if (agent.isEnabled) {
+            stringResource(R.string.agents_agent_enabled)
+        } else {
+            stringResource(R.string.agents_agent_disabled)
+        }
+    val toggleContentDescription =
+        stringResource(R.string.agents_agent_toggle_content_description, agent.name, stateLabel)
+
     Card(
         onClick = onClick,
         modifier =
@@ -211,7 +224,7 @@ private fun AgentListItem(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${agent.provider} \u2022 ${agent.modelName}",
+                    text = stringResource(R.string.agents_provider_model_pair, agent.provider, agent.modelName),
                     style = MaterialTheme.typography.titleSmall,
                 )
                 if (agent.name.isNotBlank()) {
@@ -227,8 +240,7 @@ private fun AgentListItem(
                 onCheckedChange = { onToggle() },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            "${agent.name} ${if (agent.isEnabled) "enabled" else "disabled"}"
+                        contentDescription = toggleContentDescription
                     },
             )
         }

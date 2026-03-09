@@ -29,17 +29,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.AppSettings
 import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.SettingsToggleRow
 
 /** Available sandbox enabled states (tri-state: auto, true, false). */
-private val SANDBOX_ENABLED_OPTIONS = listOf(null to "Auto-detect", true to "Enabled", false to "Disabled")
+private val SANDBOX_ENABLED_VALUES = listOf<Boolean?>(null, true, false)
 
 /** Available sandbox backend options. */
 private val SANDBOX_BACKENDS = listOf("auto", "landlock", "firejail", "bubblewrap", "docker", "none")
@@ -97,10 +99,23 @@ private fun SandboxSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Sandbox")
+    val sandboxEnabledOptions =
+        SANDBOX_ENABLED_VALUES.map { value ->
+            val label =
+                when (value) {
+                    null -> stringResource(R.string.security_advanced_sandbox_option_auto_detect)
+                    true -> stringResource(R.string.security_advanced_sandbox_option_enabled)
+                    false -> stringResource(R.string.security_advanced_sandbox_option_disabled)
+                }
+            value to label
+        }
+
+    SectionHeader(title = stringResource(R.string.security_advanced_section_sandbox))
 
     var enabledExpanded by remember { mutableStateOf(false) }
-    val currentLabel = SANDBOX_ENABLED_OPTIONS.firstOrNull { it.first == settings.securitySandboxEnabled }?.second ?: "Auto-detect"
+    val currentLabel =
+        sandboxEnabledOptions.firstOrNull { it.first == settings.securitySandboxEnabled }?.second
+            ?: stringResource(R.string.security_advanced_sandbox_option_auto_detect)
 
     ExposedDropdownMenuBox(
         expanded = enabledExpanded,
@@ -110,7 +125,7 @@ private fun SandboxSection(
             value = currentLabel,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Sandboxing") },
+            label = { Text(stringResource(R.string.security_advanced_sandboxing_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(enabledExpanded) },
             modifier =
                 Modifier
@@ -121,7 +136,7 @@ private fun SandboxSection(
             expanded = enabledExpanded,
             onDismissRequest = { enabledExpanded = false },
         ) {
-            for ((value, label) in SANDBOX_ENABLED_OPTIONS) {
+            for ((value, label) in sandboxEnabledOptions) {
                 DropdownMenuItem(
                     text = { Text(label) },
                     onClick = {
@@ -143,7 +158,7 @@ private fun SandboxSection(
             value = settings.securitySandboxBackend,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Backend") },
+            label = { Text(stringResource(R.string.security_advanced_backend_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(backendExpanded) },
             modifier =
                 Modifier
@@ -169,8 +184,8 @@ private fun SandboxSection(
     OutlinedTextField(
         value = settings.securitySandboxFirejailArgs,
         onValueChange = { viewModel.updateSecuritySandboxFirejailArgs(it) },
-        label = { Text("Firejail extra arguments") },
-        supportingText = { Text("Comma-separated") },
+        label = { Text(stringResource(R.string.security_advanced_firejail_args_label)) },
+        supportingText = { Text(stringResource(R.string.security_advanced_comma_separated_hint)) },
         enabled = settings.securitySandboxBackend == "firejail",
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -188,14 +203,14 @@ private fun ResourcesSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Resource Limits")
+    SectionHeader(title = stringResource(R.string.security_advanced_section_resource_limits))
 
     OutlinedTextField(
         value = settings.securityResourcesMaxMemoryMb.toString(),
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateSecurityResourcesMaxMemoryMb(it) }
         },
-        label = { Text("Max memory (MB)") },
+        label = { Text(stringResource(R.string.security_advanced_max_memory_mb_label)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
@@ -206,7 +221,7 @@ private fun ResourcesSection(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateSecurityResourcesMaxCpuTimeSecs(it) }
         },
-        label = { Text("Max CPU time (seconds)") },
+        label = { Text(stringResource(R.string.security_advanced_max_cpu_time_seconds_label)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
@@ -217,18 +232,18 @@ private fun ResourcesSection(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateSecurityResourcesMaxSubprocesses(it) }
         },
-        label = { Text("Max subprocesses") },
+        label = { Text(stringResource(R.string.security_advanced_max_subprocesses_label)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
     )
 
     SettingsToggleRow(
-        title = "Memory monitoring",
-        subtitle = "Track memory usage of sandboxed processes",
+        title = stringResource(R.string.security_advanced_memory_monitoring_title),
+        subtitle = stringResource(R.string.security_advanced_memory_monitoring_subtitle),
         checked = settings.securityResourcesMemoryMonitoring,
         onCheckedChange = { viewModel.updateSecurityResourcesMemoryMonitoring(it) },
-        contentDescription = "Enable memory monitoring",
+        contentDescription = stringResource(R.string.security_advanced_memory_monitoring_content_description),
     )
 }
 
@@ -243,14 +258,14 @@ private fun AuditSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Audit Logging")
+    SectionHeader(title = stringResource(R.string.security_advanced_section_audit_logging))
 
     SettingsToggleRow(
-        title = "Enable audit log",
-        subtitle = "Record security-relevant events for review",
+        title = stringResource(R.string.security_advanced_enable_audit_log_title),
+        subtitle = stringResource(R.string.security_advanced_enable_audit_log_subtitle),
         checked = settings.securityAuditEnabled,
         onCheckedChange = { viewModel.updateSecurityAuditEnabled(it) },
-        contentDescription = "Enable security audit logging",
+        contentDescription = stringResource(R.string.security_advanced_enable_audit_log_content_description),
     )
 }
 
@@ -266,14 +281,14 @@ private fun OtpSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "One-Time Password (OTP)")
+    SectionHeader(title = stringResource(R.string.security_advanced_section_otp))
 
     SettingsToggleRow(
-        title = "Enable OTP",
-        subtitle = "Require OTP verification for gated actions",
+        title = stringResource(R.string.security_advanced_enable_otp_title),
+        subtitle = stringResource(R.string.security_advanced_enable_otp_subtitle),
         checked = settings.securityOtpEnabled,
         onCheckedChange = { viewModel.updateSecurityOtpEnabled(it) },
-        contentDescription = "Enable OTP verification",
+        contentDescription = stringResource(R.string.security_advanced_enable_otp_content_description),
     )
 
     var methodExpanded by remember { mutableStateOf(false) }
@@ -286,7 +301,7 @@ private fun OtpSection(
             value = settings.securityOtpMethod,
             onValueChange = {},
             readOnly = true,
-            label = { Text("OTP method") },
+            label = { Text(stringResource(R.string.security_advanced_otp_method_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) },
             enabled = settings.securityOtpEnabled,
             modifier =
@@ -315,7 +330,7 @@ private fun OtpSection(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateSecurityOtpTokenTtlSecs(it) }
         },
-        label = { Text("Token TTL (seconds)") },
+        label = { Text(stringResource(R.string.security_advanced_token_ttl_seconds_label)) },
         singleLine = true,
         enabled = settings.securityOtpEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -327,7 +342,7 @@ private fun OtpSection(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateSecurityOtpCacheValidSecs(it) }
         },
-        label = { Text("Cache validity (seconds)") },
+        label = { Text(stringResource(R.string.security_advanced_cache_validity_seconds_label)) },
         singleLine = true,
         enabled = settings.securityOtpEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -337,8 +352,8 @@ private fun OtpSection(
     OutlinedTextField(
         value = settings.securityOtpGatedActions,
         onValueChange = { viewModel.updateSecurityOtpGatedActions(it) },
-        label = { Text("Gated actions") },
-        supportingText = { Text("Comma-separated (e.g. shell, file_write, browser)") },
+        label = { Text(stringResource(R.string.security_advanced_gated_actions_label)) },
+        supportingText = { Text(stringResource(R.string.security_advanced_gated_actions_hint)) },
         enabled = settings.securityOtpEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -347,8 +362,8 @@ private fun OtpSection(
     OutlinedTextField(
         value = settings.securityOtpGatedDomains,
         onValueChange = { viewModel.updateSecurityOtpGatedDomains(it) },
-        label = { Text("Gated domains") },
-        supportingText = { Text("Comma-separated domain names") },
+        label = { Text(stringResource(R.string.security_advanced_gated_domains_label)) },
+        supportingText = { Text(stringResource(R.string.security_advanced_gated_domains_hint)) },
         enabled = settings.securityOtpEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -357,8 +372,8 @@ private fun OtpSection(
     OutlinedTextField(
         value = settings.securityOtpGatedDomainCategories,
         onValueChange = { viewModel.updateSecurityOtpGatedDomainCategories(it) },
-        label = { Text("Gated domain categories") },
-        supportingText = { Text("Comma-separated categories") },
+        label = { Text(stringResource(R.string.security_advanced_gated_domain_categories_label)) },
+        supportingText = { Text(stringResource(R.string.security_advanced_gated_domain_categories_hint)) },
         enabled = settings.securityOtpEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -376,22 +391,22 @@ private fun EstopSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Emergency Stop")
+    SectionHeader(title = stringResource(R.string.security_advanced_section_emergency_stop))
 
     SettingsToggleRow(
-        title = "Enable e-stop",
-        subtitle = "Allow emergency shutdown of all agent operations",
+        title = stringResource(R.string.security_advanced_enable_estop_title),
+        subtitle = stringResource(R.string.security_advanced_enable_estop_subtitle),
         checked = settings.securityEstopEnabled,
         onCheckedChange = { viewModel.updateSecurityEstopEnabled(it) },
-        contentDescription = "Enable emergency stop",
+        contentDescription = stringResource(R.string.security_advanced_enable_estop_content_description),
     )
 
     SettingsToggleRow(
-        title = "Require OTP to resume",
-        subtitle = "After triggering e-stop, require OTP to restart",
+        title = stringResource(R.string.security_advanced_require_otp_resume_title),
+        subtitle = stringResource(R.string.security_advanced_require_otp_resume_subtitle),
         checked = settings.securityEstopRequireOtpToResume,
         onCheckedChange = { viewModel.updateSecurityEstopRequireOtpToResume(it) },
         enabled = settings.securityEstopEnabled,
-        contentDescription = "Require OTP to resume after e-stop",
+        contentDescription = stringResource(R.string.security_advanced_require_otp_resume_content_description),
     )
 }

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -49,18 +51,20 @@ fun StatusDot(
         }
     val label =
         when (state) {
-            ServiceState.RUNNING -> "Running"
-            ServiceState.STARTING -> "Starting"
-            ServiceState.STOPPING -> "Stopping"
-            ServiceState.ERROR -> "Error"
-            ServiceState.STOPPED -> "Stopped"
+            ServiceState.RUNNING -> stringResource(R.string.status_dot_running)
+            ServiceState.STARTING -> stringResource(R.string.status_dot_starting)
+            ServiceState.STOPPING -> stringResource(R.string.status_dot_stopping)
+            ServiceState.ERROR -> stringResource(R.string.status_dot_error)
+            ServiceState.STOPPED -> stringResource(R.string.status_dot_stopped)
         }
+    val daemonStatusContentDescription =
+        stringResource(R.string.status_dot_daemon_status_content_description, label)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier.semantics(mergeDescendants = true) {
-                contentDescription = "Daemon status: $label"
+                contentDescription = daemonStatusContentDescription
             },
     ) {
         Box(

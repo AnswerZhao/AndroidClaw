@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Spacing after the title text. */
@@ -65,8 +67,8 @@ private val HintSpacing = 8.dp
  */
 private data class TunnelOption(
     val id: String,
-    val title: String,
-    val description: String,
+    val titleRes: Int,
+    val descriptionRes: Int,
 )
 
 /** Available tunnel options presented to the user. */
@@ -74,28 +76,28 @@ private val TUNNEL_OPTIONS =
     listOf(
         TunnelOption(
             id = "none",
-            title = "Local Only",
-            description = "Agent accessible only on this device and local network",
+            titleRes = R.string.tunnel_option_none_title,
+            descriptionRes = R.string.tunnel_option_none_description,
         ),
         TunnelOption(
             id = "ngrok",
-            title = "Ngrok",
-            description = "Tunnel via ngrok for public HTTPS endpoint",
+            titleRes = R.string.tunnel_option_ngrok_title,
+            descriptionRes = R.string.tunnel_option_ngrok_description,
         ),
         TunnelOption(
             id = "cloudflare",
-            title = "Cloudflare",
-            description = "Tunnel via Cloudflare for public endpoint",
+            titleRes = R.string.tunnel_option_cloudflare_title,
+            descriptionRes = R.string.tunnel_option_cloudflare_description,
         ),
         TunnelOption(
             id = "tailscale",
-            title = "Tailscale",
-            description = "Tunnel via Tailscale for private mesh network access",
+            titleRes = R.string.tunnel_option_tailscale_title,
+            descriptionRes = R.string.tunnel_option_tailscale_description,
         ),
         TunnelOption(
             id = "custom",
-            title = "Custom",
-            description = "Specify your own public endpoint URL",
+            titleRes = R.string.tunnel_option_custom_title,
+            descriptionRes = R.string.tunnel_option_custom_description,
         ),
     )
 
@@ -132,18 +134,21 @@ fun TunnelConfigFlow(
     showSkipHint: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val tailscaleHostnameLabel = stringResource(R.string.tunnel_config_tailscale_hostname)
+    val publicEndpointLabel = stringResource(R.string.tunnel_config_public_endpoint_url)
+
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = "Tunnel Configuration",
+            text = stringResource(R.string.tunnel_config_title),
             style = MaterialTheme.typography.headlineMedium,
         )
 
         Spacer(modifier = Modifier.height(TitleSpacing))
 
         Text(
-            text = "Expose your agent to the internet for webhooks and external access.",
+            text = stringResource(R.string.tunnel_config_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -165,7 +170,11 @@ fun TunnelConfigFlow(
         if (tunnelType == "ngrok" || tunnelType == "cloudflare") {
             Spacer(modifier = Modifier.height(FieldSpacing))
             val label =
-                if (tunnelType == "ngrok") "Ngrok Auth Token" else "Cloudflare Token"
+                if (tunnelType == "ngrok") {
+                    stringResource(R.string.tunnel_config_ngrok_auth_token)
+                } else {
+                    stringResource(R.string.tunnel_config_cloudflare_token)
+                }
             OutlinedTextField(
                 value = tunnelToken,
                 onValueChange = onTunnelTokenChanged,
@@ -190,7 +199,7 @@ fun TunnelConfigFlow(
             OutlinedTextField(
                 value = customEndpoint,
                 onValueChange = onCustomEndpointChanged,
-                label = { Text("Tailscale Hostname") },
+                label = { Text(tailscaleHostnameLabel) },
                 singleLine = true,
                 keyboardOptions =
                     KeyboardOptions(
@@ -199,9 +208,7 @@ fun TunnelConfigFlow(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Tailscale Hostname"
-                        },
+                        .semantics { contentDescription = tailscaleHostnameLabel },
             )
         }
 
@@ -210,7 +217,7 @@ fun TunnelConfigFlow(
             OutlinedTextField(
                 value = customEndpoint,
                 onValueChange = onCustomEndpointChanged,
-                label = { Text("Public Endpoint URL") },
+                label = { Text(publicEndpointLabel) },
                 singleLine = true,
                 keyboardOptions =
                     KeyboardOptions(
@@ -219,16 +226,14 @@ fun TunnelConfigFlow(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .semantics {
-                            contentDescription = "Public Endpoint URL"
-                        },
+                        .semantics { contentDescription = publicEndpointLabel },
             )
         }
 
         if (showSkipHint) {
             Spacer(modifier = Modifier.height(HintSpacing))
             Text(
-                text = "You can configure a tunnel later in Settings",
+                text = stringResource(R.string.tunnel_config_skip_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -254,6 +259,21 @@ private fun TunnelOptionCard(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val title = stringResource(option.titleRes)
+    val description = stringResource(option.descriptionRes)
+    val selectionState =
+        if (isSelected) {
+            stringResource(R.string.common_state_selected)
+        } else {
+            stringResource(R.string.common_state_not_selected)
+        }
+    val optionContentDescription =
+        stringResource(
+            R.string.tunnel_option_content_description,
+            title,
+            selectionState,
+        )
+
     Card(
         onClick = onClick,
         colors =
@@ -277,8 +297,7 @@ private fun TunnelOptionCard(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "${option.title}, ${if (isSelected) "selected" else "not selected"}"
+                    contentDescription = optionContentDescription
                     role = Role.RadioButton
                     selected = isSelected
                 },
@@ -287,11 +306,11 @@ private fun TunnelOptionCard(
             modifier = Modifier.padding(CardPadding),
         ) {
             Text(
-                text = option.title,
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = option.description,
+                text = description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

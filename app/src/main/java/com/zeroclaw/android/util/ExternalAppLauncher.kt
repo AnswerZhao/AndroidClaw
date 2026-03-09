@@ -10,6 +10,8 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.StringRes
+import com.zeroclaw.android.R
 
 /**
  * Describes a deep-link destination with an optional fallback URL.
@@ -19,12 +21,12 @@ import android.net.Uri
  *
  * @property uri Primary URI to open (may use a custom scheme such as `tg://`).
  * @property fallbackUri Optional HTTPS fallback when the primary URI has no handler.
- * @property label Human-readable description of the target, suitable for button text.
+ * @property labelResId String resource ID of the target label, suitable for button text.
  */
 data class DeepLinkTarget(
     val uri: String,
     val fallbackUri: String? = null,
-    val label: String,
+    @StringRes val labelResId: Int,
 )
 
 /**
@@ -44,7 +46,7 @@ object ExternalAppLauncher {
         DeepLinkTarget(
             uri = "tg://resolve?domain=BotFather",
             fallbackUri = "https://t.me/BotFather",
-            label = "Open @BotFather",
+            labelResId = R.string.external_app_open_botfather,
         )
 
     /**
@@ -56,7 +58,7 @@ object ExternalAppLauncher {
         DeepLinkTarget(
             uri = "tg://resolve?domain=userinfobot",
             fallbackUri = "https://t.me/userinfobot",
-            label = "Get My User ID",
+            labelResId = R.string.external_app_get_my_user_id,
         )
 
     /**
@@ -67,7 +69,7 @@ object ExternalAppLauncher {
     val DISCORD_DEV_PORTAL =
         DeepLinkTarget(
             uri = "https://discord.com/developers/applications",
-            label = "Open Developer Portal",
+            labelResId = R.string.external_app_open_developer_portal,
         )
 
     /**
@@ -78,7 +80,7 @@ object ExternalAppLauncher {
     val SLACK_APP_CONSOLE =
         DeepLinkTarget(
             uri = "https://api.slack.com/apps",
-            label = "Open Slack App Console",
+            labelResId = R.string.external_app_open_slack_app_console,
         )
 
     /**
@@ -92,37 +94,37 @@ object ExternalAppLauncher {
             "openai" to
                 DeepLinkTarget(
                     uri = "https://platform.openai.com/api-keys",
-                    label = "Get OpenAI API Key",
+                    labelResId = R.string.external_app_get_openai_api_key,
                 ),
             "anthropic" to
                 DeepLinkTarget(
                     uri = "https://console.anthropic.com/settings/keys",
-                    label = "Get Anthropic API Key",
+                    labelResId = R.string.external_app_get_anthropic_api_key,
                 ),
             "openrouter" to
                 DeepLinkTarget(
                     uri = "https://openrouter.ai/keys",
-                    label = "Get OpenRouter API Key",
+                    labelResId = R.string.external_app_get_openrouter_api_key,
                 ),
             "google_gemini" to
                 DeepLinkTarget(
                     uri = "https://aistudio.google.com/apikey",
-                    label = "Get Google AI API Key",
+                    labelResId = R.string.external_app_get_google_ai_api_key,
                 ),
             "groq" to
                 DeepLinkTarget(
                     uri = "https://console.groq.com/keys",
-                    label = "Get Groq API Key",
+                    labelResId = R.string.external_app_get_groq_api_key,
                 ),
             "together" to
                 DeepLinkTarget(
                     uri = "https://api.together.xyz/settings/api-keys",
-                    label = "Get Together API Key",
+                    labelResId = R.string.external_app_get_together_api_key,
                 ),
             "mistral" to
                 DeepLinkTarget(
                     uri = "https://console.mistral.ai/api-keys",
-                    label = "Get Mistral API Key",
+                    labelResId = R.string.external_app_get_mistral_api_key,
                 ),
         )
 

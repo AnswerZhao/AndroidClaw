@@ -29,8 +29,8 @@ class OkHttpPluginRegistryClient(
     @Suppress("InjectDispatcher")
     override suspend fun fetchPlugins(registryUrl: String): List<RemotePlugin> =
         withContext(Dispatchers.IO) {
-            require(registryUrl.startsWith("https://")) {
-                "Registry URL must use HTTPS: $registryUrl"
+            if (!registryUrl.startsWith("https://")) {
+                throw PluginRegistryFetchException.HttpsRequired(registryUrl)
             }
             val request =
                 Request
@@ -41,15 +41,15 @@ class OkHttpPluginRegistryClient(
             val response = client.newCall(request).execute()
             val body =
                 response.use { resp ->
-                    check(resp.isSuccessful) {
-                        "Registry fetch failed: HTTP ${resp.code}"
+                    if (!resp.isSuccessful) {
+                        throw PluginRegistryFetchException.HttpFailure(resp.code)
                     }
                     val source =
                         resp.body?.source()
-                            ?: error("Empty response body from registry")
+                            ?: throw PluginRegistryFetchException.EmptyResponseBody
                     source.request(MAX_RESPONSE_BYTES + 1)
-                    check(source.buffer.size <= MAX_RESPONSE_BYTES) {
-                        "Registry response exceeds ${MAX_RESPONSE_BYTES / BYTES_PER_KB} KB limit"
+                    if (source.buffer.size > MAX_RESPONSE_BYTES) {
+                        throw PluginRegistryFetchException.ResponseTooLarge(MAX_RESPONSE_BYTES / BYTES_PER_KB)
                     }
                     source.buffer.readUtf8()
                 }
@@ -63,4 +63,20 @@ class OkHttpPluginRegistryClient(
         /** Bytes per kilobyte for display formatting. */
         const val BYTES_PER_KB = 1024
     }
+}
+
+sealed class PluginRegistryFetchException : Exception() {
+    data class HttpsRequired(
+        val url: String,
+    ) : PluginRegistryFetchException()
+
+    data class HttpFailure(
+        val statusCode: Int,
+    ) : PluginRegistryFetchException()
+
+    data object EmptyResponseBody : PluginRegistryFetchException()
+
+    data class ResponseTooLarge(
+        val maxKb: Long,
+    ) : PluginRegistryFetchException()
 }

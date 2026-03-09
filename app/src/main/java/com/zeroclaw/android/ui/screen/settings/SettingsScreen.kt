@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -148,189 +150,205 @@ internal fun SettingsContent(
             )
         }
 
-        SectionHeader(title = "Daemon")
+        SectionHeader(title = stringResource(R.string.settings_section_daemon))
         SettingsListItem(
             icon = Icons.Outlined.Settings,
-            title = "Service Configuration",
+            title = stringResource(R.string.settings_item_service_configuration),
             subtitle =
                 "${settings.host}:${settings.port}" +
-                    if (settings.autoStartOnBoot) " | auto-start" else "",
+                    if (settings.autoStartOnBoot) {
+                        " | ${stringResource(R.string.settings_service_auto_start_suffix)}"
+                    } else {
+                        ""
+                    },
             onClick = { onNavigate(SettingsNavAction.ServiceConfig) },
         )
         SettingsListItem(
             icon = Icons.Outlined.BatteryAlert,
-            title = "Battery Settings",
-            subtitle = "Optimization exemptions",
+            title = stringResource(R.string.settings_item_battery_settings),
+            subtitle = stringResource(R.string.settings_item_battery_settings_subtitle),
             onClick = { onNavigate(SettingsNavAction.Battery) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Fingerprint,
-            title = "Agent Identity",
-            subtitle = if (settings.identityJson.isNotBlank()) "Configured" else "Not set",
+            title = stringResource(R.string.settings_item_agent_identity),
+            subtitle =
+                if (settings.identityJson.isNotBlank()) {
+                    stringResource(R.string.settings_state_configured)
+                } else {
+                    stringResource(R.string.settings_state_not_set)
+                },
             onClick = { onNavigate(SettingsNavAction.Identity) },
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SectionHeader(title = "Security")
+        SectionHeader(title = stringResource(R.string.settings_section_security))
         SettingsListItem(
             icon = Icons.Outlined.VerifiedUser,
-            title = "Security Overview",
-            subtitle = "View current security posture",
+            title = stringResource(R.string.settings_item_security_overview),
+            subtitle = stringResource(R.string.settings_item_security_overview_subtitle),
             onClick = { onNavigate(SettingsNavAction.SecurityOverview) },
         )
         SettingsListItem(
             icon = Icons.Outlined.GppGood,
-            title = "Security Advanced",
-            subtitle = "Sandbox, OTP, e-stop, resource limits",
+            title = stringResource(R.string.settings_item_security_advanced),
+            subtitle = stringResource(R.string.settings_item_security_advanced_subtitle),
             onClick = { onNavigate(SettingsNavAction.SecurityAdvanced) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Key,
-            title = "API Keys",
-            subtitle = "Manage provider credentials",
+            title = stringResource(R.string.settings_item_api_keys),
+            subtitle = stringResource(R.string.settings_item_api_keys_subtitle),
             onClick = { onNavigate(SettingsNavAction.ApiKeys) },
         )
         SettingsListItem(
             icon = Icons.Outlined.AccountCircle,
-            title = "Auth Profiles",
-            subtitle = "OAuth tokens and stored credentials",
+            title = stringResource(R.string.settings_item_auth_profiles),
+            subtitle = stringResource(R.string.settings_item_auth_profiles_subtitle),
             onClick = { onNavigate(SettingsNavAction.AuthProfiles) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Security,
-            title = "Autonomy Level",
+            title = stringResource(R.string.settings_item_autonomy_level),
             subtitle = settings.autonomyLevel,
             onClick = { onNavigate(SettingsNavAction.Autonomy) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Forum,
-            title = "Connected Channels",
-            subtitle = "Telegram, Discord, Slack, and more",
+            title = stringResource(R.string.settings_item_connected_channels),
+            subtitle = stringResource(R.string.settings_item_connected_channels_subtitle),
             onClick = { onNavigate(SettingsNavAction.Channels) },
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SectionHeader(title = "Network")
+        SectionHeader(title = stringResource(R.string.settings_section_network))
         SettingsListItem(
             icon = Icons.Outlined.Hub,
-            title = "Gateway & Pairing",
+            title = stringResource(R.string.settings_item_gateway_pairing),
             subtitle =
-                if (settings.gatewayRequirePairing) "Pairing required" else "Open access",
+                if (settings.gatewayRequirePairing) {
+                    stringResource(R.string.settings_state_pairing_required)
+                } else {
+                    stringResource(R.string.settings_state_open_access)
+                },
             onClick = { onNavigate(SettingsNavAction.Gateway) },
         )
         SettingsListItem(
             icon = Icons.Outlined.VpnKey,
-            title = "Tunnel",
+            title = stringResource(R.string.settings_item_tunnel),
             subtitle = settings.tunnelProvider,
             onClick = { onNavigate(SettingsNavAction.Tunnel) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Sync,
-            title = "Plugin Registry",
+            title = stringResource(R.string.settings_item_plugin_registry),
             subtitle =
-                if (settings.pluginSyncEnabled) "Auto-sync enabled" else "Manual only",
+                if (settings.pluginSyncEnabled) {
+                    stringResource(R.string.settings_state_auto_sync_enabled)
+                } else {
+                    stringResource(R.string.settings_state_manual_only)
+                },
             onClick = { onNavigate(SettingsNavAction.PluginRegistry) },
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SectionHeader(title = "Advanced Configuration")
+        SectionHeader(title = stringResource(R.string.settings_section_advanced_configuration))
         SettingsListItem(
             icon = Icons.Outlined.Route,
-            title = "Model Routes",
-            subtitle = "Hint-based provider routing",
+            title = stringResource(R.string.settings_item_model_routes),
+            subtitle = stringResource(R.string.settings_item_model_routes_subtitle),
             onClick = { onNavigate(SettingsNavAction.ModelRoutes) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Memory,
-            title = "Memory Advanced",
-            subtitle = "Embedding, hygiene, recall weights, Qdrant",
+            title = stringResource(R.string.settings_item_memory_advanced),
+            subtitle = stringResource(R.string.settings_item_memory_advanced_subtitle),
             onClick = { onNavigate(SettingsNavAction.MemoryAdvanced) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Layers,
-            title = "Embedding Routes",
-            subtitle = "Hint-based embedding provider routing",
+            title = stringResource(R.string.settings_item_embedding_routes),
+            subtitle = stringResource(R.string.settings_item_embedding_routes_subtitle),
             onClick = { onNavigate(SettingsNavAction.EmbeddingRoutes) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Schedule,
-            title = "Scheduler & Heartbeat",
+            title = stringResource(R.string.settings_item_scheduler_heartbeat),
             subtitle =
-                if (settings.schedulerEnabled) "Scheduler on" else "Scheduler off",
+                if (settings.schedulerEnabled) {
+                    stringResource(R.string.settings_state_scheduler_on)
+                } else {
+                    stringResource(R.string.settings_state_scheduler_off)
+                },
             onClick = { onNavigate(SettingsNavAction.Scheduler) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Speed,
-            title = "Observability",
+            title = stringResource(R.string.settings_item_observability),
             subtitle = settings.observabilityBackend,
             onClick = { onNavigate(SettingsNavAction.Observability) },
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SectionHeader(title = "Diagnostics")
+        SectionHeader(title = stringResource(R.string.settings_section_diagnostics))
         SettingsListItem(
             icon = Icons.AutoMirrored.Outlined.Subject,
-            title = "Log Viewer",
-            subtitle = "View daemon and service logs",
+            title = stringResource(R.string.settings_item_log_viewer),
+            subtitle = stringResource(R.string.settings_item_log_viewer_subtitle),
             onClick = { onNavigate(SettingsNavAction.LogViewer) },
         )
         SettingsListItem(
             icon = Icons.Outlined.HealthAndSafety,
-            title = "ZeroClaw Doctor",
-            subtitle = "Validate config, keys, and connectivity",
+            title = stringResource(R.string.settings_item_zeroclaw_doctor),
+            subtitle = stringResource(R.string.settings_item_zeroclaw_doctor_subtitle),
             onClick = { onNavigate(SettingsNavAction.Doctor) },
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SectionHeader(title = "Inspect & Browse")
+        SectionHeader(title = stringResource(R.string.settings_section_inspect_browse))
         SettingsListItem(
             icon = Icons.Outlined.Psychology,
-            title = "Memory Browser",
-            subtitle = "Browse and search memory entries",
+            title = stringResource(R.string.settings_item_memory_browser),
+            subtitle = stringResource(R.string.settings_item_memory_browser_subtitle),
             onClick = { onNavigate(SettingsNavAction.MemoryBrowser) },
         )
         SettingsListItem(
             icon = Icons.Outlined.TaskAlt,
-            title = "Scheduled Tasks",
-            subtitle = "View and manage cron jobs",
+            title = stringResource(R.string.settings_item_scheduled_tasks),
+            subtitle = stringResource(R.string.settings_item_scheduled_tasks_subtitle),
             onClick = { onNavigate(SettingsNavAction.CronJobs) },
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SectionHeader(title = "App")
+        SectionHeader(title = stringResource(R.string.settings_section_app))
         SettingsListItem(
             icon = Icons.Outlined.DarkMode,
-            title = "Theme",
-            subtitle =
-                when (settings.theme) {
-                    ThemeMode.SYSTEM -> "System default"
-                    ThemeMode.LIGHT -> "Light"
-                    ThemeMode.DARK -> "Dark"
-                },
+            title = stringResource(R.string.settings_item_theme),
+            subtitle = themeModeLabel(settings.theme),
             onClick = { showThemeDialog = true },
         )
         SettingsListItem(
             icon = Icons.Outlined.Refresh,
-            title = "Re-run Setup Wizard",
-            subtitle = "Walk through initial configuration again",
+            title = stringResource(R.string.settings_item_rerun_setup_wizard),
+            subtitle = stringResource(R.string.settings_item_rerun_setup_wizard_subtitle),
             onClick = { showRerunDialog = true },
         )
         SettingsListItem(
             icon = Icons.Outlined.SystemUpdate,
-            title = "Updates",
-            subtitle = "Check for new versions",
+            title = stringResource(R.string.settings_item_updates),
+            subtitle = stringResource(R.string.settings_item_updates_subtitle),
             onClick = { onNavigate(SettingsNavAction.Updates) },
         )
         SettingsListItem(
             icon = Icons.Outlined.Info,
-            title = "About",
-            subtitle = "Version, licenses, links",
+            title = stringResource(R.string.settings_item_about),
+            subtitle = stringResource(R.string.settings_item_about_subtitle),
             onClick = { onNavigate(SettingsNavAction.About) },
         )
 
@@ -376,16 +394,11 @@ private fun ThemePickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose Theme") },
+        title = { Text(stringResource(R.string.settings_choose_theme_title)) },
         text = {
             Column(modifier = Modifier.selectableGroup()) {
                 ThemeMode.entries.forEach { mode ->
-                    val label =
-                        when (mode) {
-                            ThemeMode.SYSTEM -> "System default"
-                            ThemeMode.LIGHT -> "Light"
-                            ThemeMode.DARK -> "Dark"
-                        }
+                    val label = themeModeLabel(mode)
                     Row(
                         modifier =
                             Modifier
@@ -412,7 +425,7 @@ private fun ThemePickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )
@@ -431,23 +444,29 @@ private fun RerunWizardDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Re-run Setup Wizard?") },
+        title = { Text(stringResource(R.string.settings_rerun_setup_wizard_title)) },
         text = {
             Text(
-                "This will open the initial setup wizard again. " +
-                    "Your agent identity (AIEOS) will be cleared so you can " +
-                    "generate a fresh one. API keys and other settings are preserved.",
+                stringResource(R.string.settings_rerun_setup_wizard_message),
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Continue")
+                Text(stringResource(R.string.common_continue))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )
 }
+
+@Composable
+private fun themeModeLabel(mode: ThemeMode): String =
+    when (mode) {
+        ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system_default)
+        ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+        ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+    }

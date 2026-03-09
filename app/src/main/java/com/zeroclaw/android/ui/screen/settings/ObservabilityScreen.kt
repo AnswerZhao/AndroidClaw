@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -69,17 +71,17 @@ fun ObservabilityScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Observability Backend")
+        SectionHeader(title = stringResource(R.string.observability_section_backend))
 
         ExposedDropdownMenuBox(
             expanded = backendExpanded,
             onExpandedChange = { backendExpanded = it },
         ) {
             OutlinedTextField(
-                value = settings.observabilityBackend,
+                value = observabilityBackendLabel(settings.observabilityBackend),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Backend") },
+                label = { Text(stringResource(R.string.observability_backend_label)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(backendExpanded) },
                 modifier =
                     Modifier
@@ -92,7 +94,7 @@ fun ObservabilityScreen(
             ) {
                 for (backend in OBS_BACKENDS) {
                     DropdownMenuItem(
-                        text = { Text(backend) },
+                        text = { Text(observabilityBackendLabel(backend)) },
                         onClick = {
                             settingsViewModel.updateObservabilityBackend(backend)
                             backendExpanded = false
@@ -105,22 +107,22 @@ fun ObservabilityScreen(
         Text(
             text =
                 when (settings.observabilityBackend) {
-                    "log" -> "Events are written to the daemon log output."
-                    "otel" -> "Events are exported to an OpenTelemetry collector."
-                    else -> "No observability backend is active."
+                    "log" -> stringResource(R.string.observability_backend_log_description)
+                    "otel" -> stringResource(R.string.observability_backend_otel_description)
+                    else -> stringResource(R.string.observability_backend_none_description)
                 },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         if (isOtel) {
-            SectionHeader(title = "OpenTelemetry")
+            SectionHeader(title = stringResource(R.string.observability_section_open_telemetry))
 
             OutlinedTextField(
                 value = settings.observabilityOtelEndpoint,
                 onValueChange = { settingsViewModel.updateObservabilityOtelEndpoint(it) },
-                label = { Text("Collector endpoint") },
-                supportingText = { Text("OTLP HTTP endpoint (e.g. http://localhost:4318)") },
+                label = { Text(stringResource(R.string.observability_collector_endpoint_label)) },
+                supportingText = { Text(stringResource(R.string.observability_collector_endpoint_hint)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -128,7 +130,7 @@ fun ObservabilityScreen(
             OutlinedTextField(
                 value = settings.observabilityOtelServiceName,
                 onValueChange = { settingsViewModel.updateObservabilityOtelServiceName(it) },
-                label = { Text("Service name") },
+                label = { Text(stringResource(R.string.observability_service_name_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -137,3 +139,12 @@ fun ObservabilityScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+@Composable
+private fun observabilityBackendLabel(backend: String): String =
+    when (backend) {
+        "none" -> stringResource(R.string.observability_backend_none_label)
+        "log" -> stringResource(R.string.observability_backend_log_label)
+        "otel" -> stringResource(R.string.observability_backend_otel_label)
+        else -> backend
+    }

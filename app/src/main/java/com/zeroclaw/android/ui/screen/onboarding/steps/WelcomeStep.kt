@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,25 +84,21 @@ fun WelcomeStep(modifier: Modifier = Modifier) {
     ) {
         Image(
             painter = painterResource(R.drawable.zero_crab),
-            contentDescription = "Zero the crab, ZeroClaw mascot",
+            contentDescription = stringResource(R.string.welcome_step_mascot_content_description),
             modifier = Modifier.size(HeroImageSize),
         )
 
         Spacer(modifier = Modifier.height(HeroSpacing))
 
         Text(
-            text = "Welcome to ZeroClaw",
+            text = stringResource(R.string.welcome_step_title),
             style = MaterialTheme.typography.headlineLarge,
         )
 
         Spacer(modifier = Modifier.height(TitleSpacing))
 
         Text(
-            text =
-                "ZeroClaw is an AI agent that runs on your device as an " +
-                    "always-on service. It connects to messaging platforms " +
-                    "like Telegram and Discord, and can be customized with " +
-                    "tools, memory, and scheduled tasks.",
+            text = stringResource(R.string.welcome_step_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -115,7 +112,7 @@ fun WelcomeStep(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(CardBottomSpacing))
 
         Text(
-            text = "Tap Next to get started",
+            text = stringResource(R.string.welcome_step_hint_next),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -132,27 +129,29 @@ fun WelcomeStep(modifier: Modifier = Modifier) {
  */
 @Composable
 private fun SetupPreviewCard(modifier: Modifier = Modifier) {
+    val setupOverviewContentDescription =
+        stringResource(R.string.welcome_step_setup_overview_content_description)
     ElevatedCard(
         modifier =
             modifier.semantics(mergeDescendants = true) {
-                contentDescription = "Setup wizard overview"
+                contentDescription = setupOverviewContentDescription
             },
     ) {
         Column(modifier = Modifier.padding(CardPadding)) {
             Text(
-                text = "This wizard will set up:",
+                text = stringResource(R.string.welcome_step_setup_overview_title),
                 style = MaterialTheme.typography.titleMedium,
             )
 
             Spacer(modifier = Modifier.height(CardTitleSpacing))
 
-            SetupCheckItem(label = "AI provider and model")
+            SetupCheckItem(label = stringResource(R.string.welcome_step_setup_item_provider))
             Spacer(modifier = Modifier.height(CheckItemSpacing))
-            SetupCheckItem(label = "Messaging channels")
+            SetupCheckItem(label = stringResource(R.string.welcome_step_setup_item_channels))
             Spacer(modifier = Modifier.height(CheckItemSpacing))
-            SetupCheckItem(label = "Memory and identity")
+            SetupCheckItem(label = stringResource(R.string.welcome_step_setup_item_memory_identity))
             Spacer(modifier = Modifier.height(CheckItemSpacing))
-            SetupCheckItem(label = "Security settings")
+            SetupCheckItem(label = stringResource(R.string.welcome_step_setup_item_security))
         }
     }
 }

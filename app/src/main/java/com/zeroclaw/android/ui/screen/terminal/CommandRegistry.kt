@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.terminal
 
+import com.zeroclaw.android.R
+
 /**
  * Result of parsing a terminal input line.
  *
@@ -49,15 +51,15 @@ sealed interface CommandResult {
  * expression string that the FFI engine can evaluate.
  *
  * @property name The command name without the leading slash (e.g. "status").
- * @property description Brief description shown in the autocomplete overlay.
- * @property usage Usage hint with argument placeholders (empty when none).
+ * @property descriptionResId String resource id of the command description.
+ * @property usageResId String resource id of the usage hint, or null if none.
  * @property toExpression Translates a split argument list into a Rhai expression string,
  *     or `null` for commands handled locally by the ViewModel.
  */
 data class SlashCommand(
     val name: String,
-    val description: String,
-    val usage: String = "",
+    val descriptionResId: Int,
+    val usageResId: Int? = null,
     val toExpression: (args: List<String>) -> String?,
 )
 
@@ -197,18 +199,18 @@ object CommandRegistry {
         listOf(
             SlashCommand(
                 name = "status",
-                description = "Show daemon status",
+                descriptionResId = R.string.terminal_command_desc_status,
                 toExpression = { "status()" },
             ),
             SlashCommand(
                 name = "version",
-                description = "Show ZeroClaw version",
+                descriptionResId = R.string.terminal_command_desc_version,
                 toExpression = { "version()" },
             ),
             SlashCommand(
                 name = "health",
-                description = "Show health summary or component health",
-                usage = "[component]",
+                descriptionResId = R.string.terminal_command_desc_health,
+                usageResId = R.string.terminal_command_usage_health,
                 toExpression = { args ->
                     if (args.isEmpty()) {
                         "health()"
@@ -219,8 +221,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "doctor",
-                description = "Run diagnostic checks",
-                usage = "[config_path] [data_dir]",
+                descriptionResId = R.string.terminal_command_desc_doctor,
+                usageResId = R.string.terminal_command_usage_doctor,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         "doctor(${rhaiString(args[0])}, ${rhaiString(args[1])})"
@@ -231,8 +233,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cost daily",
-                description = "Show cost for a specific day (defaults to today)",
-                usage = "[year] [month] [day]",
+                descriptionResId = R.string.terminal_command_desc_cost_daily,
+                usageResId = R.string.terminal_command_usage_cost_daily,
                 toExpression = { args ->
                     if (args.size >= 3) {
                         "cost_daily(${args[0]}, ${args[1]}, ${args[2]})"
@@ -243,8 +245,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cost monthly",
-                description = "Show cost for a specific month (defaults to current)",
-                usage = "[year] [month]",
+                descriptionResId = R.string.terminal_command_desc_cost_monthly,
+                usageResId = R.string.terminal_command_usage_cost_monthly,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         "cost_monthly(${args[0]}, ${args[1]})"
@@ -255,13 +257,13 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cost",
-                description = "Show total cost summary",
+                descriptionResId = R.string.terminal_command_desc_cost,
                 toExpression = { "cost()" },
             ),
             SlashCommand(
                 name = "budget",
-                description = "Check budget against estimated spend",
-                usage = "<amount>",
+                descriptionResId = R.string.terminal_command_desc_budget,
+                usageResId = R.string.terminal_command_usage_budget,
                 toExpression = { args ->
                     val amount = args.firstOrNull() ?: "0.0"
                     "budget($amount)"
@@ -269,8 +271,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "events",
-                description = "Show recent events",
-                usage = "[limit]",
+                descriptionResId = R.string.terminal_command_desc_events,
+                usageResId = R.string.terminal_command_usage_events,
                 toExpression = { args ->
                     val limit = args.firstOrNull() ?: DEFAULT_EVENT_LIMIT.toString()
                     "events($limit)"
@@ -278,16 +280,16 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cron get",
-                description = "Get details of a cron job",
-                usage = "<id>",
+                descriptionResId = R.string.terminal_command_desc_cron_get,
+                usageResId = R.string.terminal_command_usage_cron_get,
                 toExpression = { args ->
                     "cron_get(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "cron add",
-                description = "Add a recurring cron job",
-                usage = "<expression> <command>",
+                descriptionResId = R.string.terminal_command_desc_cron_add,
+                usageResId = R.string.terminal_command_usage_cron_add,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         val expression = args.first()
@@ -300,8 +302,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cron oneshot",
-                description = "Add a one-shot delayed job",
-                usage = "<delay> <command>",
+                descriptionResId = R.string.terminal_command_desc_cron_oneshot,
+                usageResId = R.string.terminal_command_usage_cron_oneshot,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         val delay = args.first()
@@ -314,71 +316,71 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cron remove",
-                description = "Remove a cron job",
-                usage = "<id>",
+                descriptionResId = R.string.terminal_command_desc_cron_remove,
+                usageResId = R.string.terminal_command_usage_cron_remove,
                 toExpression = { args ->
                     "cron_remove(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "cron pause",
-                description = "Pause a cron job",
-                usage = "<id>",
+                descriptionResId = R.string.terminal_command_desc_cron_pause,
+                usageResId = R.string.terminal_command_usage_cron_pause,
                 toExpression = { args ->
                     "cron_pause(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "cron resume",
-                description = "Resume a paused cron job",
-                usage = "<id>",
+                descriptionResId = R.string.terminal_command_desc_cron_resume,
+                usageResId = R.string.terminal_command_usage_cron_resume,
                 toExpression = { args ->
                     "cron_resume(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "cron",
-                description = "List all cron jobs",
+                descriptionResId = R.string.terminal_command_desc_cron,
                 toExpression = { "cron_list()" },
             ),
             SlashCommand(
                 name = "skills tools",
-                description = "List tools provided by a skill",
-                usage = "<name>",
+                descriptionResId = R.string.terminal_command_desc_skills_tools,
+                usageResId = R.string.terminal_command_usage_skills_tools,
                 toExpression = { args ->
                     "skill_tools(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "skills install",
-                description = "Install a skill from a source",
-                usage = "<source>",
+                descriptionResId = R.string.terminal_command_desc_skills_install,
+                usageResId = R.string.terminal_command_usage_skills_install,
                 toExpression = { args ->
                     "skill_install(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "skills remove",
-                description = "Remove an installed skill",
-                usage = "<name>",
+                descriptionResId = R.string.terminal_command_desc_skills_remove,
+                usageResId = R.string.terminal_command_usage_skills_remove,
                 toExpression = { args ->
                     "skill_remove(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "skills",
-                description = "List installed skills",
+                descriptionResId = R.string.terminal_command_desc_skills,
                 toExpression = { "skills()" },
             ),
             SlashCommand(
                 name = "tools",
-                description = "List available tools",
+                descriptionResId = R.string.terminal_command_desc_tools,
                 toExpression = { "tools()" },
             ),
             SlashCommand(
                 name = "memories",
-                description = "List memories, optionally filtered by category",
-                usage = "[category]",
+                descriptionResId = R.string.terminal_command_desc_memories,
+                usageResId = R.string.terminal_command_usage_memories,
                 toExpression = { args ->
                     if (args.isEmpty()) {
                         "memories($DEFAULT_MEMORY_LIMIT)"
@@ -389,8 +391,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "memory recall",
-                description = "Search memories by query",
-                usage = "<query>",
+                descriptionResId = R.string.terminal_command_desc_memory_recall,
+                usageResId = R.string.terminal_command_usage_memory_recall,
                 toExpression = { args ->
                     val query = args.joinToString(" ")
                     "memory_recall(${rhaiString(query)}, $DEFAULT_RECALL_LIMIT)"
@@ -398,26 +400,26 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "memory forget",
-                description = "Delete a memory by key",
-                usage = "<key>",
+                descriptionResId = R.string.terminal_command_desc_memory_forget,
+                usageResId = R.string.terminal_command_usage_memory_forget,
                 toExpression = { args ->
                     "memory_forget(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "memory count",
-                description = "Show total memory count",
+                descriptionResId = R.string.terminal_command_desc_memory_count,
                 toExpression = { "memory_count()" },
             ),
             SlashCommand(
                 name = "config",
-                description = "Show running daemon config",
+                descriptionResId = R.string.terminal_command_desc_config,
                 toExpression = { "config()" },
             ),
             SlashCommand(
                 name = "validate",
-                description = "Validate a TOML config string",
-                usage = "<toml>",
+                descriptionResId = R.string.terminal_command_desc_validate,
+                usageResId = R.string.terminal_command_usage_validate,
                 toExpression = { args ->
                     val toml = args.joinToString(" ")
                     "validate_config(${rhaiString(toml)})"
@@ -425,8 +427,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "traces",
-                description = "Show recent traces, optionally filtered",
-                usage = "[filter]",
+                descriptionResId = R.string.terminal_command_desc_traces,
+                usageResId = R.string.terminal_command_usage_traces,
                 toExpression = { args ->
                     if (args.isEmpty()) {
                         "traces($DEFAULT_TRACE_LIMIT)"
@@ -438,8 +440,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "bind",
-                description = "Bind a user identity to a channel",
-                usage = "<channel> <user_id>",
+                descriptionResId = R.string.terminal_command_desc_bind,
+                usageResId = R.string.terminal_command_usage_bind,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         val channel = args[0]
@@ -452,16 +454,16 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "allowlist",
-                description = "Show channel allowlist",
-                usage = "<channel>",
+                descriptionResId = R.string.terminal_command_desc_allowlist,
+                usageResId = R.string.terminal_command_usage_allowlist,
                 toExpression = { args ->
                     "allowlist(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "swap",
-                description = "Swap the active provider and model",
-                usage = "<provider> <model>",
+                descriptionResId = R.string.terminal_command_desc_swap,
+                usageResId = R.string.terminal_command_usage_swap,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         "swap_provider(${rhaiString(args[0])}, ${rhaiString(args[1])})"
@@ -472,16 +474,16 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "models",
-                description = "List available models for a provider",
-                usage = "<provider>",
+                descriptionResId = R.string.terminal_command_desc_models,
+                usageResId = R.string.terminal_command_usage_models,
                 toExpression = { args ->
                     "models(${rhaiString(args.firstOrNull().orEmpty())})"
                 },
             ),
             SlashCommand(
                 name = "auth remove",
-                description = "Remove an auth profile",
-                usage = "<provider> <profile>",
+                descriptionResId = R.string.terminal_command_desc_auth_remove,
+                usageResId = R.string.terminal_command_usage_auth_remove,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         "auth_remove(${rhaiString(args[0])}, ${rhaiString(args[1])})"
@@ -492,13 +494,13 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "auth",
-                description = "List auth profiles",
+                descriptionResId = R.string.terminal_command_desc_auth,
                 toExpression = { "auth_list()" },
             ),
             SlashCommand(
                 name = "cron at",
-                description = "Schedule a job at a specific time",
-                usage = "<timestamp> <command>",
+                descriptionResId = R.string.terminal_command_desc_cron_at,
+                usageResId = R.string.terminal_command_usage_cron_at,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         val timestamp = args.first()
@@ -511,8 +513,8 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "cron every",
-                description = "Schedule a repeating job at an interval",
-                usage = "<ms> <command>",
+                descriptionResId = R.string.terminal_command_desc_cron_every,
+                usageResId = R.string.terminal_command_usage_cron_every,
                 toExpression = { args ->
                     if (args.size >= 2) {
                         val ms = args.first()
@@ -525,12 +527,12 @@ object CommandRegistry {
             ),
             SlashCommand(
                 name = "help",
-                description = "Show available commands",
+                descriptionResId = R.string.terminal_command_desc_help,
                 toExpression = { null },
             ),
             SlashCommand(
                 name = "clear",
-                description = "Clear terminal history",
+                descriptionResId = R.string.terminal_command_desc_clear,
                 toExpression = { null },
             ),
         )

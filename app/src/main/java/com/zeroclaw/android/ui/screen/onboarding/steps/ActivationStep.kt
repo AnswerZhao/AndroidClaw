@@ -22,10 +22,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.component.setup.ConfigSummary
 import com.zeroclaw.android.ui.component.setup.ConfigSummaryCard
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
@@ -70,17 +72,20 @@ fun ActivationStep(
     isActivating: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val completeSetupContentDescription =
+        stringResource(R.string.activation_step_complete_setup_content_description)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = "Ready to Go",
+            text = stringResource(R.string.activation_step_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(TitleSpacing))
         Text(
-            text = "Review your configuration and start the ZeroClaw daemon.",
+            text = stringResource(R.string.activation_step_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -100,13 +105,11 @@ fun ActivationStep(
                 Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = MinButtonHeight)
-                    .semantics {
-                        contentDescription = "Complete setup and start daemon"
-                    },
+                    .semantics { contentDescription = completeSetupContentDescription },
         ) {
             if (isActivating) {
                 if (LocalPowerSaveMode.current) {
-                    Text("Verifying\u2026")
+                    Text(stringResource(R.string.activation_step_verifying))
                 } else {
                     CircularProgressIndicator(
                         modifier = Modifier.height(ProgressHeight),
@@ -114,7 +117,7 @@ fun ActivationStep(
                     )
                 }
             } else {
-                Text("Complete Setup")
+                Text(stringResource(R.string.activation_step_complete_setup))
             }
         }
     }

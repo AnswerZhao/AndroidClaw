@@ -35,11 +35,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.channel.ChannelSetupSpec
 import com.zeroclaw.android.data.channel.ChannelSetupStepSpec
 import com.zeroclaw.android.data.channel.InstructionItem
@@ -49,6 +51,7 @@ import com.zeroclaw.android.model.ChannelFieldSpec
 import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.FieldInputType
 import com.zeroclaw.android.ui.component.SecretTextField
+import com.zeroclaw.android.ui.i18n.localizedLabel
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Standard vertical spacing between major sections. */
@@ -99,6 +102,13 @@ fun ChannelSetupFlow(
     val step = spec.steps[currentSubStep]
     val isFirstStep = currentSubStep == 0
     val isLastStep = currentSubStep == spec.steps.size - 1
+    val stepTitle = step.titleResId?.let { stringResource(it) } ?: step.title
+    val stepIndicator =
+        stringResource(
+            R.string.channel_setup_step_indicator,
+            currentSubStep + 1,
+            spec.steps.size,
+        )
     val requiredFieldsBlank =
         step.fields
             .filter { it.isRequired }
@@ -108,20 +118,19 @@ fun ChannelSetupFlow(
         modifier = modifier.imePadding().verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = "Step ${currentSubStep + 1} of ${spec.steps.size}",
+            text = stepIndicator,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier.semantics {
-                    contentDescription =
-                        "Step ${currentSubStep + 1} of ${spec.steps.size}"
+                    contentDescription = stepIndicator
                 },
         )
 
         Spacer(modifier = Modifier.height(ElementSpacing))
 
         Text(
-            text = step.title,
+            text = stepTitle,
             style = MaterialTheme.typography.headlineSmall,
         )
 
@@ -203,7 +212,8 @@ private fun ChannelField(
     value: String,
     onValueChanged: (String) -> Unit,
 ) {
-    val label = if (spec.isRequired) "${spec.label} *" else spec.label
+    val localizedLabel = spec.localizedLabel()
+    val label = if (spec.isRequired) "$localizedLabel *" else localizedLabel
 
     when (spec.inputType) {
         FieldInputType.BOOLEAN -> {
@@ -263,7 +273,7 @@ private fun ChannelField(
                 label = { Text(label) },
                 singleLine = true,
                 supportingText = {
-                    Text("Comma-separated values")
+                    Text(stringResource(R.string.channel_setup_comma_separated_values))
                 },
                 keyboardOptions =
                     KeyboardOptions(
@@ -348,6 +358,19 @@ private fun BooleanField(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val stateText =
+        if (checked) {
+            stringResource(R.string.common_state_on)
+        } else {
+            stringResource(R.string.common_state_off)
+        }
+    val booleanFieldContentDescription =
+        stringResource(
+            R.string.channel_setup_boolean_field_content_description,
+            label,
+            stateText,
+        )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -355,7 +378,7 @@ private fun BooleanField(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "$label, ${if (checked) "on" else "off"}"
+                    contentDescription = booleanFieldContentDescription
                 },
     ) {
         Text(
@@ -385,6 +408,8 @@ private fun ValidateActionRow(
     onValidate: () -> Unit,
 ) {
     val isLoading = validationResult is ValidationResult.Loading
+    val validateContentDescription =
+        stringResource(R.string.channel_setup_validate_credentials_content_description)
 
     FilledTonalButton(
         onClick = onValidate,
@@ -392,9 +417,7 @@ private fun ValidateActionRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .semantics {
-                    contentDescription = "Validate credentials"
-                },
+                .semantics { contentDescription = validateContentDescription },
     ) {
         Icon(
             imageVector = Icons.Filled.Verified,
@@ -402,7 +425,12 @@ private fun ValidateActionRow(
         )
         Spacer(modifier = Modifier.width(ButtonIconSpacing))
         Text(
-            text = if (isLoading) "Validating\u2026" else "Validate",
+            text =
+                if (isLoading) {
+                    stringResource(R.string.validation_indicator_validating)
+                } else {
+                    stringResource(R.string.common_validate)
+                },
         )
     }
 }
@@ -428,6 +456,31 @@ private fun NavigationRow(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
+    val previousContentDescription =
+        if (isFirstStep) {
+            stringResource(R.string.channel_setup_back_to_selection_content_description)
+        } else {
+            stringResource(R.string.channel_setup_previous_step_content_description)
+        }
+    val previousButtonText =
+        if (isFirstStep) {
+            stringResource(R.string.channel_setup_back_to_channels)
+        } else {
+            stringResource(R.string.onboarding_nav_back)
+        }
+    val nextContentDescription =
+        if (isLastStep) {
+            stringResource(R.string.channel_setup_finish_content_description)
+        } else {
+            stringResource(R.string.channel_setup_next_step_content_description)
+        }
+    val nextButtonText =
+        if (isLastStep) {
+            stringResource(R.string.channel_setup_done)
+        } else {
+            stringResource(R.string.onboarding_nav_next)
+        }
+
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier.fillMaxWidth(),
@@ -436,12 +489,7 @@ private fun NavigationRow(
             onClick = onPrevious,
             modifier =
                 Modifier.semantics {
-                    contentDescription =
-                        if (isFirstStep) {
-                            "Go back to channel selection"
-                        } else {
-                            "Go to previous step"
-                        }
+                    contentDescription = previousContentDescription
                 },
         ) {
             Icon(
@@ -449,7 +497,7 @@ private fun NavigationRow(
                 contentDescription = null,
             )
             Spacer(modifier = Modifier.width(ButtonIconSpacing))
-            Text(text = if (isFirstStep) "Back to Channels" else "Back")
+            Text(text = previousButtonText)
         }
 
         Button(
@@ -457,15 +505,10 @@ private fun NavigationRow(
             enabled = nextEnabled,
             modifier =
                 Modifier.semantics {
-                    contentDescription =
-                        if (isLastStep) {
-                            "Finish channel setup"
-                        } else {
-                            "Go to next step"
-                        }
+                    contentDescription = nextContentDescription
                 },
         ) {
-            Text(text = if (isLastStep) "Done" else "Next")
+            Text(text = nextButtonText)
             Spacer(modifier = Modifier.width(ButtonIconSpacing))
             Icon(
                 imageVector =
@@ -492,29 +535,29 @@ private fun PreviewStep1() {
                         steps =
                             listOf(
                                 ChannelSetupStepSpec(
-                                    title = "Create a Telegram Bot",
+                                    title = stringResource(R.string.channel_setup_preview_title_create_telegram_bot),
                                     instructions =
                                         listOf(
                                             InstructionItem.Text(
-                                                "Create a new bot using BotFather.",
+                                                stringResource(R.string.channel_setup_preview_instruction_create_botfather),
                                             ),
                                             InstructionItem.NumberedStep(
                                                 1,
-                                                "Open BotFather.",
+                                                stringResource(R.string.channel_setup_preview_instruction_open_botfather),
                                             ),
                                             InstructionItem.NumberedStep(
                                                 2,
-                                                "Send /newbot.",
+                                                stringResource(R.string.channel_setup_preview_instruction_send_newbot),
                                             ),
                                             InstructionItem.Warning(
-                                                "Keep your bot token secret.",
+                                                stringResource(R.string.channel_setup_preview_instruction_keep_token_secret),
                                             ),
                                         ),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "bot_token",
-                                                label = "Bot Token",
+                                                label = stringResource(R.string.channel_setup_preview_field_bot_token),
                                                 isRequired = true,
                                                 isSecret = true,
                                                 inputType = FieldInputType.SECRET,
@@ -523,18 +566,18 @@ private fun PreviewStep1() {
                                     validatorType = ValidatorType.TELEGRAM_BOT_TOKEN,
                                 ),
                                 ChannelSetupStepSpec(
-                                    title = "Allow Your Account",
+                                    title = stringResource(R.string.channel_setup_preview_title_allow_your_account),
                                     instructions =
                                         listOf(
                                             InstructionItem.Text(
-                                                "Restrict which users can interact.",
+                                                stringResource(R.string.channel_setup_preview_instruction_restrict_users),
                                             ),
                                         ),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "allowed_users",
-                                                label = "Allowed Users",
+                                                label = stringResource(R.string.channel_setup_preview_field_allowed_users),
                                                 inputType = FieldInputType.LIST,
                                             ),
                                         ),
@@ -563,13 +606,13 @@ private fun PreviewStep2() {
                         steps =
                             listOf(
                                 ChannelSetupStepSpec(
-                                    title = "Create a Telegram Bot",
+                                    title = stringResource(R.string.channel_setup_preview_title_create_telegram_bot),
                                     instructions = emptyList(),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "bot_token",
-                                                label = "Bot Token",
+                                                label = stringResource(R.string.channel_setup_preview_field_bot_token),
                                                 isRequired = true,
                                                 isSecret = true,
                                                 inputType = FieldInputType.SECRET,
@@ -577,18 +620,18 @@ private fun PreviewStep2() {
                                         ),
                                 ),
                                 ChannelSetupStepSpec(
-                                    title = "Allow Your Account",
+                                    title = stringResource(R.string.channel_setup_preview_title_allow_your_account),
                                     instructions =
                                         listOf(
                                             InstructionItem.Text(
-                                                "Restrict which users can interact.",
+                                                stringResource(R.string.channel_setup_preview_instruction_restrict_users),
                                             ),
                                         ),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "allowed_users",
-                                                label = "Allowed Users",
+                                                label = stringResource(R.string.channel_setup_preview_field_allowed_users),
                                                 inputType = FieldInputType.LIST,
                                             ),
                                         ),
@@ -621,18 +664,18 @@ private fun PreviewValidationSuccess() {
                         steps =
                             listOf(
                                 ChannelSetupStepSpec(
-                                    title = "Create a Discord Bot",
+                                    title = stringResource(R.string.channel_setup_preview_title_create_discord_bot),
                                     instructions =
                                         listOf(
                                             InstructionItem.Text(
-                                                "Create a new Discord application.",
+                                                stringResource(R.string.channel_setup_preview_instruction_create_discord_application),
                                             ),
                                         ),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "bot_token",
-                                                label = "Bot Token",
+                                                label = stringResource(R.string.channel_setup_preview_field_bot_token),
                                                 isRequired = true,
                                                 isSecret = true,
                                                 inputType = FieldInputType.SECRET,
@@ -646,7 +689,9 @@ private fun PreviewValidationSuccess() {
                 fieldValues = mapOf("bot_token" to "discord-token"),
                 validationResult =
                     ValidationResult.Success(
-                        details = "Bot: ZeroClaw#1234",
+                        details = "",
+                        detailsResId = R.string.validation_channel_connected_as,
+                        detailsArgs = listOf("ZeroClaw#1234"),
                     ),
                 onFieldChanged = { _, _ -> },
                 onNextSubStep = {},
@@ -671,21 +716,21 @@ private fun PreviewDark() {
                         steps =
                             listOf(
                                 ChannelSetupStepSpec(
-                                    title = "Create a Telegram Bot",
+                                    title = stringResource(R.string.channel_setup_preview_title_create_telegram_bot),
                                     instructions =
                                         listOf(
                                             InstructionItem.Text(
-                                                "Create a new bot using BotFather.",
+                                                stringResource(R.string.channel_setup_preview_instruction_create_botfather),
                                             ),
                                             InstructionItem.Warning(
-                                                "Keep your bot token secret.",
+                                                stringResource(R.string.channel_setup_preview_instruction_keep_token_secret),
                                             ),
                                         ),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "bot_token",
-                                                label = "Bot Token",
+                                                label = stringResource(R.string.channel_setup_preview_field_bot_token),
                                                 isRequired = true,
                                                 isSecret = true,
                                                 inputType = FieldInputType.SECRET,
@@ -694,13 +739,13 @@ private fun PreviewDark() {
                                     validatorType = ValidatorType.TELEGRAM_BOT_TOKEN,
                                 ),
                                 ChannelSetupStepSpec(
-                                    title = "Allow Your Account",
+                                    title = stringResource(R.string.channel_setup_preview_title_allow_your_account),
                                     instructions = emptyList(),
                                     fields =
                                         listOf(
                                             ChannelFieldSpec(
                                                 key = "allowed_users",
-                                                label = "Allowed Users",
+                                                label = stringResource(R.string.channel_setup_preview_field_allowed_users),
                                                 inputType = FieldInputType.LIST,
                                             ),
                                         ),

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,6 +74,8 @@ fun EmbeddingRoutesScreen(
         remember(settings.embeddingRoutesJson) {
             parseEmbeddingRoutes(settings.embeddingRoutesJson)
         }
+    val addEmbeddingRouteContentDescription =
+        stringResource(R.string.embedding_routes_add_route_content_description)
 
     Column(
         modifier =
@@ -81,10 +85,10 @@ fun EmbeddingRoutesScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Embedding Routes")
+        SectionHeader(title = stringResource(R.string.embedding_routes_section_title))
 
         Text(
-            text = "Route embedding requests to specific providers based on hint keywords.",
+            text = stringResource(R.string.embedding_routes_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -129,10 +133,10 @@ fun EmbeddingRoutesScreen(
                 Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
-                    .semantics { contentDescription = "Add embedding route" },
+                    .semantics { contentDescription = addEmbeddingRouteContentDescription },
         ) {
             Icon(Icons.Filled.Add, contentDescription = null)
-            Text("Add Route", modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(R.string.common_add_route), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
@@ -155,6 +159,8 @@ private fun EmbeddingRouteCard(
     var model by remember(route) { mutableStateOf(route.model) }
     var dimensions by remember(route) { mutableStateOf(route.dimensions.toString()) }
     var apiKey by remember(route) { mutableStateOf(route.apiKey) }
+    val deleteEmbeddingRouteContentDescription =
+        stringResource(R.string.embedding_routes_delete_route_content_description)
 
     Card(
         colors =
@@ -171,12 +177,12 @@ private fun EmbeddingRouteCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Embedding Route", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.embedding_routes_route_title), style = MaterialTheme.typography.titleSmall)
                 IconButton(
                     onClick = onDelete,
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Delete embedding route"
+                            contentDescription = deleteEmbeddingRouteContentDescription
                         },
                 ) {
                     Icon(Icons.Filled.Delete, contentDescription = null)
@@ -188,8 +194,8 @@ private fun EmbeddingRouteCard(
                     hint = it
                     onUpdate(route.copy(hint = it))
                 },
-                label = { Text("Hint") },
-                supportingText = { Text("e.g. default, code, multilingual") },
+                label = { Text(stringResource(R.string.common_hint)) },
+                supportingText = { Text(stringResource(R.string.embedding_routes_hint_example)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -199,7 +205,7 @@ private fun EmbeddingRouteCard(
                     provider = it
                     onUpdate(route.copy(provider = it))
                 },
-                label = { Text("Provider") },
+                label = { Text(stringResource(R.string.common_provider)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -209,7 +215,7 @@ private fun EmbeddingRouteCard(
                     model = it
                     onUpdate(route.copy(model = it))
                 },
-                label = { Text("Model") },
+                label = { Text(stringResource(R.string.common_model)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -219,7 +225,7 @@ private fun EmbeddingRouteCard(
                     dimensions = it
                     it.toIntOrNull()?.let { d -> onUpdate(route.copy(dimensions = d)) }
                 },
-                label = { Text("Dimensions") },
+                label = { Text(stringResource(R.string.embedding_routes_dimensions_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
@@ -230,8 +236,8 @@ private fun EmbeddingRouteCard(
                     apiKey = it
                     onUpdate(route.copy(apiKey = it))
                 },
-                label = "API Key",
-                supportingText = { Text("Optional per-route key") },
+                label = stringResource(R.string.provider_credential_api_key_label),
+                supportingText = { Text(stringResource(R.string.common_optional_per_route_key)) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

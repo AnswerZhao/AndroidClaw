@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,13 +38,19 @@ fun PluginSectionHeader(
     count: Int,
     modifier: Modifier = Modifier,
 ) {
+    val sectionHeaderContentDescription =
+        stringResource(
+            R.string.plugin_section_header_content_description,
+            title,
+            count,
+        )
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "$title, $count"
+                    contentDescription = sectionHeaderContentDescription
                 },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

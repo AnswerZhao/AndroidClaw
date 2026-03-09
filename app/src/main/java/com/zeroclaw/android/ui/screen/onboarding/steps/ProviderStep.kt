@@ -14,7 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.validation.ValidationResult
 import com.zeroclaw.android.ui.component.setup.ProviderSetupFlow
 
@@ -75,14 +77,12 @@ fun ProviderStep(
 ) {
     Column {
         Text(
-            text = "API Provider",
+            text = stringResource(R.string.provider_step_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
         Text(
-            text =
-                "Select your AI provider and enter credentials. " +
-                    "You can add more keys later in Settings.",
+            text = stringResource(R.string.provider_step_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

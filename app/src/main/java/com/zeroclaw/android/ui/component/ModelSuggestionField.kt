@@ -24,9 +24,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.util.LocalPowerSaveMode
 
 /** Size of the loading spinner shown while fetching live models. */
@@ -58,12 +60,18 @@ fun ModelSuggestionField(
     onValueChanged: (String) -> Unit,
     suggestions: List<String>,
     modifier: Modifier = Modifier,
-    label: String = "Model",
+    label: String = "",
     liveSuggestions: List<String> = emptyList(),
     isLoadingLive: Boolean = false,
     isLiveData: Boolean = false,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val fieldLabel =
+        if (label.isBlank()) {
+            stringResource(R.string.model_suggestion_field_label)
+        } else {
+            label
+        }
 
     val activeSuggestions =
         if (isLiveData && liveSuggestions.isNotEmpty()) {
@@ -83,6 +91,11 @@ fun ModelSuggestionField(
         }
 
     val showStaticHint = !isLiveData && suggestions.isNotEmpty()
+    val fieldContentDescription =
+        stringResource(
+            R.string.model_suggestion_field_content_description,
+            fieldLabel,
+        )
 
     ExposedDropdownMenuBox(
         expanded = expanded && filteredSuggestions.isNotEmpty(),
@@ -95,12 +108,12 @@ fun ModelSuggestionField(
                 onValueChanged(it)
                 expanded = true
             },
-            label = { Text(label) },
+            label = { Text(fieldLabel) },
             trailingIcon = {
                 if (isLoadingLive) {
                     if (LocalPowerSaveMode.current) {
                         Text(
-                            text = "\u2026",
+                            text = stringResource(R.string.common_ellipsis),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     } else {
@@ -115,9 +128,9 @@ fun ModelSuggestionField(
             },
             supportingText =
                 if (isLoadingLive) {
-                    { Text("Fetching models\u2026") }
+                    { Text(stringResource(R.string.model_suggestion_fetching_models)) }
                 } else if (showStaticHint) {
-                    { Text("Suggestions as of Feb 2026") }
+                    { Text(stringResource(R.string.model_suggestion_static_hint)) }
                 } else {
                     null
                 },
@@ -127,7 +140,7 @@ fun ModelSuggestionField(
                 Modifier
                     .fillMaxWidth()
                     .menuAnchor(MenuAnchorType.PrimaryEditable)
-                    .semantics { contentDescription = "$label field with suggestions" },
+                    .semantics { contentDescription = fieldContentDescription },
         )
 
         if (filteredSuggestions.isNotEmpty()) {

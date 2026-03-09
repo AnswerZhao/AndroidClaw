@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -38,6 +39,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Spacing after the title text. */
@@ -72,17 +74,17 @@ private val SelectedBorderWidth = 2.dp
  */
 private data class StyleOption(
     val id: String,
-    val label: String,
+    val labelRes: Int,
 )
 
 /** Available communication styles including a "None" option. */
 private val STYLE_OPTIONS =
     listOf(
-        StyleOption(id = "", label = "None"),
-        StyleOption(id = "professional", label = "Professional"),
-        StyleOption(id = "casual", label = "Casual"),
-        StyleOption(id = "concise", label = "Concise"),
-        StyleOption(id = "detailed", label = "Detailed"),
+        StyleOption(id = "", labelRes = R.string.identity_style_none),
+        StyleOption(id = "professional", labelRes = R.string.identity_style_professional),
+        StyleOption(id = "casual", labelRes = R.string.identity_style_casual),
+        StyleOption(id = "concise", labelRes = R.string.identity_style_concise),
+        StyleOption(id = "detailed", labelRes = R.string.identity_style_detailed),
     )
 
 /**
@@ -94,8 +96,8 @@ private val STYLE_OPTIONS =
  */
 private data class FormatOption(
     val id: String,
-    val title: String,
-    val description: String,
+    val titleRes: Int,
+    val descriptionRes: Int,
 )
 
 /** Available identity format options. */
@@ -103,13 +105,13 @@ private val FORMAT_OPTIONS =
     listOf(
         FormatOption(
             id = "aieos",
-            title = "AIEOS",
-            description = "ZeroClaw's native identity format with extended metadata support.",
+            titleRes = R.string.identity_format_aieos_title,
+            descriptionRes = R.string.identity_format_aieos_description,
         ),
         FormatOption(
             id = "openclaw",
-            title = "OpenClaw",
-            description = "Standard open-source identity format.",
+            titleRes = R.string.identity_format_openclaw_title,
+            descriptionRes = R.string.identity_format_openclaw_description,
         ),
     )
 
@@ -154,12 +156,16 @@ fun IdentityConfigFlow(
 ) {
     var hasInteractedWithName by remember { mutableStateOf(false) }
     val showNameError = hasInteractedWithName && agentName.isBlank()
+    val agentNameRequiredContentDescription =
+        stringResource(R.string.identity_agent_name_required_content_description)
+    val userNameContentDescription = stringResource(R.string.identity_user_name_label)
+    val timezoneContentDescription = stringResource(R.string.identity_timezone_label)
 
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = "Agent Identity",
+            text = stringResource(R.string.identity_config_title),
             style = MaterialTheme.typography.headlineMedium,
         )
 
@@ -171,21 +177,19 @@ fun IdentityConfigFlow(
                 hasInteractedWithName = true
                 onAgentNameChanged(it)
             },
-            label = { Text("Agent Name *") },
+            label = { Text(stringResource(R.string.identity_agent_name_required_label)) },
             singleLine = true,
             isError = showNameError,
             supportingText =
                 if (showNameError) {
-                    { Text("Agent name is required") }
+                    { Text(stringResource(R.string.identity_agent_name_required_error)) }
                 } else {
                     null
                 },
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics {
-                        contentDescription = "Agent Name, required"
-                    },
+                    .semantics { contentDescription = agentNameRequiredContentDescription },
         )
 
         Spacer(modifier = Modifier.height(FieldSpacing))
@@ -193,15 +197,13 @@ fun IdentityConfigFlow(
         OutlinedTextField(
             value = userName,
             onValueChange = onUserNameChanged,
-            label = { Text("Your Name") },
+            label = { Text(stringResource(R.string.identity_user_name_label)) },
             singleLine = true,
-            supportingText = { Text("Used for personalization") },
+            supportingText = { Text(stringResource(R.string.identity_user_name_supporting)) },
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics {
-                        contentDescription = "Your Name"
-                    },
+                    .semantics { contentDescription = userNameContentDescription },
         )
 
         Spacer(modifier = Modifier.height(FieldSpacing))
@@ -209,15 +211,13 @@ fun IdentityConfigFlow(
         OutlinedTextField(
             value = timezone,
             onValueChange = onTimezoneChanged,
-            label = { Text("Timezone") },
+            label = { Text(stringResource(R.string.identity_timezone_label)) },
             singleLine = true,
-            supportingText = { Text("Auto-detected; change if needed") },
+            supportingText = { Text(stringResource(R.string.identity_timezone_supporting)) },
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics {
-                        contentDescription = "Timezone"
-                    },
+                    .semantics { contentDescription = timezoneContentDescription },
         )
 
         Spacer(modifier = Modifier.height(SectionSpacing))
@@ -252,7 +252,7 @@ private fun CommunicationStylePicker(
     onStyleChanged: (String) -> Unit,
 ) {
     Text(
-        text = "Communication Style",
+        text = stringResource(R.string.identity_communication_style_title),
         style = MaterialTheme.typography.titleMedium,
     )
 
@@ -263,17 +263,28 @@ private fun CommunicationStylePicker(
     ) {
         STYLE_OPTIONS.forEach { option ->
             val isSelected = selected == option.id
+            val label = stringResource(option.labelRes)
+            val selectionState =
+                if (isSelected) {
+                    stringResource(R.string.common_state_selected)
+                } else {
+                    stringResource(R.string.common_state_not_selected)
+                }
+            val styleChipContentDescription =
+                stringResource(
+                    R.string.identity_style_chip_content_description,
+                    label,
+                    selectionState,
+                )
 
             FilterChip(
                 selected = isSelected,
                 onClick = { onStyleChanged(option.id) },
-                label = { Text(option.label) },
-                modifier =
-                    Modifier.semantics {
-                        contentDescription =
-                            "${option.label}, ${if (isSelected) "selected" else "not selected"}"
-                        role = Role.RadioButton
-                    },
+                label = { Text(label) },
+                modifier = Modifier.semantics {
+                    contentDescription = styleChipContentDescription
+                    role = Role.RadioButton
+                },
             )
         }
     }
@@ -294,7 +305,7 @@ private fun IdentityFormatSelector(
     onFormatChanged: (String) -> Unit,
 ) {
     Text(
-        text = "Identity Format",
+        text = stringResource(R.string.identity_format_title),
         style = MaterialTheme.typography.titleMedium,
     )
 
@@ -302,6 +313,20 @@ private fun IdentityFormatSelector(
 
     FORMAT_OPTIONS.forEach { option ->
         val isSelected = selectedFormat == option.id
+        val title = stringResource(option.titleRes)
+        val description = stringResource(option.descriptionRes)
+        val selectionState =
+            if (isSelected) {
+                stringResource(R.string.common_state_selected)
+            } else {
+                stringResource(R.string.common_state_not_selected)
+            }
+        val formatContentDescription =
+            stringResource(
+                R.string.identity_format_content_description,
+                title,
+                selectionState,
+            )
 
         Card(
             onClick = { onFormatChanged(option.id) },
@@ -327,8 +352,7 @@ private fun IdentityFormatSelector(
                 Modifier
                     .fillMaxWidth()
                     .semantics(mergeDescendants = true) {
-                        contentDescription =
-                            "${option.title}, ${if (isSelected) "selected" else "not selected"}"
+                        contentDescription = formatContentDescription
                         role = Role.RadioButton
                         selected = isSelected
                     },
@@ -337,11 +361,11 @@ private fun IdentityFormatSelector(
                 modifier = Modifier.padding(CardPadding),
             ) {
                 Text(
-                    text = option.title,
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = option.description,
+                    text = description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

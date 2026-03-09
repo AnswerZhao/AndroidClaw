@@ -12,9 +12,11 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.data.channel.ChannelSetupSpecs
@@ -233,7 +235,7 @@ class OnboardingCoordinator(
                 autonomy = security.autonomyLevel,
                 memoryBackend = memory.backend,
                 autoSave = memory.autoSave,
-                channels = channels.selectedTypes.map { it.displayName },
+                channels = channels.selectedTypes.map { it.tomlKey },
                 tunnel = tunnel.tunnelType,
                 identityFormat = identity.identityFormat,
                 agentName = identity.agentName,
@@ -379,7 +381,15 @@ class OnboardingCoordinator(
                         isOAuthInProgress = false,
                         validationResult =
                             ValidationResult.Offline(
-                                e.message ?: "OAuth login failed",
+                                message = "",
+                                messageResId = R.string.onboarding_oauth_login_failed_with_reason,
+                                messageArgs =
+                                    listOf(
+                                        e.message
+                                            ?: getString(
+                                                R.string.onboarding_oauth_login_failed_generic,
+                                            ),
+                                    ),
                             ),
                     )
                 }
@@ -416,7 +426,10 @@ class OnboardingCoordinator(
                 it.copy(
                     isOAuthInProgress = false,
                     validationResult =
-                        ValidationResult.Failure("Login timed out"),
+                        ValidationResult.Failure(
+                            message = "",
+                            messageResId = R.string.onboarding_oauth_login_timed_out,
+                        ),
                 )
             }
             return
@@ -427,7 +440,10 @@ class OnboardingCoordinator(
                 it.copy(
                     isOAuthInProgress = false,
                     validationResult =
-                        ValidationResult.Failure("Security validation failed"),
+                        ValidationResult.Failure(
+                            message = "",
+                            messageResId = R.string.onboarding_oauth_security_validation_failed,
+                        ),
                 )
             }
             return
@@ -452,9 +468,12 @@ class OnboardingCoordinator(
                 providerId = "openai-codex",
                 oauthRefreshToken = tokens.refreshToken,
                 oauthExpiresAt = tokens.expiresAt,
-                oauthEmail = "ChatGPT Login",
+                oauthEmail = getString(R.string.onboarding_oauth_chatgpt_login_label),
                 validationResult =
-                    ValidationResult.Success("OAuth login successful"),
+                    ValidationResult.Success(
+                        details = "",
+                        detailsResId = R.string.onboarding_oauth_login_successful,
+                    ),
                 isOAuthInProgress = false,
             )
         }
@@ -1061,8 +1080,7 @@ class OnboardingCoordinator(
             _activationState.value =
                 _activationState.value.copy(
                     completeError =
-                        "Invalid API key \u2014 verify your credentials before " +
-                            "starting the daemon",
+                        getString(R.string.onboarding_complete_error_invalid_api_key),
                 )
             return
         }
@@ -1266,7 +1284,7 @@ class OnboardingCoordinator(
         try {
             app.daemonBridge.ensureWorkspace(
                 agentName = identity.agentName,
-                userName = identity.userName.ifBlank { "User" },
+                userName = identity.userName.ifBlank { getString(R.string.onboarding_default_user_name) },
                 timezone = identity.timezone.ifBlank { TimeZone.getDefault().id },
                 communicationStyle = identity.communicationStyle,
             )
@@ -1336,4 +1354,9 @@ class OnboardingCoordinator(
         val msg = failure.message ?: ""
         return "HTTP 401" in msg || "HTTP 403" in msg
     }
+
+    private fun getString(
+        @StringRes resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 }

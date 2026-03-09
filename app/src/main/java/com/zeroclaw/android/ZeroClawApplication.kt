@@ -239,7 +239,7 @@ class ZeroClawApplication :
         skillsBridge = SkillsBridge()
         toolsBridge = ToolsBridge()
         memoryBridge = MemoryBridge()
-        eventBridge = EventBridge(activityRepository, ioScope)
+        eventBridge = EventBridge(this, activityRepository, ioScope)
         daemonBridge.eventBridge = eventBridge
 
         sessionLockManager = SessionLockManager(settingsRepository.settings, ioScope)

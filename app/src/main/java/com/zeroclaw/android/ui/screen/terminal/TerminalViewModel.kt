@@ -12,6 +12,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.model.AppSettings
@@ -310,17 +311,17 @@ class TerminalViewModel(
                     }
                 val displayResult =
                     result.ifBlank {
-                        rawResult.trim().ifBlank { EMPTY_RESPONSE_FALLBACK }
+                        rawResult.trim().ifBlank { getString(R.string.terminal_empty_response_fallback) }
                     }
                 repository.append(content = displayResult, entryType = ENTRY_TYPE_RESPONSE)
                 handleBindResult(displayResult)
                 emitRefreshIfNeeded(expression)
             } catch (e: FfiException) {
-                val sanitized = ErrorSanitizer.sanitizeForUi(e)
+                val sanitized = ErrorSanitizer.sanitizeForUi(getApplication(), e)
                 logRepository.append(LogSeverity.ERROR, TAG, "REPL eval failed: $sanitized")
                 repository.append(content = sanitized, entryType = ENTRY_TYPE_ERROR)
             } catch (e: Exception) {
-                val sanitized = ErrorSanitizer.sanitizeForUi(e)
+                val sanitized = ErrorSanitizer.sanitizeForUi(getApplication(), e)
                 logRepository.append(LogSeverity.ERROR, TAG, "REPL eval failed: $sanitized")
                 repository.append(content = sanitized, entryType = ENTRY_TYPE_ERROR)
             } finally {
@@ -358,7 +359,7 @@ class TerminalViewModel(
 
             if (!isChatProviderConfigured()) {
                 repository.append(
-                    content = NO_PROVIDER_WARNING,
+                    content = getString(R.string.terminal_no_provider_warning),
                     entryType = ENTRY_TYPE_SYSTEM,
                 )
                 return@launch
@@ -391,11 +392,11 @@ class TerminalViewModel(
         viewModelScope.launch {
             _streamingState.update { StreamingState(phase = StreamingPhase.THINKING) }
 
-            try {
-                withContext(Dispatchers.IO) {
-                    check(ensureSession()) {
-                        "No active session — is the daemon running?"
-                    }
+                try {
+                    withContext(Dispatchers.IO) {
+                        check(ensureSession()) {
+                            getString(R.string.terminal_no_active_session)
+                        }
                     sessionSend(
                         message,
                         images.map { it.base64Data },
@@ -404,14 +405,14 @@ class TerminalViewModel(
                     )
                 }
             } catch (e: FfiException) {
-                val sanitized = ErrorSanitizer.sanitizeForUi(e)
+                val sanitized = ErrorSanitizer.sanitizeForUi(getApplication(), e)
                 _streamingState.update {
                     StreamingState(phase = StreamingPhase.ERROR, errorMessage = sanitized)
                 }
                 logRepository.append(LogSeverity.ERROR, TAG, "Agent turn failed: $sanitized")
                 repository.append(content = sanitized, entryType = ENTRY_TYPE_ERROR)
             } catch (e: Exception) {
-                val sanitized = ErrorSanitizer.sanitizeForUi(e)
+                val sanitized = ErrorSanitizer.sanitizeForUi(getApplication(), e)
                 _streamingState.update {
                     StreamingState(phase = StreamingPhase.ERROR, errorMessage = sanitized)
                 }
@@ -422,7 +423,7 @@ class TerminalViewModel(
                     if (current.phase.isActive) {
                         StreamingState(
                             phase = StreamingPhase.ERROR,
-                            errorMessage = "Session ended unexpectedly",
+                            errorMessage = getString(R.string.terminal_session_ended_unexpectedly),
                         )
                     } else {
                         current
@@ -503,20 +504,20 @@ class TerminalViewModel(
             repository.append(content = "/help", entryType = ENTRY_TYPE_INPUT)
             val helpText =
                 buildString {
-                    appendLine("Available commands:")
+                    appendLine(getString(R.string.terminal_help_available_commands))
                     appendLine()
                     for (command in CommandRegistry.commands) {
                         val usage =
-                            if (command.usage.isNotEmpty()) {
-                                " ${command.usage}"
+                            if (command.usageResId != null) {
+                                " ${getString(command.usageResId)}"
                             } else {
                                 ""
                             }
                         appendLine("  /${command.name}$usage")
-                        appendLine("    ${command.description}")
+                        appendLine("    ${getString(command.descriptionResId)}")
                     }
                     appendLine()
-                    append("Any other input is sent as a chat message.")
+                    append(getString(R.string.terminal_help_footer))
                 }
             repository.append(content = helpText, entryType = ENTRY_TYPE_SYSTEM)
         }
@@ -528,7 +529,10 @@ class TerminalViewModel(
     private fun clearTerminal() {
         repository.clear()
         viewModelScope.launch {
-            repository.append(content = CLEAR_CONFIRMATION, entryType = ENTRY_TYPE_SYSTEM)
+            repository.append(
+                content = getString(R.string.terminal_cleared_confirmation),
+                entryType = ENTRY_TYPE_SYSTEM,
+            )
         }
     }
 
@@ -547,14 +551,13 @@ class TerminalViewModel(
                         TAG,
                         "Failed to read version: ${e.message}",
                     )
-                    "unknown"
+                    getString(R.string.terminal_unknown_version_label)
                 }
             val banner =
                 if (isChatProviderConfigured()) {
-                    "ZeroClaw Terminal v$version \u2014 Type /help for commands"
+                    getString(R.string.terminal_welcome_banner_chat, version)
                 } else {
-                    "ZeroClaw Terminal v$version \u2014 Admin Console " +
-                        "(no chat provider) \u2014 Type /help for commands"
+                    getString(R.string.terminal_welcome_banner_admin, version)
                 }
             repository.append(content = banner, entryType = ENTRY_TYPE_SYSTEM)
         }
@@ -789,7 +792,7 @@ class TerminalViewModel(
                 } else {
                     cleaned
                 }
-            val display = stripped.ifBlank { EMPTY_RESPONSE_FALLBACK }
+            val display = stripped.ifBlank { getString(R.string.terminal_empty_response_fallback) }
 
             viewModelScope.launch {
                 repository.append(content = display, entryType = ENTRY_TYPE_RESPONSE)
@@ -801,7 +804,7 @@ class TerminalViewModel(
         }
 
         override fun onError(error: String) {
-            val sanitized = ErrorSanitizer.sanitizeMessage(error)
+            val sanitized = ErrorSanitizer.sanitizeMessage(getApplication(), error)
 
             viewModelScope.launch {
                 repository.append(content = sanitized, entryType = ENTRY_TYPE_ERROR)
@@ -816,7 +819,7 @@ class TerminalViewModel(
         override fun onCancelled() {
             viewModelScope.launch {
                 repository.append(
-                    content = "Request cancelled.",
+                    content = getString(R.string.terminal_request_cancelled),
                     entryType = ENTRY_TYPE_SYSTEM,
                 )
             }
@@ -826,6 +829,11 @@ class TerminalViewModel(
             }
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Constants for [TerminalViewModel]. */
     companion object {
@@ -851,18 +859,6 @@ class TerminalViewModel(
 
         /** Entry type constant for system message entries. */
         private const val ENTRY_TYPE_SYSTEM = "system"
-
-        /** Displayed when the model response is empty after stripping markup. */
-        private const val EMPTY_RESPONSE_FALLBACK =
-            "The model did not generate a text response."
-
-        /** Confirmation message shown after clearing the terminal. */
-        private const val CLEAR_CONFIRMATION = "Terminal cleared."
-
-        /** Warning shown when user sends a chat message without a configured provider. */
-        private const val NO_PROVIDER_WARNING =
-            "No chat provider configured \u2014 use /help to see admin commands, " +
-                "or add a provider in Settings > API Keys."
 
         /**
          * Pattern matching chain-of-thought and internal reasoning tags

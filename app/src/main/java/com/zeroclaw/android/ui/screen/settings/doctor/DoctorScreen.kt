@@ -8,6 +8,8 @@
 
 package com.zeroclaw.android.ui.screen.settings.doctor
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -116,6 +118,7 @@ internal fun DoctorContent(
     onRunDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val emptyHintText = stringResource(R.string.doctor_empty_hint)
     Column(
         modifier =
             modifier
@@ -134,7 +137,7 @@ internal fun DoctorContent(
 
         if (state.checks.isEmpty() && !state.isRunning) {
             Text(
-                text = "Tap \"Run Diagnostics\" to check your configuration.",
+                text = emptyHintText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 16.dp),
@@ -158,22 +161,29 @@ private fun SummaryBanner(
     isRunning: Boolean,
     onRunDiagnostics: () -> Unit,
 ) {
+    val summaryContentDescription =
+        summary?.let {
+            stringResource(
+                R.string.doctor_summary_content_description,
+                it.passCount,
+                it.warnCount,
+                it.failCount,
+            )
+        } ?: stringResource(R.string.doctor_summary_no_runs)
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .semantics {
                     liveRegion = LiveRegionMode.Polite
-                    contentDescription = summary?.let {
-                        "${it.passCount} passed, ${it.warnCount} warnings, ${it.failCount} failed"
-                    } ?: "No diagnostics run yet"
+                    contentDescription = summaryContentDescription
                 },
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text = "ZeroClaw Doctor",
+                text = stringResource(R.string.doctor_title),
                 style = MaterialTheme.typography.titleMedium,
             )
 
@@ -184,17 +194,17 @@ private fun SummaryBanner(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     SummaryChip(
-                        label = "Pass",
+                        label = stringResource(R.string.doctor_status_pass),
                         count = summary.passCount,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     SummaryChip(
-                        label = "Warn",
+                        label = stringResource(R.string.doctor_status_warn),
                         count = summary.warnCount,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
                     SummaryChip(
-                        label = "Fail",
+                        label = stringResource(R.string.doctor_status_fail),
                         count = summary.failCount,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -215,9 +225,15 @@ private fun SummaryBanner(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Running...")
+                    Text(stringResource(R.string.doctor_running))
                 } else {
-                    Text(if (summary != null) "Re-run Diagnostics" else "Run Diagnostics")
+                    Text(
+                        if (summary != null) {
+                            stringResource(R.string.doctor_rerun_diagnostics)
+                        } else {
+                            stringResource(R.string.doctor_run_diagnostics)
+                        },
+                    )
                 }
             }
         }
@@ -249,7 +265,7 @@ private fun SummaryChip(
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = "$count $label",
+            text = stringResource(R.string.doctor_summary_chip_value, count, label),
             style = MaterialTheme.typography.labelMedium,
             color = color,
         )
@@ -317,11 +333,18 @@ private fun CheckResultRow(
         }
     val statusLabel =
         when (check.status) {
-            CheckStatus.PASS -> "Passed"
-            CheckStatus.WARN -> "Warning"
-            CheckStatus.FAIL -> "Failed"
-            CheckStatus.RUNNING -> "Running"
+            CheckStatus.PASS -> stringResource(R.string.doctor_status_passed)
+            CheckStatus.WARN -> stringResource(R.string.doctor_status_warning)
+            CheckStatus.FAIL -> stringResource(R.string.doctor_status_failed)
+            CheckStatus.RUNNING -> stringResource(R.string.doctor_status_running)
         }
+    val checkResultContentDescription =
+        stringResource(
+            R.string.doctor_check_result_content_description,
+            check.title,
+            statusLabel,
+            check.detail,
+        )
 
     Row(
         modifier =
@@ -329,7 +352,7 @@ private fun CheckResultRow(
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "${check.title}: $statusLabel. ${check.detail}"
+                    contentDescription = checkResultContentDescription
                 },
         verticalAlignment = Alignment.Top,
     ) {
@@ -369,13 +392,14 @@ private fun CheckResultRow(
  * @param category The category to map.
  * @return Human-readable section title.
  */
+@Composable
 private fun categoryDisplayName(category: DiagnosticCategory): String =
     when (category) {
-        DiagnosticCategory.CONFIG -> "Configuration"
-        DiagnosticCategory.API_KEYS -> "API Keys"
-        DiagnosticCategory.CONNECTIVITY -> "Connectivity"
-        DiagnosticCategory.DAEMON_HEALTH -> "Daemon Health"
-        DiagnosticCategory.CHANNELS -> "Channels"
-        DiagnosticCategory.RUNTIME_TRACES -> "Runtime Traces"
-        DiagnosticCategory.SYSTEM -> "System"
+        DiagnosticCategory.CONFIG -> stringResource(R.string.doctor_category_configuration)
+        DiagnosticCategory.API_KEYS -> stringResource(R.string.doctor_category_api_keys)
+        DiagnosticCategory.CONNECTIVITY -> stringResource(R.string.doctor_category_connectivity)
+        DiagnosticCategory.DAEMON_HEALTH -> stringResource(R.string.doctor_category_daemon_health)
+        DiagnosticCategory.CHANNELS -> stringResource(R.string.doctor_category_channels)
+        DiagnosticCategory.RUNTIME_TRACES -> stringResource(R.string.doctor_category_runtime_traces)
+        DiagnosticCategory.SYSTEM -> stringResource(R.string.doctor_category_system)
     }

@@ -38,12 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.data.validation.ValidationResult
 import com.zeroclaw.android.model.DiscoveredServer
@@ -172,6 +174,7 @@ fun ProviderSetupFlow(
     val validateEnabled =
         selectedProvider.isNotBlank() &&
             (apiKey.isNotBlank() || baseUrl.isNotBlank())
+    val oauthLoginContentDescription = stringResource(R.string.provider_setup_oauth_login)
 
     val columnModifier =
         if (scrollable) {
@@ -215,10 +218,7 @@ fun ProviderSetupFlow(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .semantics {
-                                contentDescription =
-                                    "Login with ChatGPT"
-                            },
+                            .semantics { contentDescription = oauthLoginContentDescription },
                 ) {
                     if (isOAuthInProgress) {
                         CircularProgressIndicator(
@@ -251,9 +251,9 @@ fun ProviderSetupFlow(
                     Text(
                         text =
                             if (isOAuthInProgress) {
-                                "Logging in\u2026"
+                                stringResource(R.string.provider_setup_oauth_logging_in)
                             } else {
-                                "Login with ChatGPT"
+                                stringResource(R.string.provider_setup_oauth_login)
                             },
                     )
                 }
@@ -299,7 +299,7 @@ fun ProviderSetupFlow(
         if (showSkipHint) {
             Spacer(modifier = Modifier.height(HintSpacing))
             Text(
-                text = "You can add keys later in Settings",
+                text = stringResource(R.string.provider_setup_skip_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -327,6 +327,8 @@ private fun ActionRow(
     onValidate: () -> Unit,
 ) {
     val isLoading = validationResult is ValidationResult.Loading
+    val validateProviderContentDescription =
+        stringResource(R.string.provider_setup_validate_content_description)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -348,16 +350,21 @@ private fun ActionRow(
                     Modifier.weight(1f)
                 } else {
                     Modifier.fillMaxWidth()
-                }.semantics {
-                    contentDescription = "Validate provider credentials"
-                },
+                }.semantics { contentDescription = validateProviderContentDescription },
         ) {
             Icon(
                 imageVector = Icons.Filled.Verified,
                 contentDescription = null,
             )
             Spacer(modifier = Modifier.width(ButtonIconSpacing))
-            Text(text = if (isLoading) "Validating\u2026" else "Validate")
+            Text(
+                text =
+                    if (isLoading) {
+                        stringResource(R.string.validation_indicator_validating)
+                    } else {
+                        stringResource(R.string.common_validate)
+                    },
+            )
         }
     }
 }
@@ -378,7 +385,7 @@ private fun OAuthDividerRow(modifier: Modifier = Modifier) {
     ) {
         HorizontalDivider(modifier = Modifier.weight(1f))
         Text(
-            text = "or use API key",
+            text = stringResource(R.string.provider_setup_or_use_api_key),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = FieldSpacing),
@@ -428,7 +435,7 @@ private fun OAuthConnectedChip(
                         MaterialTheme.colorScheme.onSecondaryContainer,
                 )
                 Text(
-                    text = "Connected via ChatGPT",
+                    text = stringResource(R.string.provider_setup_connected_via_chatgpt),
                     style = MaterialTheme.typography.bodySmall,
                     color =
                         MaterialTheme.colorScheme.onSecondaryContainer
@@ -436,7 +443,7 @@ private fun OAuthConnectedChip(
                 )
             }
             TextButton(onClick = onDisconnect) {
-                Text("Disconnect")
+                Text(stringResource(R.string.provider_setup_disconnect))
             }
         }
     }
@@ -472,7 +479,11 @@ private fun PreviewWithProvider() {
                 baseUrl = "",
                 selectedModel = "gpt-4o",
                 validationResult =
-                    ValidationResult.Success(details = "3 models available"),
+                    ValidationResult.Success(
+                        details = "",
+                        detailsResId = R.string.validation_provider_connected_models_plural,
+                        detailsArgs = listOf(3),
+                    ),
                 onProviderChanged = {},
                 onApiKeyChanged = {},
                 onBaseUrlChanged = {},
@@ -514,7 +525,10 @@ private fun PreviewFailure() {
                 baseUrl = "",
                 selectedModel = "",
                 validationResult =
-                    ValidationResult.Failure(message = "Invalid API key"),
+                    ValidationResult.Failure(
+                        message = "",
+                        messageResId = R.string.validation_provider_invalid_api_key,
+                    ),
                 onProviderChanged = {},
                 onApiKeyChanged = {},
                 onBaseUrlChanged = {},
@@ -535,7 +549,11 @@ private fun PreviewLocalProvider() {
                 baseUrl = "http://192.168.1.100:11434",
                 selectedModel = "llama3.3",
                 validationResult =
-                    ValidationResult.Success(details = "Connected \u2014 6 models available"),
+                    ValidationResult.Success(
+                        details = "",
+                        detailsResId = R.string.validation_provider_connected_models_plural,
+                        detailsArgs = listOf(6),
+                    ),
                 onProviderChanged = {},
                 onApiKeyChanged = {},
                 onBaseUrlChanged = {},
@@ -560,7 +578,11 @@ private fun PreviewDark() {
                 baseUrl = "",
                 selectedModel = "gpt-4o",
                 validationResult =
-                    ValidationResult.Success(details = "3 models available"),
+                    ValidationResult.Success(
+                        details = "",
+                        detailsResId = R.string.validation_provider_connected_models_plural,
+                        detailsArgs = listOf(3),
+                    ),
                 onProviderChanged = {},
                 onApiKeyChanged = {},
                 onBaseUrlChanged = {},

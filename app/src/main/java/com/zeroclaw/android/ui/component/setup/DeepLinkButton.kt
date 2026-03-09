@@ -17,10 +17,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 import com.zeroclaw.android.util.DeepLinkTarget
 import com.zeroclaw.android.util.ExternalAppLauncher
@@ -31,7 +33,8 @@ private val IconTextSpacing = 8.dp
 /**
  * An [OutlinedButton] that opens an external app or browser via [ExternalAppLauncher].
  *
- * Displays the [DeepLinkTarget.label] as button text with a leading open-in-new icon.
+ * Displays the [DeepLinkTarget.labelResId] text as button label with a leading
+ * open-in-new icon.
  * On click, delegates to [ExternalAppLauncher.launch] which handles URI scheme fallback
  * when the primary app is not installed.
  *
@@ -47,20 +50,23 @@ fun DeepLinkButton(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val label = stringResource(target.labelResId)
+    val buttonContentDescription =
+        stringResource(
+            R.string.deep_link_button_content_description,
+            label,
+        )
 
     OutlinedButton(
         onClick = { ExternalAppLauncher.launch(context, target) },
-        modifier =
-            modifier.semantics {
-                contentDescription = "Open ${target.label} in external app"
-            },
+        modifier = modifier.semantics { contentDescription = buttonContentDescription },
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.OpenInNew,
             contentDescription = null,
         )
         Spacer(modifier = Modifier.width(IconTextSpacing))
-        Text(text = target.label)
+        Text(text = label)
     }
 }
 

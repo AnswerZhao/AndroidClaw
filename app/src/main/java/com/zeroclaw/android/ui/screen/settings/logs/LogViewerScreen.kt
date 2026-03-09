@@ -7,6 +7,8 @@
 package com.zeroclaw.android.ui.screen.settings.logs
 
 import android.content.Intent
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -67,6 +69,13 @@ fun LogViewerScreen(
     val entries by logViewerViewModel.filteredEntries.collectAsStateWithLifecycle()
     val selectedSeverities by logViewerViewModel.selectedSeverities.collectAsStateWithLifecycle()
     val isPaused by logViewerViewModel.isPaused.collectAsStateWithLifecycle()
+    val pauseLogsContentDescription = stringResource(R.string.log_viewer_pause_logs_content_description)
+    val resumeLogsContentDescription = stringResource(R.string.log_viewer_resume_logs_content_description)
+    val shareLogsContentDescription = stringResource(R.string.log_viewer_share_logs_content_description)
+    val clearLogsContentDescription = stringResource(R.string.log_viewer_clear_logs_content_description)
+    val shareLogsSubject = stringResource(R.string.log_viewer_share_logs_subject)
+    val shareLogsChooserTitle = stringResource(R.string.log_viewer_share_logs_chooser_title)
+    val logStreamPausedLabel = stringResource(R.string.log_viewer_log_stream_paused)
 
     Column(
         modifier =
@@ -100,7 +109,12 @@ fun LogViewerScreen(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = if (isPaused) "Resume logs" else "Pause logs"
+                            contentDescription =
+                                if (isPaused) {
+                                    resumeLogsContentDescription
+                                } else {
+                                    pauseLogsContentDescription
+                                }
                         },
                 ) {
                     Icon(
@@ -115,16 +129,16 @@ fun LogViewerScreen(
                             Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_TEXT, text)
-                                putExtra(Intent.EXTRA_SUBJECT, "ZeroClaw Logs")
+                                putExtra(Intent.EXTRA_SUBJECT, shareLogsSubject)
                             }
                         context.startActivity(
-                            Intent.createChooser(shareIntent, "Share logs"),
+                            Intent.createChooser(shareIntent, shareLogsChooserTitle),
                         )
                     },
                     enabled = entries.isNotEmpty(),
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Share logs"
+                            contentDescription = shareLogsContentDescription
                         },
                 ) {
                     Icon(
@@ -136,7 +150,7 @@ fun LogViewerScreen(
                     onClick = { logViewerViewModel.clearLogs() },
                     modifier =
                         Modifier.semantics {
-                            contentDescription = "Clear logs"
+                            contentDescription = clearLogsContentDescription
                         },
                 ) {
                     Icon(
@@ -149,7 +163,7 @@ fun LogViewerScreen(
 
         if (isPaused) {
             Text(
-                text = "Log stream paused",
+                text = logStreamPausedLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(vertical = 4.dp),

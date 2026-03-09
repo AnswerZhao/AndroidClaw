@@ -22,10 +22,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 
 /** Index for the "Cron" (recurring) mode tab. */
 private const val MODE_RECURRING = 0
@@ -78,20 +80,21 @@ fun AddCronJobDialog(
     onAddInterval: (intervalMs: ULong, command: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val jobTypeSelectionDescription = stringResource(R.string.cron_job_type_selection_desc)
     var selectedMode by remember { mutableIntStateOf(MODE_RECURRING) }
     var expression by remember { mutableStateOf("") }
     var delay by remember { mutableStateOf("") }
     var timestamp by remember { mutableStateOf("") }
     var intervalMinutes by remember { mutableStateOf("") }
     var command by remember { mutableStateOf("") }
-    var expressionError by remember { mutableStateOf<String?>(null) }
-    var delayError by remember { mutableStateOf<String?>(null) }
-    var timestampError by remember { mutableStateOf<String?>(null) }
-    var intervalError by remember { mutableStateOf<String?>(null) }
+    var expressionError by remember { mutableStateOf<CronValidationError?>(null) }
+    var delayError by remember { mutableStateOf<CronValidationError?>(null) }
+    var timestampError by remember { mutableStateOf<CronValidationError?>(null) }
+    var intervalError by remember { mutableStateOf<CronValidationError?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Scheduled Job") },
+        title = { Text(stringResource(R.string.cron_add_scheduled_job_title)) },
         text = {
             Column {
                 SingleChoiceSegmentedButtonRow(
@@ -99,7 +102,7 @@ fun AddCronJobDialog(
                         Modifier
                             .fillMaxWidth()
                             .semantics {
-                                contentDescription = "Job type selection"
+                                contentDescription = jobTypeSelectionDescription
                             },
                 ) {
                     SegmentedButton(
@@ -111,7 +114,7 @@ fun AddCronJobDialog(
                                 count = MODE_COUNT,
                             ),
                     ) {
-                        Text("Cron")
+                        Text(stringResource(R.string.cron_mode_cron))
                     }
                     SegmentedButton(
                         selected = selectedMode == MODE_ONE_SHOT,
@@ -122,7 +125,7 @@ fun AddCronJobDialog(
                                 count = MODE_COUNT,
                             ),
                     ) {
-                        Text("Delay")
+                        Text(stringResource(R.string.cron_mode_delay))
                     }
                     SegmentedButton(
                         selected = selectedMode == MODE_AT_TIME,
@@ -133,7 +136,7 @@ fun AddCronJobDialog(
                                 count = MODE_COUNT,
                             ),
                     ) {
-                        Text("At")
+                        Text(stringResource(R.string.cron_mode_at))
                     }
                     SegmentedButton(
                         selected = selectedMode == MODE_INTERVAL,
@@ -144,7 +147,7 @@ fun AddCronJobDialog(
                                 count = MODE_COUNT,
                             ),
                     ) {
-                        Text("Every")
+                        Text(stringResource(R.string.cron_mode_every))
                     }
                 }
 
@@ -183,8 +186,8 @@ fun AddCronJobDialog(
                 OutlinedTextField(
                     value = command,
                     onValueChange = { command = it },
-                    label = { Text("Command") },
-                    placeholder = { Text("Describe the task to execute") },
+                    label = { Text(stringResource(R.string.cron_command_label)) },
+                    placeholder = { Text(stringResource(R.string.cron_command_placeholder)) },
                     maxLines = MAX_COMMAND_LINES,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -213,12 +216,12 @@ fun AddCronJobDialog(
                 },
                 enabled = command.isNotBlank(),
             ) {
-                Text("Add")
+                Text(stringResource(R.string.cron_add_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cron_cancel_button))
             }
         },
     )
@@ -247,24 +250,24 @@ private fun ScheduleInputFields(
     selectedMode: Int,
     expression: String,
     onExpressionChange: (String) -> Unit,
-    expressionError: String?,
+    expressionError: CronValidationError?,
     delay: String,
     onDelayChange: (String) -> Unit,
-    delayError: String?,
+    delayError: CronValidationError?,
     timestamp: String,
     onTimestampChange: (String) -> Unit,
-    timestampError: String?,
+    timestampError: CronValidationError?,
     intervalMinutes: String,
     onIntervalChange: (String) -> Unit,
-    intervalError: String?,
+    intervalError: CronValidationError?,
 ) {
     when (selectedMode) {
         MODE_RECURRING -> {
             OutlinedTextField(
                 value = expression,
                 onValueChange = onExpressionChange,
-                label = { Text("Cron Expression") },
-                placeholder = { Text("0 */5 * * *") },
+                label = { Text(stringResource(R.string.cron_expression_label)) },
+                placeholder = { Text(stringResource(R.string.cron_expression_placeholder)) },
                 isError = expressionError != null,
                 supportingText = errorSupportingText(expressionError),
                 singleLine = true,
@@ -275,8 +278,8 @@ private fun ScheduleInputFields(
             OutlinedTextField(
                 value = delay,
                 onValueChange = onDelayChange,
-                label = { Text("Delay") },
-                placeholder = { Text("5m, 2h, 30s") },
+                label = { Text(stringResource(R.string.cron_delay_label)) },
+                placeholder = { Text(stringResource(R.string.cron_delay_placeholder)) },
                 isError = delayError != null,
                 supportingText = errorSupportingText(delayError),
                 singleLine = true,
@@ -287,8 +290,8 @@ private fun ScheduleInputFields(
             OutlinedTextField(
                 value = timestamp,
                 onValueChange = onTimestampChange,
-                label = { Text("Timestamp (RFC 3339)") },
-                placeholder = { Text("2026-12-31T23:59:59Z") },
+                label = { Text(stringResource(R.string.cron_timestamp_label)) },
+                placeholder = { Text(stringResource(R.string.cron_timestamp_placeholder)) },
                 isError = timestampError != null,
                 supportingText = errorSupportingText(timestampError),
                 singleLine = true,
@@ -299,19 +302,19 @@ private fun ScheduleInputFields(
             OutlinedTextField(
                 value = intervalMinutes,
                 onValueChange = onIntervalChange,
-                label = { Text("Interval (minutes)") },
-                placeholder = { Text("5") },
+                label = { Text(stringResource(R.string.cron_interval_minutes_label)) },
+                placeholder = { Text(stringResource(R.string.cron_interval_minutes_placeholder)) },
                 isError = intervalError != null,
                 supportingText =
                     intervalError?.let { error ->
                         {
                             Text(
-                                text = error,
+                                text = cronErrorMessage(error),
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }
                     } ?: {
-                        Text("Repeats every N minutes")
+                        Text(stringResource(R.string.cron_interval_supporting))
                     },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -324,18 +327,33 @@ private fun ScheduleInputFields(
 /**
  * Creates a supporting text composable for an error message, or null if no error.
  *
- * @param error The error message to display, or null if the field is valid.
+ * @param error The error to display, or null if the field is valid.
  * @return A composable lambda displaying the error, or null.
  */
 @Composable
-private fun errorSupportingText(error: String?): @Composable (() -> Unit)? =
+private fun errorSupportingText(error: CronValidationError?): @Composable (() -> Unit)? =
     error?.let { msg ->
         {
             Text(
-                text = msg,
+                text = cronErrorMessage(msg),
                 color = MaterialTheme.colorScheme.error,
             )
         }
+    }
+
+@Composable
+private fun cronErrorMessage(error: CronValidationError): String =
+    when (error) {
+        CronValidationError.ExpressionRequired -> stringResource(R.string.cron_error_expression_required)
+        CronValidationError.ExpectedFiveOrSixFields -> stringResource(R.string.cron_error_expected_fields)
+        is CronValidationError.InvalidCharactersInField ->
+            stringResource(R.string.cron_error_invalid_characters, error.field)
+        CronValidationError.DelayRequired -> stringResource(R.string.cron_error_delay_required)
+        CronValidationError.DelayFormatInvalid -> stringResource(R.string.cron_error_delay_format)
+        CronValidationError.TimestampRequired -> stringResource(R.string.cron_error_timestamp_required)
+        CronValidationError.TimestampFormatInvalid -> stringResource(R.string.cron_error_timestamp_format)
+        CronValidationError.IntervalRequired -> stringResource(R.string.cron_error_interval_required)
+        CronValidationError.IntervalMustBePositive -> stringResource(R.string.cron_error_interval_positive)
     }
 
 /** Maximum number of visible lines for the command text field. */
@@ -369,10 +387,10 @@ private fun handleConfirm(
     timestamp: String,
     intervalMinutes: String,
     command: String,
-    onExpressionError: (String?) -> Unit,
-    onDelayError: (String?) -> Unit,
-    onTimestampError: (String?) -> Unit,
-    onIntervalError: (String?) -> Unit,
+    onExpressionError: (CronValidationError?) -> Unit,
+    onDelayError: (CronValidationError?) -> Unit,
+    onTimestampError: (CronValidationError?) -> Unit,
+    onIntervalError: (CronValidationError?) -> Unit,
     onAddRecurring: (String, String) -> Unit,
     onAddOneShot: (String, String) -> Unit,
     onAddAtTime: (String, String) -> Unit,
@@ -431,17 +449,17 @@ private fun handleConfirm(
  * @param expression The cron expression string to validate.
  * @return An error message if invalid, or null if the expression passes basic validation.
  */
-internal fun validateCronExpression(expression: String): String? {
+private fun validateCronExpression(expression: String): CronValidationError? {
     val trimmed = expression.trim()
-    if (trimmed.isBlank()) return "Expression is required"
+    if (trimmed.isBlank()) return CronValidationError.ExpressionRequired
     val parts = trimmed.split("\\s+".toRegex())
     if (parts.size !in MIN_CRON_PARTS..MAX_CRON_PARTS) {
-        return "Expected 5 or 6 space-separated fields"
+        return CronValidationError.ExpectedFiveOrSixFields
     }
     val validChars = Regex("^[0-9*,/\\-?LW#]+$")
     for (part in parts) {
         if (!validChars.matches(part)) {
-            return "Invalid characters in field: $part"
+            return CronValidationError.InvalidCharactersInField(part)
         }
     }
     return null
@@ -456,11 +474,11 @@ internal fun validateCronExpression(expression: String): String? {
  * @param delay The delay string to validate.
  * @return An error message if invalid, or null if the delay passes basic validation.
  */
-internal fun validateDelay(delay: String): String? {
+private fun validateDelay(delay: String): CronValidationError? {
     val trimmed = delay.trim()
-    if (trimmed.isBlank()) return "Delay is required"
+    if (trimmed.isBlank()) return CronValidationError.DelayRequired
     if (!trimmed.matches(Regex("^\\d+[smhd]$"))) {
-        return "Expected format: number + unit (s, m, h, d)"
+        return CronValidationError.DelayFormatInvalid
     }
     return null
 }
@@ -474,15 +492,15 @@ internal fun validateDelay(delay: String): String? {
  * @param timestamp The timestamp string to validate.
  * @return An error message if invalid, or null if the timestamp passes basic validation.
  */
-internal fun validateTimestamp(timestamp: String): String? {
+private fun validateTimestamp(timestamp: String): CronValidationError? {
     val trimmed = timestamp.trim()
-    if (trimmed.isBlank()) return "Timestamp is required"
+    if (trimmed.isBlank()) return CronValidationError.TimestampRequired
     val rfc3339Pattern =
         Regex(
             "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([.\\d+]*)?(Z|[+-]\\d{2}:\\d{2})$",
         )
     if (!rfc3339Pattern.matches(trimmed)) {
-        return "Expected RFC 3339 format (e.g. 2026-12-31T23:59:59Z)"
+        return CronValidationError.TimestampFormatInvalid
     }
     return null
 }
@@ -495,12 +513,34 @@ internal fun validateTimestamp(timestamp: String): String? {
  * @param interval The interval string to validate.
  * @return An error message if invalid, or null if the interval passes basic validation.
  */
-internal fun validateInterval(interval: String): String? {
+private fun validateInterval(interval: String): CronValidationError? {
     val trimmed = interval.trim()
-    if (trimmed.isBlank()) return "Interval is required"
+    if (trimmed.isBlank()) return CronValidationError.IntervalRequired
     val minutes = trimmed.toLongOrNull()
     if (minutes == null || minutes <= 0) {
-        return "Enter a positive number of minutes"
+        return CronValidationError.IntervalMustBePositive
     }
     return null
+}
+
+private sealed class CronValidationError {
+    object ExpressionRequired : CronValidationError()
+
+    object ExpectedFiveOrSixFields : CronValidationError()
+
+    data class InvalidCharactersInField(
+        val field: String,
+    ) : CronValidationError()
+
+    object DelayRequired : CronValidationError()
+
+    object DelayFormatInvalid : CronValidationError()
+
+    object TimestampRequired : CronValidationError()
+
+    object TimestampFormatInvalid : CronValidationError()
+
+    object IntervalRequired : CronValidationError()
+
+    object IntervalMustBePositive : CronValidationError()
 }

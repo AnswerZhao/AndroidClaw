@@ -47,6 +47,7 @@ android {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
 
+        buildConfigField("boolean", "ENABLE_SCREENSHOT_PROTECTION", "false")
         buildConfigField("String", "BUILD_DATE", "\"${LocalDate.now().format(DateTimeFormatter.ofPattern("MMM yyyy"))}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

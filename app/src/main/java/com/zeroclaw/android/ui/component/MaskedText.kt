@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,10 +44,17 @@ fun MaskedText(
 ) {
     val suffix =
         if (text.length > VISIBLE_SUFFIX_LENGTH) {
-            ", ending in ${text.takeLast(VISIBLE_SUFFIX_LENGTH)}"
+            stringResource(
+                R.string.masked_text_suffix_ending_in,
+                text.takeLast(VISIBLE_SUFFIX_LENGTH),
+            )
         } else {
             ""
         }
+    val revealedContentDescription =
+        stringResource(R.string.masked_text_revealed_content_description, suffix)
+    val hiddenContentDescription =
+        stringResource(R.string.masked_text_hidden_content_description, suffix)
 
     if (revealed) {
         Text(
@@ -53,8 +62,7 @@ fun MaskedText(
             style = MaterialTheme.typography.bodyMedium,
             modifier =
                 modifier.clearAndSetSemantics {
-                    contentDescription =
-                        "API key revealed$suffix. Tap hide to conceal credential."
+                    contentDescription = revealedContentDescription
                 },
         )
     } else {
@@ -63,7 +71,7 @@ fun MaskedText(
             style = MaterialTheme.typography.bodyMedium,
             modifier =
                 modifier.clearAndSetSemantics {
-                    contentDescription = "API key hidden$suffix"
+                    contentDescription = hiddenContentDescription
                 },
         )
     }

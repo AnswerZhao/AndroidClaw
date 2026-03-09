@@ -5,6 +5,7 @@ package com.zeroclaw.android.ui.screen.plugins
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.Skill
 import com.zeroclaw.android.service.SkillsBridge
@@ -128,7 +129,7 @@ class SkillsViewModel(
      */
     fun installSkill(source: String) {
         viewModelScope.launch {
-            runMutation("Skill installed") {
+            runMutation(getString(R.string.skills_snackbar_installed)) {
                 skillsBridge.installSkill(source)
             }
         }
@@ -141,7 +142,7 @@ class SkillsViewModel(
      */
     fun removeSkill(name: String) {
         viewModelScope.launch {
-            runMutation("Skill removed") {
+            runMutation(getString(R.string.skills_snackbar_removed)) {
                 skillsBridge.removeSkill(name)
             }
         }
@@ -160,7 +161,7 @@ class SkillsViewModel(
         } catch (e: Exception) {
             _uiState.value =
                 SkillsUiState.Error(
-                    ErrorSanitizer.sanitizeForUi(e),
+                    ErrorSanitizer.sanitizeForUi(getApplication(), e),
                 )
         }
     }
@@ -175,9 +176,14 @@ class SkillsViewModel(
             _snackbarMessage.value = successMessage
             loadSkillsInternal()
         } catch (e: Exception) {
-            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(e)
+            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(getApplication(), e)
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Utility functions for skills filtering. */
     companion object {

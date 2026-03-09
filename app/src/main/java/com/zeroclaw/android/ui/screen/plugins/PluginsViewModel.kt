@@ -10,8 +10,10 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.remote.OkHttpPluginRegistryClient
+import com.zeroclaw.android.data.remote.PluginRegistryFetchException
 import com.zeroclaw.android.model.OfficialPlugins
 import com.zeroclaw.android.model.Plugin
 import com.zeroclaw.android.util.ErrorSanitizer
@@ -68,8 +70,7 @@ class PluginsViewModel(
             settingsRepository.migrationNoticePending.first().let { pending ->
                 if (pending) {
                     _snackbarMessage.tryEmit(
-                        "Web Search and Web Fetch have been enabled. " +
-                            "You can disable them in Plugins settings.",
+                        getString(R.string.plugins_migration_notice_enabled_web_tools),
                     )
                     settingsRepository.clearMigrationNotice()
                 }
@@ -158,7 +159,9 @@ class PluginsViewModel(
                 repository.install(pluginId)
             } catch (e: Exception) {
                 Log.w(TAG, "Install failed for $pluginId", e)
-                _snackbarMessage.tryEmit("Install failed: ${ErrorSanitizer.sanitizeForUi(e)}")
+                _snackbarMessage.tryEmit(
+                    getString(R.string.plugins_install_failed, ErrorSanitizer.sanitizeForUi(getApplication(), e)),
+                )
             }
         }
     }
@@ -177,7 +180,9 @@ class PluginsViewModel(
                 repository.uninstall(pluginId)
             } catch (e: Exception) {
                 Log.w(TAG, "Uninstall failed for $pluginId", e)
-                _snackbarMessage.tryEmit("Uninstall failed: ${ErrorSanitizer.sanitizeForUi(e)}")
+                _snackbarMessage.tryEmit(
+                    getString(R.string.plugins_uninstall_failed, ErrorSanitizer.sanitizeForUi(getApplication(), e)),
+                )
             }
         }
     }
@@ -198,7 +203,9 @@ class PluginsViewModel(
                 daemonBridge.markRestartRequired()
             } catch (e: Exception) {
                 Log.w(TAG, "Toggle failed for $pluginId", e)
-                _snackbarMessage.tryEmit("Toggle failed: ${ErrorSanitizer.sanitizeForUi(e)}")
+                _snackbarMessage.tryEmit(
+                    getString(R.string.plugins_toggle_failed, ErrorSanitizer.sanitizeForUi(getApplication(), e)),
+                )
             }
         }
     }
@@ -250,9 +257,29 @@ class PluginsViewModel(
                     delay(SYNC_SUCCESS_DISPLAY_MS)
                     _syncState.compareAndSet(successState, SyncUiState.Idle)
                 }
+            } catch (e: PluginRegistryFetchException.HttpsRequired) {
+                _syncState.value =
+                    SyncUiState.Error(
+                        getString(R.string.error_sanitizer_registry_https_required),
+                    )
+            } catch (e: PluginRegistryFetchException.HttpFailure) {
+                _syncState.value =
+                    SyncUiState.Error(
+                        getString(R.string.plugins_sync_registry_http_failed, e.statusCode),
+                    )
+            } catch (e: PluginRegistryFetchException.EmptyResponseBody) {
+                _syncState.value =
+                    SyncUiState.Error(
+                        getString(R.string.error_sanitizer_registry_empty_response),
+                    )
+            } catch (e: PluginRegistryFetchException.ResponseTooLarge) {
+                _syncState.value =
+                    SyncUiState.Error(
+                        getString(R.string.error_sanitizer_registry_response_too_large),
+                    )
             } catch (e: Exception) {
                 _syncState.value =
-                    SyncUiState.Error(ErrorSanitizer.sanitizeForUi(e))
+                    SyncUiState.Error(ErrorSanitizer.sanitizeForUi(getApplication(), e))
             }
         }
     }
@@ -275,13 +302,20 @@ class PluginsViewModel(
                 settingsRepository.setQueryClassificationEnabled(false)
                 val settings = settingsRepository.settings.first()
                 repository.syncOfficialPluginStates(settings)
-                _snackbarMessage.tryEmit("Official plugins restored to defaults")
+                _snackbarMessage.tryEmit(getString(R.string.plugins_restore_defaults_success))
             } catch (e: Exception) {
                 Log.w(TAG, "Restore defaults failed", e)
-                _snackbarMessage.tryEmit("Restore failed: ${ErrorSanitizer.sanitizeForUi(e)}")
+                _snackbarMessage.tryEmit(
+                    getString(R.string.plugins_restore_failed, ErrorSanitizer.sanitizeForUi(getApplication(), e)),
+                )
             }
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Constants for [PluginsViewModel]. */
     companion object {

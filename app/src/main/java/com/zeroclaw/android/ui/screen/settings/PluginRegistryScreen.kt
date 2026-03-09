@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -72,41 +74,41 @@ fun PluginRegistryScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Auto Sync")
+        SectionHeader(title = stringResource(R.string.plugin_registry_section_auto_sync))
 
         SettingsToggleRow(
-            title = "Enable automatic sync",
-            subtitle = "Periodically fetch the plugin catalog",
+            title = stringResource(R.string.plugin_registry_enable_automatic_sync_title),
+            subtitle = stringResource(R.string.plugin_registry_enable_automatic_sync_subtitle),
             checked = settings.pluginSyncEnabled,
             onCheckedChange = { settingsViewModel.updatePluginSyncEnabled(it) },
-            contentDescription = "Enable automatic plugin sync",
+            contentDescription = stringResource(R.string.plugin_registry_enable_automatic_sync_content_description),
         )
 
-        SectionHeader(title = "Registry URL")
+        SectionHeader(title = stringResource(R.string.plugin_registry_section_registry_url))
 
         OutlinedTextField(
             value = settings.pluginRegistryUrl,
             onValueChange = { settingsViewModel.updatePluginRegistryUrl(it) },
-            label = { Text("Registry URL") },
+            label = { Text(stringResource(R.string.plugin_registry_url_label)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Sync Interval")
+        SectionHeader(title = stringResource(R.string.plugin_registry_section_sync_interval))
 
         SyncIntervalDropdown(
             selectedHours = settings.pluginSyncIntervalHours,
             onSelected = { settingsViewModel.updatePluginSyncIntervalHours(it) },
         )
 
-        SectionHeader(title = "Last Sync")
+        SectionHeader(title = stringResource(R.string.plugin_registry_section_last_sync))
 
         Text(
             text =
                 if (settings.lastPluginSyncTimestamp > 0L) {
                     formatTimestamp(settings.lastPluginSyncTimestamp)
                 } else {
-                    "Never synced"
+                    stringResource(R.string.plugin_registry_never_synced)
                 },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -116,7 +118,7 @@ fun PluginRegistryScreen(
             onClick = onSyncNow,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Sync Now")
+            Text(stringResource(R.string.plugin_registry_sync_now))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -137,7 +139,12 @@ private fun SyncIntervalDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val options = INTERVAL_OPTIONS
-    val selectedLabel = options.firstOrNull { it.first == selectedHours }?.second ?: "$selectedHours hours"
+    val selectedLabel =
+        if (selectedHours in options) {
+            stringResource(R.string.plugin_registry_interval_every_hours, selectedHours)
+        } else {
+            stringResource(R.string.plugin_registry_selected_hours_fallback, selectedHours)
+        }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -147,7 +154,7 @@ private fun SyncIntervalDropdown(
             value = selectedLabel,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Interval") },
+            label = { Text(stringResource(R.string.plugin_registry_interval_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier =
                 Modifier
@@ -158,9 +165,9 @@ private fun SyncIntervalDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            options.forEach { (hours, label) ->
+            options.forEach { hours ->
                 DropdownMenuItem(
-                    text = { Text(label) },
+                    text = { Text(stringResource(R.string.plugin_registry_interval_every_hours, hours)) },
                     onClick = {
                         onSelected(hours)
                         expanded = false
@@ -183,11 +190,11 @@ private val registryTimestampFormat: DateTimeFormatter =
  */
 private fun formatTimestamp(timestamp: Long): String = registryTimestampFormat.format(Instant.ofEpochMilli(timestamp))
 
-/** Sync interval options as (hours, label) pairs. */
+/** Sync interval options in hours. */
 private val INTERVAL_OPTIONS =
     listOf(
-        6 to "Every 6 hours",
-        12 to "Every 12 hours",
-        24 to "Every 24 hours",
-        48 to "Every 48 hours",
+        6,
+        12,
+        24,
+        48,
     )

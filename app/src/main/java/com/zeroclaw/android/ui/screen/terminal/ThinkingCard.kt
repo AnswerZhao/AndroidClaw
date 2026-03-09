@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.terminal
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -87,6 +89,11 @@ fun ThinkingCard(
     modifier: Modifier = Modifier,
 ) {
     val isPowerSave = LocalPowerSaveMode.current
+    val modelThinkingContentDescription =
+        stringResource(R.string.terminal_thinking_model_thinking_content_description)
+    val cancelRequestContentDescription =
+        stringResource(R.string.terminal_thinking_cancel_request_content_description)
+    val cancelLabel = stringResource(R.string.common_cancel)
     val enterTransition =
         if (isPowerSave) EnterTransition.None else expandVertically()
     val exitTransition =
@@ -107,7 +114,7 @@ fun ThinkingCard(
                 Modifier
                     .fillMaxWidth()
                     .semantics(mergeDescendants = true) {
-                        contentDescription = "Model is thinking"
+                        contentDescription = modelThinkingContentDescription
                     },
         ) {
             Column(
@@ -115,17 +122,26 @@ fun ThinkingCard(
             ) {
                 val headerLabel =
                     when (phase) {
-                        StreamingPhase.SEARCHING_MEMORY -> "Searching memory\u2026"
+                        StreamingPhase.SEARCHING_MEMORY ->
+                            stringResource(R.string.terminal_thinking_header_searching_memory)
+
                         StreamingPhase.CALLING_PROVIDER -> {
                             if (providerRound > 1) {
-                                "Thinking (round $providerRound)\u2026"
+                                stringResource(
+                                    R.string.terminal_thinking_header_thinking_round,
+                                    providerRound,
+                                )
                             } else {
-                                "Thinking\u2026"
+                                stringResource(R.string.terminal_thinking_header_thinking)
                             }
                         }
-                        StreamingPhase.COMPACTING -> "Compacting\u2026"
-                        StreamingPhase.RESPONDING -> "Responding\u2026"
-                        else -> "Thinking\u2026"
+                        StreamingPhase.COMPACTING ->
+                            stringResource(R.string.terminal_thinking_header_compacting)
+
+                        StreamingPhase.RESPONDING ->
+                            stringResource(R.string.terminal_thinking_header_responding)
+
+                        else -> stringResource(R.string.terminal_thinking_header_thinking)
                     }
 
                 Row(
@@ -141,11 +157,11 @@ fun ThinkingCard(
                         onClick = onCancel,
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Cancel request"
+                                contentDescription = cancelRequestContentDescription
                             },
                     ) {
                         Text(
-                            text = "Cancel",
+                            text = cancelLabel,
                             style = TerminalTypography.labelMedium,
                         )
                     }
@@ -211,11 +227,21 @@ private fun ToolActivityFooter(
     )
 
     if (toolCallCount > 0) {
+        val baseCallText =
+            if (toolCallCount == 1) {
+                stringResource(R.string.terminal_thinking_tool_call_singular, toolCallCount)
+            } else {
+                stringResource(R.string.terminal_thinking_tool_call_plural, toolCallCount)
+            }
         val progressText =
-            buildString {
-                append("$toolCallCount tool call")
-                if (toolCallCount != 1) append("s")
-                if (llmDurationSecs > 0) append(" (LLM ${llmDurationSecs}s)")
+            if (llmDurationSecs > 0) {
+                stringResource(
+                    R.string.terminal_thinking_tool_calls_with_llm,
+                    baseCallText,
+                    llmDurationSecs,
+                )
+            } else {
+                baseCallText
             }
         Text(
             text = progressText,
@@ -238,7 +264,7 @@ private fun ToolActivityFooter(
         val icon = if (result.success) "\u2705" else "\u274C"
         val detail =
             if (result.durationSecs > 0) {
-                "(${result.durationSecs}s)"
+                stringResource(R.string.terminal_thinking_tool_duration, result.durationSecs)
             } else {
                 ""
             }
@@ -271,6 +297,12 @@ private fun ToolActivityRow(
     detail: String,
     tint: Color,
 ) {
+    val toolActivityContentDescription =
+        stringResource(
+            R.string.terminal_thinking_tool_activity_content_description,
+            name,
+            detail,
+        )
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -279,7 +311,7 @@ private fun ToolActivityRow(
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "$name tool $detail"
+                    contentDescription = toolActivityContentDescription
                 },
     ) {
         Text(

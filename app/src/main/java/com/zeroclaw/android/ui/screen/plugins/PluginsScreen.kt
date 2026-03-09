@@ -9,6 +9,8 @@
 
 package com.zeroclaw.android.ui.screen.plugins
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -164,6 +166,14 @@ internal fun PluginsContent(
     onRestoreDefaults: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tabInstalledLabel = stringResource(R.string.plugins_tab_installed)
+    val tabHubLabel = stringResource(R.string.plugins_tab_hub)
+    val tabSkillsLabel = stringResource(R.string.plugins_tab_skills)
+    val tabToolsLabel = stringResource(R.string.plugins_tab_tools)
+    val restoreDefaultsContentDescription =
+        stringResource(R.string.plugins_restore_defaults_content_description)
+    val syncRegistryContentDescription =
+        stringResource(R.string.plugins_sync_registry_content_description)
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier =
@@ -181,7 +191,7 @@ internal fun PluginsContent(
                     onClick = { onSelectTab(TAB_INSTALLED) },
                     text = {
                         Text(
-                            "Installed",
+                            tabInstalledLabel,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -192,7 +202,7 @@ internal fun PluginsContent(
                     onClick = { onSelectTab(TAB_AVAILABLE) },
                     text = {
                         Text(
-                            "Hub",
+                            tabHubLabel,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -203,7 +213,7 @@ internal fun PluginsContent(
                     onClick = { onSelectTab(TAB_SKILLS) },
                     text = {
                         Text(
-                            "Skills",
+                            tabSkillsLabel,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -214,7 +224,7 @@ internal fun PluginsContent(
                     onClick = { onSelectTab(TAB_TOOLS) },
                     text = {
                         Text(
-                            "Tools",
+                            tabToolsLabel,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -234,8 +244,7 @@ internal fun PluginsContent(
                             onClick = onRestoreDefaults,
                             modifier =
                                 Modifier.semantics {
-                                    contentDescription =
-                                        "Restore official plugins to defaults"
+                                    contentDescription = restoreDefaultsContentDescription
                                 },
                         ) {
                             Icon(
@@ -249,7 +258,7 @@ internal fun PluginsContent(
                         enabled = state.syncState !is SyncUiState.Syncing,
                         modifier =
                             Modifier.semantics {
-                                contentDescription = "Sync plugin registry"
+                                contentDescription = syncRegistryContentDescription
                             },
                     ) {
                         Icon(
@@ -313,25 +322,26 @@ private fun PluginTabContent(
     OutlinedTextField(
         value = searchQuery,
         onValueChange = onSearchChange,
-        label = { Text("Search plugins") },
+        label = { Text(stringResource(R.string.plugins_search_plugins)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(modifier = Modifier.height(16.dp))
 
     if (plugins.isEmpty()) {
+        val emptyMessage =
+            if (searchQuery.isBlank()) {
+                if (selectedTab == TAB_INSTALLED) {
+                    stringResource(R.string.plugins_empty_no_installed)
+                } else {
+                    stringResource(R.string.plugins_empty_all_installed)
+                }
+            } else {
+                stringResource(R.string.plugins_empty_no_match)
+            }
         EmptyState(
             icon = Icons.Outlined.Extension,
-            message =
-                if (searchQuery.isBlank()) {
-                    if (selectedTab == TAB_INSTALLED) {
-                        "No plugins installed yet"
-                    } else {
-                        "All plugins are installed"
-                    }
-                } else {
-                    "No plugins match your search"
-                },
+            message = emptyMessage,
         )
     } else if (selectedTab == TAB_INSTALLED) {
         val officialPlugins by remember(plugins) {
@@ -399,7 +409,7 @@ private fun InstalledTabContent(
         if (officialPlugins.isNotEmpty()) {
             item(key = "header-official", contentType = "section-header") {
                 PluginSectionHeader(
-                    title = "Official Tools",
+                    title = stringResource(R.string.plugins_section_official_tools),
                     count = officialPlugins.size,
                 )
             }
@@ -421,7 +431,7 @@ private fun InstalledTabContent(
         if (communityPlugins.isNotEmpty()) {
             item(key = "header-community", contentType = "section-header") {
                 PluginSectionHeader(
-                    title = "Installed Plugins",
+                    title = stringResource(R.string.plugins_section_installed_plugins),
                     count = communityPlugins.size,
                 )
             }
@@ -462,6 +472,21 @@ private fun PluginListItem(
     onInstall: () -> Unit,
     onClick: () -> Unit,
 ) {
+    val enabledLabel = stringResource(R.string.common_enabled)
+    val disabledLabel = stringResource(R.string.common_disabled)
+    val versionAuthorLabel =
+        stringResource(R.string.plugins_version_author, plugin.version, plugin.author)
+    val updateAvailableContentDescription =
+        stringResource(
+            R.string.plugins_update_available_content_description,
+            plugin.remoteVersion ?: "",
+        )
+    val pluginToggleContentDescription =
+        stringResource(
+            R.string.plugins_toggle_content_description,
+            plugin.name,
+            if (plugin.isEnabled) enabledLabel else disabledLabel,
+        )
     val hasUpdate =
         plugin.isInstalled &&
             plugin.remoteVersion != null &&
@@ -495,12 +520,11 @@ private fun PluginListItem(
                         Box(
                             modifier =
                                 Modifier.semantics {
-                                    contentDescription =
-                                        "Update available: ${plugin.remoteVersion}"
+                                    contentDescription = updateAvailableContentDescription
                                 },
                         ) {
                             Badge {
-                                Text("Update")
+                                Text(stringResource(R.string.common_update))
                             }
                         }
                     }
@@ -512,7 +536,7 @@ private fun PluginListItem(
                     maxLines = 2,
                 )
                 Text(
-                    text = "v${plugin.version} \u2022 ${plugin.author}",
+                    text = versionAuthorLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -524,13 +548,12 @@ private fun PluginListItem(
                     onCheckedChange = { onToggle() },
                     modifier =
                         Modifier.semantics {
-                            contentDescription =
-                                "${plugin.name} ${if (plugin.isEnabled) "enabled" else "disabled"}"
+                            contentDescription = pluginToggleContentDescription
                         },
                 )
             } else {
                 FilledTonalButton(onClick = onInstall) {
-                    Text("Install")
+                    Text(stringResource(R.string.common_install))
                 }
             }
         }

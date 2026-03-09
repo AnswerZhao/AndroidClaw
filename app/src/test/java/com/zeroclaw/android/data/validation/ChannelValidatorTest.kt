@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.data.validation
 
+import com.zeroclaw.android.R
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -25,7 +26,8 @@ class ChannelValidatorTest {
             val result = ChannelValidator.classifyTelegramResponse(HTTP_OK, body)
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertEquals("Connected as @test_bot", success.details)
+            assertEquals(R.string.validation_channel_connected_as_telegram, success.detailsResId)
+            assertEquals(listOf("test_bot"), success.detailsArgs)
         }
 
         @Test
@@ -46,7 +48,7 @@ class ChannelValidatorTest {
             assertTrue(result is ValidationResult.Failure)
             val failure = result as ValidationResult.Failure
             assertFalse(failure.retryable)
-            assertTrue("Invalid token" in failure.message)
+            assertEquals(R.string.validation_channel_invalid_token, failure.messageResId)
         }
 
         @Test
@@ -68,7 +70,8 @@ class ChannelValidatorTest {
             val result = ChannelValidator.classifyDiscordResponse(HTTP_OK, body)
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertEquals("Connected as TestBot", success.details)
+            assertEquals(R.string.validation_channel_connected_as, success.detailsResId)
+            assertEquals(listOf("TestBot"), success.detailsArgs)
         }
 
         @Test
@@ -79,7 +82,7 @@ class ChannelValidatorTest {
             assertTrue(result is ValidationResult.Failure)
             val failure = result as ValidationResult.Failure
             assertFalse(failure.retryable)
-            assertTrue("Invalid token" in failure.message)
+            assertEquals(R.string.validation_channel_invalid_token, failure.messageResId)
         }
     }
 
@@ -93,7 +96,8 @@ class ChannelValidatorTest {
             val result = ChannelValidator.classifySlackResponse(HTTP_OK, body)
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertEquals("Connected to MyTeam as bot", success.details)
+            assertEquals(R.string.validation_channel_connected_to_as, success.detailsResId)
+            assertEquals(listOf("MyTeam", "bot"), success.detailsArgs)
         }
 
         @Test
@@ -117,7 +121,8 @@ class ChannelValidatorTest {
             val result = ChannelValidator.classifyMatrixResponse(HTTP_OK, body)
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertEquals("Connected as @bot:matrix.org", success.details)
+            assertEquals(R.string.validation_channel_connected_as, success.detailsResId)
+            assertEquals(listOf("@bot:matrix.org"), success.detailsArgs)
         }
 
         @Test
@@ -128,7 +133,7 @@ class ChannelValidatorTest {
             assertTrue(result is ValidationResult.Failure)
             val failure = result as ValidationResult.Failure
             assertFalse(failure.retryable)
-            assertTrue("Invalid token" in failure.message)
+            assertEquals(R.string.validation_channel_invalid_token, failure.messageResId)
         }
     }
 
@@ -139,20 +144,14 @@ class ChannelValidatorTest {
         @DisplayName("IRC returns deferred validation Success")
         fun `IRC returns deferred validation Success`() {
             val result = ChannelValidator.classifyOtherChannel()
-            assertEquals(
-                "Will be verified when daemon starts",
-                result.details,
-            )
+            assertEquals(R.string.validation_channel_deferred, result.detailsResId)
         }
 
         @Test
         @DisplayName("EMAIL returns deferred validation Success")
         fun `EMAIL returns same deferred validation Success`() {
             val result = ChannelValidator.classifyOtherChannel()
-            assertEquals(
-                "Will be verified when daemon starts",
-                result.details,
-            )
+            assertEquals(R.string.validation_channel_deferred, result.detailsResId)
         }
     }
 

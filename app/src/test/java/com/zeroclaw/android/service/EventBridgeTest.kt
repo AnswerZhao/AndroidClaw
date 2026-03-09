@@ -6,9 +6,12 @@
 
 package com.zeroclaw.android.service
 
+import android.content.Context
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.repository.ActivityRepository
 import com.zeroclaw.android.model.ActivityType
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.util.Locale
 
 /**
  * Unit tests for [EventBridge].
@@ -35,13 +39,21 @@ import org.junit.jupiter.api.Test
 @DisplayName("EventBridge")
 class EventBridgeTest {
     private lateinit var bridge: EventBridge
+    private lateinit var context: Context
     private lateinit var activityRepository: ActivityRepository
 
     /** Sets up mocks and creates an [EventBridge] with a test coroutine scope. */
     @BeforeEach
     fun setUp() {
         mockkStatic("com.zeroclaw.ffi.Zeroclaw_androidKt")
-        activityRepository = io.mockk.mockk(relaxUnitFun = true)
+        context = mockk()
+        every { context.getString(any<Int>()) } answers {
+            formatString(firstArg(), emptyArray())
+        }
+        every { context.getString(any<Int>(), *anyVararg()) } answers {
+            formatString(firstArg(), extractFormatArgs(args))
+        }
+        activityRepository = mockk(relaxUnitFun = true)
     }
 
     /** Tears down all mocks after each test. */
@@ -54,7 +66,7 @@ class EventBridgeTest {
     @DisplayName("onEvent parses valid JSON and emits DaemonEvent on SharedFlow")
     fun `onEvent parses valid JSON and emits DaemonEvent on SharedFlow`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             val json = """{"id":1,"timestamp_ms":1700000000000,"kind":"llm_request","data":{"provider":"openai","model":"gpt-4"}}"""
 
             var received: com.zeroclaw.android.model.DaemonEvent? = null
@@ -78,7 +90,7 @@ class EventBridgeTest {
     @DisplayName("onEvent records activity for llm_request kind")
     fun `onEvent records activity for llm_request kind`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             val json = """{"id":2,"timestamp_ms":1700000000000,"kind":"llm_request","data":{"provider":"anthropic","model":"claude-3"}}"""
 
             bridge.onEvent(json)
@@ -96,7 +108,7 @@ class EventBridgeTest {
     @DisplayName("onEvent records error activity for error kind")
     fun `onEvent records error activity for error kind`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             val json = """{"id":3,"timestamp_ms":1700000000000,"kind":"error","data":{"component":"gateway","message":"connection refused"}}"""
 
             bridge.onEvent(json)
@@ -114,7 +126,7 @@ class EventBridgeTest {
     @DisplayName("onEvent silently drops malformed JSON")
     fun `onEvent silently drops malformed JSON`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
 
             bridge.onEvent("not valid json")
             advanceUntilIdle()
@@ -128,7 +140,7 @@ class EventBridgeTest {
     @DisplayName("onEvent handles missing data object gracefully")
     fun `onEvent handles missing data object gracefully`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             val json = """{"id":4,"timestamp_ms":1700000000000,"kind":"heartbeat_tick"}"""
 
             var received: com.zeroclaw.android.model.DaemonEvent? = null
@@ -153,7 +165,7 @@ class EventBridgeTest {
     @DisplayName("onEvent maps tool_call kind to correct activity message")
     fun `onEvent maps tool_call kind to correct activity message`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             val json = """{"id":5,"timestamp_ms":1700000000000,"kind":"tool_call","data":{"tool":"web_search","duration_ms":"150"}}"""
 
             bridge.onEvent(json)
@@ -171,7 +183,7 @@ class EventBridgeTest {
     @DisplayName("register calls FFI registerEventListener")
     fun `register calls FFI registerEventListener`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             every { com.zeroclaw.ffi.registerEventListener(any()) } returns Unit
 
             bridge.register()
@@ -183,11 +195,41 @@ class EventBridgeTest {
     @DisplayName("unregister calls FFI unregisterEventListener")
     fun `unregister calls FFI unregisterEventListener`() =
         runTest {
-            bridge = EventBridge(activityRepository, this)
+            bridge = EventBridge(context, activityRepository, this)
             every { com.zeroclaw.ffi.unregisterEventListener() } returns Unit
 
             bridge.unregister()
 
             verify { com.zeroclaw.ffi.unregisterEventListener() }
         }
+
+    private fun formatString(
+        id: Int,
+        formatArgs: Array<out Any?>,
+    ): String =
+        when (id) {
+            R.string.event_bridge_unknown -> "unknown"
+            R.string.event_bridge_duration_ms -> String.format(Locale.US, "%1\$sms", *formatArgs)
+            R.string.event_bridge_message_llm_request -> String.format(Locale.US, "LLM Request: %1\$s / %2\$s", *formatArgs)
+            R.string.event_bridge_message_llm_response -> String.format(Locale.US, "LLM Response: %1\$s (%2\$s)", *formatArgs)
+            R.string.event_bridge_message_tool_call -> String.format(Locale.US, "Tool: %1\$s (%2\$s)", *formatArgs)
+            R.string.event_bridge_message_tool_call_start -> String.format(Locale.US, "Tool Starting: %1\$s", *formatArgs)
+            R.string.event_bridge_message_channel_message -> String.format(Locale.US, "Channel: %1\$s (%2\$s)", *formatArgs)
+            R.string.event_bridge_message_error -> String.format(Locale.US, "Error: %1\$s - %2\$s", *formatArgs)
+            R.string.event_bridge_message_heartbeat_tick -> "Heartbeat"
+            R.string.event_bridge_message_turn_complete -> "Turn Complete"
+            R.string.event_bridge_message_agent_start -> String.format(Locale.US, "Agent Start: %1\$s / %2\$s", *formatArgs)
+            R.string.event_bridge_message_agent_end -> String.format(Locale.US, "Agent End (%1\$s)", *formatArgs)
+            R.string.event_bridge_message_generic -> String.format(Locale.US, "Event: %1\$s", *formatArgs)
+            else -> "res-$id"
+        }
+
+    private fun extractFormatArgs(mockArgs: List<Any?>): Array<out Any?> {
+        if (mockArgs.size <= 1) return emptyArray()
+        val trailing = mockArgs.drop(1)
+        if (trailing.size == 1 && trailing.first() is Array<*>) {
+            return (trailing.first() as Array<*>)
+        }
+        return trailing.toTypedArray()
+    }
 }

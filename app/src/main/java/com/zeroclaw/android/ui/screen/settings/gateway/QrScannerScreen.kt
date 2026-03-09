@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings.gateway
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import android.Manifest
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -184,6 +186,14 @@ private fun PermissionRequestContent(
     onRequestPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val permissionRequiredContentDescription =
+        stringResource(R.string.qr_scanner_permission_required_content_description)
+    val permissionRequiredTitle = stringResource(R.string.qr_scanner_permission_required_title)
+    val permissionRequiredMessage =
+        stringResource(R.string.qr_scanner_permission_required_message)
+    val grantPermissionContentDescription =
+        stringResource(R.string.qr_scanner_grant_permission_content_description)
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -192,8 +202,7 @@ private fun PermissionRequestContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier =
                 Modifier.semantics {
-                    contentDescription =
-                        "Camera permission required to scan QR codes"
+                    contentDescription = permissionRequiredContentDescription
                     liveRegion = LiveRegionMode.Polite
                 },
         ) {
@@ -205,12 +214,12 @@ private fun PermissionRequestContent(
             )
             Spacer(modifier = Modifier.height(SPACING_MEDIUM))
             Text(
-                text = "Camera permission required",
+                text = permissionRequiredTitle,
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.height(SPACING_SMALL))
             Text(
-                text = "Grant camera access to scan QR codes",
+                text = permissionRequiredMessage,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -220,10 +229,10 @@ private fun PermissionRequestContent(
                 modifier =
                     Modifier.semantics {
                         role = Role.Button
-                        contentDescription = "Grant camera permission"
+                        contentDescription = grantPermissionContentDescription
                     },
             ) {
-                Text("Grant Permission")
+                Text(stringResource(R.string.qr_scanner_grant_permission))
             }
         }
     }
@@ -246,6 +255,11 @@ private fun CameraScanContent(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val viewfinderContentDescription =
+        stringResource(R.string.qr_scanner_viewfinder_content_description)
+    val pointAtQrCodeText = stringResource(R.string.qr_scanner_point_at_code)
+    val cameraInitializationFailedMessage =
+        stringResource(R.string.qr_scanner_camera_initialization_failed)
     var hasScanned by remember { mutableStateOf(false) }
     val scanner = remember { BarcodeScanning.getClient() }
 
@@ -258,7 +272,7 @@ private fun CameraScanContent(
             modifier
                 .fillMaxSize()
                 .semantics {
-                    contentDescription = "Camera viewfinder for QR code scanning"
+                    contentDescription = viewfinderContentDescription
                 },
     ) {
         AndroidView(
@@ -327,7 +341,7 @@ private fun CameraScanContent(
                                 imageAnalysis,
                             )
                         } catch (e: Exception) {
-                            onError(e.message ?: "Camera initialization failed")
+                            onError(e.message ?: cameraInitializationFailedMessage)
                         }
                     },
                     ContextCompat.getMainExecutor(ctx),
@@ -340,7 +354,7 @@ private fun CameraScanContent(
         ViewfinderOverlay(modifier = Modifier.fillMaxSize())
 
         Text(
-            text = "Point at a QR code",
+            text = pointAtQrCodeText,
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White,
             modifier =
@@ -388,6 +402,9 @@ private fun ScanSuccessContent(
     token: String,
     modifier: Modifier = Modifier,
 ) {
+    val scannedSuccessContentDescription =
+        stringResource(R.string.qr_scanner_scanned_success_content_description)
+    val tokenScannedTitle = stringResource(R.string.qr_scanner_token_scanned_title)
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -396,12 +413,12 @@ private fun ScanSuccessContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "QR code scanned successfully"
+                    contentDescription = scannedSuccessContentDescription
                     liveRegion = LiveRegionMode.Polite
                 },
         ) {
             Text(
-                text = "Token scanned",
+                text = tokenScannedTitle,
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.height(SPACING_SMALL))
@@ -427,6 +444,11 @@ private fun ErrorContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val cameraErrorContentDescription =
+        stringResource(R.string.qr_scanner_camera_error_content_description, message)
+    val cameraErrorTitle = stringResource(R.string.qr_scanner_camera_error_title)
+    val retryCameraContentDescription =
+        stringResource(R.string.qr_scanner_retry_camera_content_description)
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -435,12 +457,12 @@ private fun ErrorContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Camera error: $message"
+                    contentDescription = cameraErrorContentDescription
                     liveRegion = LiveRegionMode.Polite
                 },
         ) {
             Text(
-                text = "Camera error",
+                text = cameraErrorTitle,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -456,10 +478,10 @@ private fun ErrorContent(
                 modifier =
                     Modifier.semantics {
                         role = Role.Button
-                        contentDescription = "Retry camera"
+                        contentDescription = retryCameraContentDescription
                     },
             ) {
-                Text("Retry")
+                Text(stringResource(R.string.common_retry))
             }
         }
     }

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -67,6 +69,9 @@ fun LockGateScreen(
 ) {
     val isPowerSave = LocalPowerSaveMode.current
     val scope = rememberCoroutineScope()
+    val lockTitle = stringResource(R.string.lock_gate_title)
+    val wrongPinMessage = stringResource(R.string.pin_error_wrong_pin)
+    val forgotPinResetMessage = stringResource(R.string.lock_gate_forgot_pin_reset_message)
 
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -97,7 +102,7 @@ fun LockGateScreen(
             Spacer(modifier = Modifier.height(SPACING_MEDIUM))
 
             Text(
-                text = "ZeroClaw is locked",
+                text = lockTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 modifier =
                     Modifier.semantics {
@@ -137,7 +142,7 @@ fun LockGateScreen(
                             if (PinHasher.verify(enteredPin, pinHash)) {
                                 onUnlock()
                             } else if (enteredPin.length == MAX_PIN_LENGTH) {
-                                errorMessage = "Wrong PIN"
+                                errorMessage = wrongPinMessage
                                 enteredPin = ""
                                 if (!isPowerSave) {
                                     scope.launch {
@@ -170,7 +175,7 @@ fun LockGateScreen(
             Spacer(modifier = Modifier.height(SPACING_MEDIUM))
 
             TextButton(onClick = { showForgotDialog = true }) {
-                Text("Forgot PIN?")
+                Text(stringResource(R.string.lock_gate_forgot_pin))
             }
         }
     }
@@ -178,17 +183,13 @@ fun LockGateScreen(
     if (showForgotDialog) {
         AlertDialog(
             onDismissRequest = { showForgotDialog = false },
-            title = { Text("Forgot PIN?") },
+            title = { Text(stringResource(R.string.lock_gate_forgot_pin)) },
             text = {
-                Text(
-                    "To reset your PIN, clear the app's data " +
-                        "from Android Settings > Apps > ZeroClaw > Storage > Clear Data. " +
-                        "This will remove all local settings.",
-                )
+                Text(forgotPinResetMessage)
             },
             confirmButton = {
                 TextButton(onClick = { showForgotDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.common_ok))
                 }
             },
         )
@@ -208,13 +209,19 @@ private fun LockPinDots(
     maxLength: Int,
     shakeOffset: Float,
 ) {
+    val pinEntryContentDescription =
+        stringResource(
+            R.string.pin_entry_content_description,
+            length,
+            maxLength,
+        )
     Row(
         horizontalArrangement = Arrangement.spacedBy(DOT_SPACING),
         modifier =
             Modifier
                 .offset { IntOffset(shakeOffset.toInt(), 0) }
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "PIN entry, $length of $maxLength digits entered"
+                    contentDescription = pinEntryContentDescription
                 },
     ) {
         for (i in 0 until maxLength) {

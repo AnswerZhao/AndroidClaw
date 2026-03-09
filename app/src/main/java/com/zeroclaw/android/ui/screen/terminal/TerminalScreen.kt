@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -65,6 +66,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ProcessedImage
 import com.zeroclaw.android.model.ServiceState
@@ -204,6 +206,8 @@ internal fun TerminalContent(
 
     val isAgentActive = streamingState.phase.isActive
     val isInputDisabled = state.isLoading || isAgentActive
+    val terminalThinkingLabel = stringResource(R.string.terminal_thinking_label)
+    val copiedToClipboardMessage = stringResource(R.string.terminal_copied_to_clipboard)
 
     val stableOnRemove: (Int) -> Unit = remember { { index -> onRemoveImage(index) } }
 
@@ -294,7 +298,7 @@ internal fun TerminalContent(
                 } else if (state.isLoading) {
                     item(key = "spinner", contentType = "spinner") {
                         BrailleSpinner(
-                            label = "Thinking\u2026",
+                            label = terminalThinkingLabel,
                             modifier =
                                 Modifier.padding(
                                     horizontal = AUTOCOMPLETE_ITEM_H_PAD_DP.dp,
@@ -314,7 +318,7 @@ internal fun TerminalContent(
                             { text ->
                                 copyToClipboard(context, text)
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Copied to clipboard")
+                                    snackbarHostState.showSnackbar(copiedToClipboardMessage)
                                 }
                                 Unit
                             }
@@ -390,12 +394,18 @@ private fun TerminalHeader(
 ) {
     val statusLabel =
         when (serviceState) {
-            ServiceState.STOPPED -> "stopped"
-            ServiceState.STARTING -> "starting"
-            ServiceState.RUNNING -> "running"
-            ServiceState.STOPPING -> "stopping"
-            ServiceState.ERROR -> "error"
+            ServiceState.STOPPED -> stringResource(R.string.terminal_status_stopped)
+            ServiceState.STARTING -> stringResource(R.string.terminal_status_starting)
+            ServiceState.RUNNING -> stringResource(R.string.terminal_status_running)
+            ServiceState.STOPPING -> stringResource(R.string.terminal_status_stopping)
+            ServiceState.ERROR -> stringResource(R.string.terminal_status_error)
         }
+    val terminalTitle = stringResource(R.string.terminal_title)
+    val headerContentDescription =
+        stringResource(
+            R.string.terminal_header_content_description,
+            statusLabel,
+        )
     val dotColor =
         when (serviceState) {
             ServiceState.RUNNING -> MaterialTheme.colorScheme.primary
@@ -414,12 +424,12 @@ private fun TerminalHeader(
                 .fillMaxWidth()
                 .padding(vertical = HEADER_VERTICAL_PADDING_DP.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "ZeroClaw Terminal, status: $statusLabel"
+                    contentDescription = headerContentDescription
                     liveRegion = LiveRegionMode.Polite
                 },
     ) {
         Text(
-            text = "ZeroClaw Terminal",
+            text = terminalTitle,
             style = TerminalTypography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -458,6 +468,11 @@ private fun TerminalInputBar(
     modifier: Modifier = Modifier,
 ) {
     val canSend = (value.isNotBlank() || hasImages) && !isLoading
+    val attachImagesContentDescription =
+        stringResource(R.string.terminal_attach_images_content_description)
+    val inputPlaceholder = stringResource(R.string.terminal_input_placeholder)
+    val sendContentDescription = stringResource(R.string.terminal_send_content_description)
+    val terminalPromptPrefix = stringResource(R.string.terminal_prompt_prefix)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -468,7 +483,7 @@ private fun TerminalInputBar(
             enabled = !isLoading,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Attach images"
+                    contentDescription = attachImagesContentDescription
                 },
         ) {
             Icon(
@@ -491,14 +506,14 @@ private fun TerminalInputBar(
                 ),
             prefix = {
                 Text(
-                    text = "> ",
+                    text = terminalPromptPrefix,
                     style = TerminalTypography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
             },
             placeholder = {
                 Text(
-                    text = "Type a command or message",
+                    text = inputPlaceholder,
                     style = TerminalTypography.bodyMedium,
                 )
             },
@@ -516,7 +531,7 @@ private fun TerminalInputBar(
             enabled = canSend,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Send"
+                    contentDescription = sendContentDescription
                 },
         ) {
             Icon(
@@ -556,6 +571,15 @@ private fun AutocompletePopup(
     ) {
         Column {
             for (command in suggestions) {
+                val slashCommandLabel =
+                    stringResource(R.string.terminal_slash_command_label, command.name)
+                val commandDescription = stringResource(command.descriptionResId)
+                val autocompleteItemContentDescription =
+                    stringResource(
+                        R.string.terminal_autocomplete_item_content_description,
+                        command.name,
+                        commandDescription,
+                    )
                 Row(
                     modifier =
                         Modifier
@@ -565,19 +589,18 @@ private fun AutocompletePopup(
                                 horizontal = AUTOCOMPLETE_ITEM_H_PAD_DP.dp,
                                 vertical = AUTOCOMPLETE_ITEM_V_PAD_DP.dp,
                             ).semantics {
-                                contentDescription =
-                                    "/${command.name}: ${command.description}"
+                                contentDescription = autocompleteItemContentDescription
                             },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "/${command.name}",
+                        text = slashCommandLabel,
                         style = TerminalTypography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(modifier = Modifier.width(INPUT_BAR_PADDING_DP.dp))
                     Text(
-                        text = command.description,
+                        text = commandDescription,
                         style = TerminalTypography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -635,6 +658,13 @@ private fun PendingImageChip(
     image: ProcessedImage,
     onRemove: () -> Unit,
 ) {
+    val removeImageContentDescription =
+        stringResource(
+            R.string.terminal_remove_image_content_description,
+            image.displayName,
+        )
+    val pendingImageLabel =
+        stringResource(R.string.terminal_pending_image_label, image.displayName)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
@@ -648,7 +678,7 @@ private fun PendingImageChip(
                 ),
     ) {
         Text(
-            text = "[${image.displayName}]",
+            text = pendingImageLabel,
             style = TerminalTypography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -660,7 +690,7 @@ private fun PendingImageChip(
                     .background(MaterialTheme.colorScheme.error, CircleShape)
                     .clickable(onClick = onRemove)
                     .semantics {
-                        contentDescription = "Remove ${image.displayName}"
+                        contentDescription = removeImageContentDescription
                     },
             contentAlignment = Alignment.Center,
         ) {
@@ -690,6 +720,8 @@ private fun StreamingResponseBlock(
     text: String,
     modifier: Modifier = Modifier,
 ) {
+    val streamingResponseContentDescription =
+        stringResource(R.string.terminal_streaming_response_content_description)
     Text(
         text = text,
         style = TerminalTypography.bodyMedium,
@@ -698,7 +730,7 @@ private fun StreamingResponseBlock(
             modifier
                 .fillMaxWidth()
                 .semantics {
-                    contentDescription = "Streaming response"
+                    contentDescription = streamingResponseContentDescription
                     liveRegion = LiveRegionMode.Polite
                 },
     )
@@ -715,7 +747,7 @@ private fun copyToClipboard(
     text: String,
 ) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("Terminal output", text)
+    val clip = ClipData.newPlainText(context.getString(R.string.terminal_clip_label), text)
     clip.description.extras =
         android.os.PersistableBundle().apply {
             putBoolean("android.content.extra.IS_SENSITIVE", true)

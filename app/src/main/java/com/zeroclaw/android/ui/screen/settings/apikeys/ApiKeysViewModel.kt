@@ -15,6 +15,7 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zeroclaw.android.BuildConfig
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.CredentialsJsonParser
 import com.zeroclaw.android.data.ProviderRegistry
@@ -34,6 +35,7 @@ import com.zeroclaw.android.service.AgentTomlEntry
 import com.zeroclaw.android.service.ConfigTomlBuilder
 import com.zeroclaw.android.service.GlobalTomlConfig
 import com.zeroclaw.android.service.SetupOrchestrator
+import com.zeroclaw.android.ui.i18n.localizedProviderDisplayName
 import com.zeroclaw.android.service.ZeroClawDaemonService
 import com.zeroclaw.android.ui.screen.setup.SetupProgress
 import java.io.IOException
@@ -116,7 +118,7 @@ class ApiKeysViewModel(
     private val daemonBridge = app.daemonBridge
     private val settingsRepository = app.settingsRepository
     private val channelConfigRepository = app.channelConfigRepository
-    private val setupOrchestrator = SetupOrchestrator(daemonBridge, app.healthBridge)
+    private val setupOrchestrator = SetupOrchestrator(app, daemonBridge, app.healthBridge)
 
     /** Hot-reload progress observable for the bottom sheet. */
     val hotReloadProgress: StateFlow<SetupProgress> = setupOrchestrator.progress
@@ -260,9 +262,15 @@ class ApiKeysViewModel(
                 val existing = repository.getByProvider(provider)
                 if (existing != null) {
                     val displayName =
-                        ProviderRegistry.findById(provider)?.displayName ?: provider
+                        localizedProviderDisplayName(
+                            context = getApplication(),
+                            providerId = provider,
+                            fallback = ProviderRegistry.findById(provider)?.displayName ?: provider,
+                        )
                     _saveState.value =
-                        SaveState.Error("A key for $displayName already exists")
+                        SaveState.Error(
+                            getString(R.string.api_key_detail_provider_exists_message, displayName),
+                        )
                     return@launch
                 }
                 repository.save(
@@ -331,7 +339,7 @@ class ApiKeysViewModel(
             try {
                 val existing = repository.getById(id)
                 if (existing == null) {
-                    _saveState.value = SaveState.Error("Key not found")
+                    _saveState.value = SaveState.Error(getString(R.string.api_keys_error_key_not_found))
                     return@launch
                 }
                 repository.save(
@@ -341,7 +349,7 @@ class ApiKeysViewModel(
                         status = KeyStatus.ACTIVE,
                     ),
                 )
-                _snackbarMessage.value = "Key rotated successfully"
+                _snackbarMessage.value = getString(R.string.api_keys_snackbar_key_rotated_success)
                 _saveState.value = SaveState.Saved
                 triggerHotReload()
             } catch (e: Exception) {
@@ -388,9 +396,13 @@ class ApiKeysViewModel(
                     )
                     triggerHotReload()
                 }
-                _snackbarMessage.value = "Key deleted"
+                _snackbarMessage.value = getString(R.string.api_keys_snackbar_key_deleted)
             } catch (e: Exception) {
-                _snackbarMessage.value = "Delete failed: ${safeErrorMessage(e)}"
+                _snackbarMessage.value =
+                    getString(
+                        R.string.api_keys_snackbar_delete_failed,
+                        safeErrorMessage(e),
+                    )
             }
         }
     }
@@ -486,7 +498,7 @@ class ApiKeysViewModel(
                 val encrypted = repository.exportAll(passphrase)
                 onResult(encrypted)
             } catch (e: Exception) {
-                onResult("Export failed: ${safeErrorMessage(e)}")
+                onResult(getString(R.string.api_keys_export_failed, safeErrorMessage(e)))
             }
         }
     }
@@ -561,12 +573,15 @@ class ApiKeysViewModel(
     ) {
         val providerInfo = ProviderRegistry.findById(providerId)
         if (providerInfo == null) {
-            _connectionTestState.value = ConnectionTestState.Failure("Unknown provider")
+            _connectionTestState.value =
+                ConnectionTestState.Failure(getString(R.string.api_keys_connection_unknown_provider))
             return
         }
         if (providerInfo.modelListFormat == ModelListFormat.NONE) {
             _connectionTestState.value =
-                ConnectionTestState.Failure("No test endpoint available for this provider")
+                ConnectionTestState.Failure(
+                    getString(R.string.api_keys_connection_no_test_endpoint),
+                )
             return
         }
         _connectionTestState.value = ConnectionTestState.Testing
@@ -575,7 +590,9 @@ class ApiKeysViewModel(
             _connectionTestState.value =
                 result.fold(
                     onSuccess = { ConnectionTestState.Success },
-                    onFailure = { e -> ConnectionTestState.Failure(mapConnectionError(e)) },
+                    onFailure = { e ->
+                        ConnectionTestState.Failure(mapConnectionErrorLocalized(e))
+                    },
                 )
         }
     }
@@ -668,22 +685,28 @@ class ApiKeysViewModel(
                         ?.bufferedReader()
                         ?.readText()
                 if (jsonContent.isNullOrBlank()) {
-                    _snackbarMessage.value = "File is empty"
+                    _snackbarMessage.value = getString(R.string.api_keys_snackbar_file_empty)
                     return@launch
                 }
                 val apiKey = CredentialsJsonParser.parse(jsonContent)
                 if (apiKey == null) {
-                    _snackbarMessage.value = "No valid OAuth credentials found in file"
+                    _snackbarMessage.value =
+                        getString(R.string.api_keys_snackbar_no_valid_oauth_credentials)
                     return@launch
                 }
                 repository.save(apiKey)
-                _snackbarMessage.value = "Anthropic OAuth credentials imported"
+                _snackbarMessage.value =
+                    getString(R.string.api_keys_snackbar_oauth_credentials_imported)
                 triggerHotReload()
             } catch (e: Exception) {
                 if (BuildConfig.DEBUG) {
                     Log.w(TAG, "Credentials import failed: ${e.message}", e)
                 }
-                _snackbarMessage.value = "Import failed: ${safeErrorMessage(e)}"
+                _snackbarMessage.value =
+                    getString(
+                        R.string.api_keys_snackbar_import_failed,
+                        safeErrorMessage(e),
+                    )
             }
         }
     }
@@ -722,13 +745,15 @@ class ApiKeysViewModel(
                 bringAppToForeground(context)
                 if (callbackResult == null) {
                     Log.w(TAG, "OAuth: callback timed out or was cancelled")
-                    _snackbarMessage.value = "Login timed out — please try again"
+                    _snackbarMessage.value =
+                        getString(R.string.api_keys_snackbar_login_timed_out)
                     return@launch
                 }
 
                 if (callbackResult.state != pkce.state) {
                     Log.w(TAG, "OAuth: CSRF state mismatch")
-                    _snackbarMessage.value = "Login failed — security check failed"
+                    _snackbarMessage.value =
+                        getString(R.string.api_keys_snackbar_login_security_check_failed)
                     return@launch
                 }
 
@@ -743,7 +768,11 @@ class ApiKeysViewModel(
                 saveOAuthTokens(tokens)
             } catch (e: Exception) {
                 Log.e(TAG, "OAuth login failed", e)
-                _snackbarMessage.value = "Login failed: ${e.message}"
+                _snackbarMessage.value =
+                    getString(
+                        R.string.api_keys_snackbar_login_failed,
+                        e.message ?: safeErrorMessage(e),
+                    )
             } finally {
                 server?.stop()
                 releaseOAuthHold(context)
@@ -836,7 +865,7 @@ class ApiKeysViewModel(
             settingsRepository.setDefaultModel(defaultModel)
         }
         triggerHotReload()
-        _snackbarMessage.value = "ChatGPT login successful"
+        _snackbarMessage.value = getString(R.string.api_keys_snackbar_chatgpt_login_successful)
         _saveState.value = SaveState.Saved
     }
 
@@ -1203,11 +1232,28 @@ class ApiKeysViewModel(
      */
     private fun safeErrorMessage(e: Exception): String =
         when (e) {
-            is GeneralSecurityException -> "Encrypted storage error"
-            is IOException -> "Storage I/O error"
-            is org.json.JSONException -> "Invalid data format"
-            else -> "Operation failed"
+            is GeneralSecurityException -> getString(R.string.api_keys_error_encrypted_storage)
+            is IOException -> getString(R.string.api_keys_error_storage_io)
+            is org.json.JSONException -> getString(R.string.api_keys_error_invalid_data_format)
+            else -> getString(R.string.api_keys_error_operation_failed)
         }
+
+    private fun mapConnectionErrorLocalized(e: Throwable): String {
+        return when (mapConnectionError(e)) {
+            ConnectionErrorKind.HTTP_401 -> getString(R.string.api_keys_connection_http_401)
+            ConnectionErrorKind.HTTP_403 -> getString(R.string.api_keys_connection_http_403)
+            ConnectionErrorKind.HTTP_404 -> getString(R.string.api_keys_connection_http_404)
+            ConnectionErrorKind.HTTP_429 -> getString(R.string.api_keys_connection_http_429)
+            ConnectionErrorKind.HTTP_OTHER -> getString(R.string.api_keys_connection_http_generic)
+            ConnectionErrorKind.TIMEOUT -> getString(R.string.api_keys_connection_timeout)
+            ConnectionErrorKind.GENERIC -> getString(R.string.api_keys_connection_failed_generic)
+        }
+    }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Constants for [ApiKeysViewModel]. */
     companion object {
@@ -1285,31 +1331,41 @@ internal suspend fun clearDefaultProviderIfNeeded(
 }
 
 /**
- * Maps a connection probe exception to a user-facing error message.
+ * Classifies a connection probe exception into a stable error kind.
  *
  * Matches against the `"HTTP {code}"` format produced by
  * [ModelFetcher][com.zeroclaw.android.data.remote.ModelFetcher]'s
- * `executeRequest()` to produce specific guidance for common failure
- * modes. Falls back to a generic message for unexpected errors.
+ * `executeRequest()` and timeout markers for non-HTTP transport failures.
  *
  * This is a package-private function so it can be tested independently
  * without requiring an Android context.
  *
  * @param e Exception thrown during the connection probe.
- * @return Human-readable failure reason.
+ * @return Classified [ConnectionErrorKind].
  */
-internal fun mapConnectionError(e: Throwable): String {
+internal fun mapConnectionError(e: Throwable): ConnectionErrorKind {
     val msg = e.message ?: ""
     return when {
-        "HTTP 401" in msg -> "Authentication failed — check your API key"
-        "HTTP 403" in msg -> "Access denied — check your API key permissions"
-        "HTTP 404" in msg -> "Endpoint not found — check the base URL"
-        "HTTP 429" in msg -> "Rate limited — try again shortly"
-        "HTTP" in msg -> "Provider returned an error — try again later"
+        "HTTP 401" in msg -> ConnectionErrorKind.HTTP_401
+        "HTTP 403" in msg -> ConnectionErrorKind.HTTP_403
+        "HTTP 404" in msg -> ConnectionErrorKind.HTTP_404
+        "HTTP 429" in msg -> ConnectionErrorKind.HTTP_429
+        "HTTP" in msg -> ConnectionErrorKind.HTTP_OTHER
         "timeout" in msg.lowercase() || "timed out" in msg.lowercase() ->
-            "Connection timed out — check your network"
-        else -> "Connection failed — check credentials and URL"
+            ConnectionErrorKind.TIMEOUT
+        else -> ConnectionErrorKind.GENERIC
     }
+}
+
+/** Stable classification for provider connection probe failures. */
+internal enum class ConnectionErrorKind {
+    HTTP_401,
+    HTTP_403,
+    HTTP_404,
+    HTTP_429,
+    HTTP_OTHER,
+    TIMEOUT,
+    GENERIC,
 }
 
 /**

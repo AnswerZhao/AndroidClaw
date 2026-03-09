@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -55,6 +57,10 @@ fun MemoryAdvancedScreen(
     modifier: Modifier = Modifier,
 ) {
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+    val vectorWeightSliderContentDescription =
+        stringResource(R.string.memory_advanced_vector_weight_slider_content_description)
+    val keywordWeightSliderContentDescription =
+        stringResource(R.string.memory_advanced_keyword_weight_slider_content_description)
 
     Column(
         modifier =
@@ -66,14 +72,14 @@ fun MemoryAdvancedScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Memory Hygiene")
+        SectionHeader(title = stringResource(R.string.memory_advanced_section_hygiene))
 
         SettingsToggleRow(
-            title = "Enable hygiene",
-            subtitle = "Automatically archive and purge old memory entries",
+            title = stringResource(R.string.memory_advanced_enable_hygiene_title),
+            subtitle = stringResource(R.string.memory_advanced_enable_hygiene_subtitle),
             checked = settings.memoryHygieneEnabled,
             onCheckedChange = { settingsViewModel.updateMemoryHygieneEnabled(it) },
-            contentDescription = "Enable memory hygiene",
+            contentDescription = stringResource(R.string.memory_advanced_enable_hygiene_content_description),
         )
 
         OutlinedTextField(
@@ -84,7 +90,7 @@ fun MemoryAdvancedScreen(
                     ?.coerceAtLeast(0)
                     ?.let { settingsViewModel.updateMemoryArchiveAfterDays(it) }
             },
-            label = { Text("Archive after (days)") },
+            label = { Text(stringResource(R.string.memory_advanced_archive_after_days)) },
             singleLine = true,
             enabled = settings.memoryHygieneEnabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -99,20 +105,20 @@ fun MemoryAdvancedScreen(
                     ?.coerceAtLeast(0)
                     ?.let { settingsViewModel.updateMemoryPurgeAfterDays(it) }
             },
-            label = { Text("Purge after (days)") },
+            label = { Text(stringResource(R.string.memory_advanced_purge_after_days)) },
             singleLine = true,
             enabled = settings.memoryHygieneEnabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Embedding")
+        SectionHeader(title = stringResource(R.string.memory_advanced_section_embedding))
 
         OutlinedTextField(
             value = settings.memoryEmbeddingProvider,
             onValueChange = { settingsViewModel.updateMemoryEmbeddingProvider(it) },
-            label = { Text("Embedding provider") },
-            supportingText = { Text("\"none\", \"openai\", or \"custom:URL\"") },
+            label = { Text(stringResource(R.string.memory_advanced_embedding_provider)) },
+            supportingText = { Text(stringResource(R.string.memory_advanced_embedding_provider_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -120,16 +126,16 @@ fun MemoryAdvancedScreen(
         OutlinedTextField(
             value = settings.memoryEmbeddingModel,
             onValueChange = { settingsViewModel.updateMemoryEmbeddingModel(it) },
-            label = { Text("Embedding model") },
+            label = { Text(stringResource(R.string.memory_advanced_embedding_model)) },
             singleLine = true,
             enabled = settings.memoryEmbeddingProvider != "none",
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Recall Weights")
+        SectionHeader(title = stringResource(R.string.memory_advanced_section_recall_weights))
 
         Text(
-            text = "Vector weight: ${"%.1f".format(settings.memoryVectorWeight)}",
+            text = stringResource(R.string.memory_advanced_vector_weight_value, settings.memoryVectorWeight),
             style = MaterialTheme.typography.bodyLarge,
         )
         Slider(
@@ -140,11 +146,11 @@ fun MemoryAdvancedScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "Vector weight slider" },
+                    .semantics { contentDescription = vectorWeightSliderContentDescription },
         )
 
         Text(
-            text = "Keyword weight: ${"%.1f".format(settings.memoryKeywordWeight)}",
+            text = stringResource(R.string.memory_advanced_keyword_weight_value, settings.memoryKeywordWeight),
             style = MaterialTheme.typography.bodyLarge,
         )
         Slider(
@@ -155,16 +161,16 @@ fun MemoryAdvancedScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "Keyword weight slider" },
+                    .semantics { contentDescription = keywordWeightSliderContentDescription },
         )
 
-        SectionHeader(title = "Qdrant Vector Store")
+        SectionHeader(title = stringResource(R.string.memory_advanced_section_qdrant))
 
         OutlinedTextField(
             value = settings.memoryQdrantUrl,
             onValueChange = { settingsViewModel.updateMemoryQdrantUrl(it) },
-            label = { Text("Qdrant URL") },
-            supportingText = { Text("e.g. http://localhost:6334") },
+            label = { Text(stringResource(R.string.memory_advanced_qdrant_url)) },
+            supportingText = { Text(stringResource(R.string.memory_advanced_qdrant_url_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -172,7 +178,7 @@ fun MemoryAdvancedScreen(
         OutlinedTextField(
             value = settings.memoryQdrantCollection,
             onValueChange = { settingsViewModel.updateMemoryQdrantCollection(it) },
-            label = { Text("Collection name") },
+            label = { Text(stringResource(R.string.memory_advanced_collection_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -180,7 +186,7 @@ fun MemoryAdvancedScreen(
         SecretTextField(
             value = settings.memoryQdrantApiKey,
             onValueChange = { settingsViewModel.updateMemoryQdrantApiKey(it) },
-            label = "API key",
+            label = stringResource(R.string.provider_credential_api_key_label),
             modifier = Modifier.fillMaxWidth(),
         )
 

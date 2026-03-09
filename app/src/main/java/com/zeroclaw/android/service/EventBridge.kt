@@ -6,7 +6,9 @@
 
 package com.zeroclaw.android.service
 
+import android.content.Context
 import android.util.Log
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.repository.ActivityRepository
 import com.zeroclaw.android.model.ActivityType
 import com.zeroclaw.android.model.DaemonEvent
@@ -34,6 +36,7 @@ import org.json.JSONObject
  * @param scope Coroutine scope for asynchronous emission and persistence.
  */
 class EventBridge(
+    private val context: Context,
     private val activityRepository: ActivityRepository,
     private val scope: CoroutineScope,
 ) : FfiEventListener {
@@ -59,7 +62,7 @@ class EventBridge(
         val event = parseEvent(eventJson) ?: return
         scope.launch {
             _events.emit(event)
-            val (type, message) = event.toActivityRecord()
+            val (type, message) = event.toActivityRecord(context)
             activityRepository.record(type, message)
         }
     }
@@ -128,25 +131,35 @@ private fun parseEvent(json: String): DaemonEvent? =
  * @receiver The daemon event to convert.
  * @return Pair of [ActivityType] and formatted message string.
  */
-private fun DaemonEvent.toActivityRecord(): Pair<ActivityType, String> {
+private fun DaemonEvent.toActivityRecord(context: Context): Pair<ActivityType, String> {
     val type =
         when (kind) {
             "error" -> ActivityType.DAEMON_ERROR
             else -> ActivityType.FFI_CALL
         }
+    val provider = data["provider"].orUnknown(context)
+    val model = data["model"].orUnknown(context)
+    val duration = data["duration_ms"].asDurationLabel(context)
+    val tool = data["tool"].orUnknown(context)
+    val channel = data["channel"].orUnknown(context)
+    val direction = data["direction"].orUnknown(context)
+    val component = data["component"].orUnknown(context)
     val message =
         when (kind) {
-            "llm_request" -> "LLM Request: ${data["provider"]} / ${data["model"]}"
-            "llm_response" -> "LLM Response: ${data["provider"]} (${data["duration_ms"]}ms)"
-            "tool_call" -> "Tool: ${data["tool"]} (${data["duration_ms"]}ms)"
-            "tool_call_start" -> "Tool Starting: ${data["tool"]}"
-            "channel_message" -> "Channel: ${data["channel"]} (${data["direction"]})"
-            "error" -> "Error: ${data["component"]} — ${sanitizeActivityMessage(data["message"])}"
-            "heartbeat_tick" -> "Heartbeat"
-            "turn_complete" -> "Turn Complete"
-            "agent_start" -> "Agent Start: ${data["provider"]} / ${data["model"]}"
-            "agent_end" -> "Agent End (${data["duration_ms"]}ms)"
-            else -> "Event: $kind"
+            "llm_request" -> context.getString(R.string.event_bridge_message_llm_request, provider, model)
+            "llm_response" -> context.getString(R.string.event_bridge_message_llm_response, provider, duration)
+            "tool_call" -> context.getString(R.string.event_bridge_message_tool_call, tool, duration)
+            "tool_call_start" -> context.getString(R.string.event_bridge_message_tool_call_start, tool)
+            "channel_message" -> context.getString(R.string.event_bridge_message_channel_message, channel, direction)
+            "error" -> {
+                val safeMessage = sanitizeActivityMessage(data["message"], context)
+                context.getString(R.string.event_bridge_message_error, component, safeMessage)
+            }
+            "heartbeat_tick" -> context.getString(R.string.event_bridge_message_heartbeat_tick)
+            "turn_complete" -> context.getString(R.string.event_bridge_message_turn_complete)
+            "agent_start" -> context.getString(R.string.event_bridge_message_agent_start, provider, model)
+            "agent_end" -> context.getString(R.string.event_bridge_message_agent_end, duration)
+            else -> context.getString(R.string.event_bridge_message_generic, kind)
         }
     return type to message
 }
@@ -163,12 +176,29 @@ private val URL_PATTERN = Regex("""https?://\S+""")
  * @param msg Raw error message from the daemon event, or `null`.
  * @return Sanitised message safe for the activity feed.
  */
-private fun sanitizeActivityMessage(msg: String?): String {
-    if (msg.isNullOrBlank()) return "unknown"
-    val stripped = msg.replace(URL_PATTERN, "[url]")
+private fun sanitizeActivityMessage(
+    msg: String?,
+    context: Context,
+): String {
+    if (msg.isNullOrBlank()) return context.getString(R.string.event_bridge_unknown)
+    val stripped = msg.replace(URL_PATTERN, context.getString(R.string.event_bridge_url_redacted))
     return if (stripped.length > MAX_ACTIVITY_MESSAGE_LENGTH) {
         stripped.take(MAX_ACTIVITY_MESSAGE_LENGTH) + "..."
     } else {
         stripped
     }
 }
+
+private fun String?.orUnknown(context: Context): String =
+    if (this.isNullOrBlank()) {
+        context.getString(R.string.event_bridge_unknown)
+    } else {
+        this
+    }
+
+private fun String?.asDurationLabel(context: Context): String =
+    if (this.isNullOrBlank()) {
+        context.getString(R.string.event_bridge_unknown)
+    } else {
+        context.getString(R.string.event_bridge_duration_ms, this)
+    }

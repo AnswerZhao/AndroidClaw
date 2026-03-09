@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.plugins
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -102,6 +104,12 @@ fun PluginDetailScreen(
                 .padding(horizontal = edgeMargin)
                 .verticalScroll(rememberScrollState()),
     ) {
+        val versionByText =
+            stringResource(
+                R.string.plugin_detail_version_by,
+                loadedPlugin.version,
+                loadedPlugin.author,
+            )
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
@@ -118,7 +126,7 @@ fun PluginDetailScreen(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "v${loadedPlugin.version} by ${loadedPlugin.author}",
+                text = versionByText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -132,12 +140,20 @@ fun PluginDetailScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (loadedPlugin.isInstalled) {
+            val enabledLabel = stringResource(R.string.common_enabled)
+            val disabledLabel = stringResource(R.string.common_disabled)
+            val toggleContentDescription =
+                stringResource(
+                    R.string.plugin_detail_toggle_content_description,
+                    loadedPlugin.name,
+                    if (loadedPlugin.isEnabled) enabledLabel else disabledLabel,
+                )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Enabled",
+                    text = enabledLabel,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
@@ -154,9 +170,7 @@ fun PluginDetailScreen(
                     },
                     modifier =
                         Modifier.semantics {
-                            contentDescription =
-                                "${loadedPlugin.name} " +
-                                if (loadedPlugin.isEnabled) "enabled" else "disabled"
+                            contentDescription = toggleContentDescription
                         },
                 )
             }
@@ -165,7 +179,7 @@ fun PluginDetailScreen(
 
         if (loadedPlugin.isInstalled && isOfficial) {
             CollapsibleSection(
-                title = "Configuration",
+                title = stringResource(R.string.plugin_detail_configuration_title),
                 initiallyExpanded = true,
             ) {
                 OfficialPluginConfigSection(
@@ -177,7 +191,7 @@ fun PluginDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
         } else if (loadedPlugin.isInstalled && loadedPlugin.configFields.isNotEmpty()) {
             CollapsibleSection(
-                title = "Configuration",
+                title = stringResource(R.string.plugin_detail_configuration_title),
                 initiallyExpanded = true,
             ) {
                 loadedPlugin.configFields.forEach { (key, value) ->
@@ -206,7 +220,7 @@ fun PluginDetailScreen(
 
         if (loadedPlugin.isInstalled && isOfficial) {
             Text(
-                text = "Official plugin \u2014 cannot be uninstalled",
+                text = stringResource(R.string.plugin_detail_official_cannot_uninstall),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -216,7 +230,7 @@ fun PluginDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Uninstall",
+                    text = stringResource(R.string.common_uninstall),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
@@ -225,7 +239,7 @@ fun PluginDetailScreen(
                 onClick = { detailViewModel.install(pluginId) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Install Plugin")
+                Text(stringResource(R.string.plugin_detail_install_plugin))
             }
         }
         Spacer(modifier = Modifier.height(24.dp))

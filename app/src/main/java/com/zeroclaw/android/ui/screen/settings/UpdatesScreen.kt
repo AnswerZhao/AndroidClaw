@@ -4,6 +4,7 @@ package com.zeroclaw.android.ui.screen.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.component.SectionHeader
 
 /** GitHub releases URL for the ZeroClaw-Android project. */
@@ -56,7 +58,7 @@ fun UpdatesScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Check for Updates")
+        SectionHeader(title = stringResource(R.string.updates_section_check_for_updates))
 
         ManualUpdateCard(
             onCheckForUpdates = {
@@ -66,7 +68,7 @@ fun UpdatesScreen(
             },
         )
 
-        SectionHeader(title = "Auto-check")
+        SectionHeader(title = stringResource(R.string.updates_section_auto_check))
 
         AutoCheckInfoCard()
 
@@ -83,6 +85,9 @@ fun UpdatesScreen(
  */
 @Composable
 private fun ManualUpdateCard(onCheckForUpdates: () -> Unit) {
+    val checkForUpdatesOnGithubContentDescription =
+        stringResource(R.string.updates_check_for_updates_on_github_content_description)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -92,7 +97,7 @@ private fun ManualUpdateCard(onCheckForUpdates: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Visit the GitHub releases page to check for newer versions.",
+                text = stringResource(R.string.updates_manual_card_description),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -102,8 +107,7 @@ private fun ManualUpdateCard(onCheckForUpdates: () -> Unit) {
                     Modifier
                         .defaultMinSize(minHeight = 48.dp)
                         .semantics {
-                            contentDescription =
-                                "Check for updates on GitHub"
+                            contentDescription = checkForUpdatesOnGithubContentDescription
                         },
             ) {
                 Icon(
@@ -111,7 +115,7 @@ private fun ManualUpdateCard(onCheckForUpdates: () -> Unit) {
                     contentDescription = null,
                     modifier = Modifier.padding(end = 8.dp),
                 )
-                Text(text = "Check for Updates")
+                Text(text = stringResource(R.string.updates_check_for_updates_button))
             }
         }
     }
@@ -132,14 +136,12 @@ private fun AutoCheckInfoCard() {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Automatic update checks are not yet available.",
+                text = stringResource(R.string.updates_auto_check_not_available),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text =
-                    "A future release will add background update checking " +
-                        "with configurable frequency and notification preferences.",
+                text = stringResource(R.string.updates_auto_check_future_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

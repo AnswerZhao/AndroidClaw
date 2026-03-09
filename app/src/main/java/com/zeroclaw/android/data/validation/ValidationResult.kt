@@ -52,6 +52,8 @@ sealed interface ValidationResult {
      */
     data class Success(
         val details: String,
+        val detailsResId: Int? = null,
+        val detailsArgs: List<Any> = emptyList(),
     ) : ValidationResult {
         override val isTerminal: Boolean = true
     }
@@ -66,6 +68,8 @@ sealed interface ValidationResult {
     data class Failure(
         val message: String,
         val retryable: Boolean = true,
+        val messageResId: Int? = null,
+        val messageArgs: List<Any> = emptyList(),
     ) : ValidationResult {
         override val isTerminal: Boolean = true
     }
@@ -81,6 +85,8 @@ sealed interface ValidationResult {
      */
     data class Offline(
         val message: String,
+        val messageResId: Int? = null,
+        val messageArgs: List<Any> = emptyList(),
     ) : ValidationResult {
         override val isTerminal: Boolean = true
     }

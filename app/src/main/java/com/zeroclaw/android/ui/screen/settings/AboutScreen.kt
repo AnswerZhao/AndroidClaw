@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -48,14 +50,15 @@ fun AboutScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var crateVersion by remember { mutableStateOf(CRATE_VERSION_FALLBACK) }
+    val unknownLabel = stringResource(R.string.common_unknown)
+    var crateVersion by remember(unknownLabel) { mutableStateOf(unknownLabel) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(unknownLabel) {
         @Suppress("TooGenericExceptionCaught")
         try {
             crateVersion = getVersion()
         } catch (_: Exception) {
-            crateVersion = CRATE_VERSION_FALLBACK
+            crateVersion = unknownLabel
         }
     }
 
@@ -68,7 +71,7 @@ fun AboutScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Version")
+        SectionHeader(title = stringResource(R.string.about_section_version))
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors =
@@ -77,13 +80,13 @@ fun AboutScreen(
                 ),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                AboutRow(label = "App Version", value = BuildConfig.VERSION_NAME)
-                AboutRow(label = "Build", value = BuildConfig.VERSION_CODE.toString())
-                AboutRow(label = "Crate Version", value = crateVersion)
+                AboutRow(label = stringResource(R.string.about_app_version_label), value = BuildConfig.VERSION_NAME)
+                AboutRow(label = stringResource(R.string.about_build_label), value = BuildConfig.VERSION_CODE.toString())
+                AboutRow(label = stringResource(R.string.about_crate_version_label), value = crateVersion)
             }
         }
 
-        SectionHeader(title = "Links")
+        SectionHeader(title = stringResource(R.string.about_section_links))
         TextButton(
             onClick = {
                 context.startActivity(
@@ -91,7 +94,7 @@ fun AboutScreen(
                 )
             },
         ) {
-            Text("View on GitHub")
+            Text(stringResource(R.string.about_view_on_github))
         }
         TextButton(
             onClick = {
@@ -100,10 +103,10 @@ fun AboutScreen(
                 )
             },
         ) {
-            Text("View License (MIT)")
+            Text(stringResource(R.string.about_view_license_mit))
         }
 
-        SectionHeader(title = "Credits")
+        SectionHeader(title = stringResource(R.string.about_section_credits))
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors =
@@ -113,7 +116,7 @@ fun AboutScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Built with ZeroClaw, a Rust-native AI agent framework.",
+                    text = stringResource(R.string.about_credits_built_with),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -144,7 +147,7 @@ private fun AboutRow(
                 .semantics(mergeDescendants = true) {},
     ) {
         Text(
-            text = "$label: ",
+            text = stringResource(R.string.about_row_label_prefix, label),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -155,6 +158,5 @@ private fun AboutRow(
     }
 }
 
-private const val CRATE_VERSION_FALLBACK = "unknown"
 private const val GITHUB_URL = "https://github.com/Natfii/ZeroClaw-Android"
 private const val LICENSE_URL = "https://github.com/Natfii/ZeroClaw-Android/blob/main/LICENSE"

@@ -2,6 +2,7 @@
 
 package com.zeroclaw.android.ui.screen.dashboard
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.CronJob
 
 /** Number of milliseconds in one second, used for relative time. */
@@ -60,9 +62,20 @@ fun CronSummaryCard(
     val pausedCount = cronJobs.count { it.paused }
     val nextJob = cronJobs.filter { !it.paused }.minByOrNull { it.nextRunMs }
     val nextRunLabel =
-        nextJob?.let { formatRelativeTime(it.nextRunMs) } ?: "none"
+        nextJob?.let { formatRelativeTime(it.nextRunMs) } ?: stringResource(R.string.dashboard_cron_next_run_none)
     val nextCommandPreview =
         nextJob?.command?.take(COMMAND_PREVIEW_LENGTH) ?: ""
+    val cardContentDescription =
+        stringResource(
+            R.string.dashboard_cron_summary_content_description,
+            activeCount,
+            pausedCount,
+            nextRunLabel,
+        )
+    val scheduledTasksTitle = stringResource(R.string.dashboard_cron_scheduled_tasks_title)
+    val activeLabel = stringResource(R.string.dashboard_cron_label_active)
+    val pausedLabel = stringResource(R.string.dashboard_cron_label_paused)
+    val nextRunTitle = stringResource(R.string.dashboard_cron_label_next_run)
 
     Card(
         modifier =
@@ -72,9 +85,7 @@ fun CronSummaryCard(
                 .clickable(onClick = onClick)
                 .semantics {
                     role = Role.Button
-                    contentDescription =
-                        "$activeCount active jobs, $pausedCount paused. " +
-                        "Next run: $nextRunLabel. Tap for details."
+                    contentDescription = cardContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -83,7 +94,7 @@ fun CronSummaryCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Scheduled Tasks",
+                text = scheduledTasksTitle,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -92,9 +103,9 @@ fun CronSummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                CronMetric(label = "Active", value = activeCount.toString())
-                CronMetric(label = "Paused", value = pausedCount.toString())
-                CronMetric(label = "Next Run", value = nextRunLabel)
+                CronMetric(label = activeLabel, value = activeCount.toString())
+                CronMetric(label = pausedLabel, value = pausedCount.toString())
+                CronMetric(label = nextRunTitle, value = nextRunLabel)
             }
             if (nextCommandPreview.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -143,14 +154,31 @@ private fun CronMetric(
  * @param epochMs Epoch milliseconds of the target time.
  * @return Human-readable relative time (e.g. "in 5m", "in 2h").
  */
+@Composable
 private fun formatRelativeTime(epochMs: Long): String {
     val nowMs = System.currentTimeMillis()
     val diffSeconds = (epochMs - nowMs) / MS_PER_SECOND
     return when {
-        diffSeconds < 0 -> "overdue"
-        diffSeconds < SECONDS_PER_MINUTE -> "in ${diffSeconds}s"
-        diffSeconds < SECONDS_PER_HOUR -> "in ${diffSeconds / SECONDS_PER_MINUTE}m"
-        diffSeconds < SECONDS_PER_DAY -> "in ${diffSeconds / SECONDS_PER_HOUR}h"
-        else -> "in ${diffSeconds / SECONDS_PER_DAY}d"
+        diffSeconds < 0 -> stringResource(R.string.dashboard_cron_overdue)
+        diffSeconds < SECONDS_PER_MINUTE ->
+            stringResource(R.string.dashboard_cron_in_seconds, diffSeconds)
+
+        diffSeconds < SECONDS_PER_HOUR ->
+            stringResource(
+                R.string.dashboard_cron_in_minutes,
+                diffSeconds / SECONDS_PER_MINUTE,
+            )
+
+        diffSeconds < SECONDS_PER_DAY ->
+            stringResource(
+                R.string.dashboard_cron_in_hours,
+                diffSeconds / SECONDS_PER_HOUR,
+            )
+
+        else ->
+            stringResource(
+                R.string.dashboard_cron_in_days,
+                diffSeconds / SECONDS_PER_DAY,
+            )
     }
 }

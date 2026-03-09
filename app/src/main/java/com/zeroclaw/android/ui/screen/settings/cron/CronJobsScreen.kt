@@ -2,6 +2,7 @@
 
 package com.zeroclaw.android.ui.screen.settings.cron
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.CronJob
 import com.zeroclaw.android.ui.component.EmptyState
 import com.zeroclaw.android.ui.component.ErrorCard
@@ -86,11 +88,13 @@ fun CronJobsScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
+            val addScheduledJobContentDescription =
+                stringResource(R.string.cron_jobs_add_scheduled_job_content_description)
             FloatingActionButton(
                 onClick = { showAddDialog = true },
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Add scheduled job"
+                        contentDescription = addScheduledJobContentDescription
                     },
             ) {
                 Icon(
@@ -125,7 +129,7 @@ fun CronJobsScreen(
                     if (state.data.isEmpty()) {
                         EmptyState(
                             icon = Icons.Outlined.Schedule,
-                            message = "No scheduled jobs. Tap + to add a cron job or one-shot task.",
+                            message = stringResource(R.string.cron_jobs_empty_message),
                         )
                     } else {
                         CronJobsList(
@@ -235,17 +239,29 @@ private fun CronJobCard(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     val scheduleLabel =
-        if (job.oneShot) "One-shot" else job.expression
+        if (job.oneShot) stringResource(R.string.cron_jobs_one_shot) else job.expression
     val nextRunFormatted = formatNextRun(job.nextRunMs)
+    val jobCardContentDescription =
+        stringResource(
+            R.string.cron_jobs_card_content_description,
+            job.command.take(COMMAND_MAX_LENGTH),
+            scheduleLabel,
+            statusText,
+        )
+    val nextRunLabel = stringResource(R.string.cron_jobs_next_label, nextRunFormatted)
+    val resumeJobContentDescription =
+        stringResource(R.string.cron_jobs_resume_job_content_description)
+    val pauseJobContentDescription =
+        stringResource(R.string.cron_jobs_pause_job_content_description)
+    val deleteJobContentDescription =
+        stringResource(R.string.cron_jobs_delete_job_content_description)
 
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "Job: ${job.command.take(COMMAND_MAX_LENGTH)}, " +
-                        "schedule: $scheduleLabel, status: $statusText"
+                    contentDescription = jobCardContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -289,7 +305,7 @@ private fun CronJobCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Next: $nextRunFormatted",
+                    text = nextRunLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -301,7 +317,7 @@ private fun CronJobCard(
                             modifier =
                                 Modifier
                                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                                    .semantics { contentDescription = "Resume job" },
+                                    .semantics { contentDescription = resumeJobContentDescription },
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.PlayArrow,
@@ -315,7 +331,7 @@ private fun CronJobCard(
                             modifier =
                                 Modifier
                                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                                    .semantics { contentDescription = "Pause job" },
+                                    .semantics { contentDescription = pauseJobContentDescription },
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Pause,
@@ -330,7 +346,7 @@ private fun CronJobCard(
                         modifier =
                             Modifier
                                 .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                                .semantics { contentDescription = "Delete job" },
+                                .semantics { contentDescription = deleteJobContentDescription },
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Delete,
@@ -362,12 +378,13 @@ private const val SECONDS_PER_DAY = 86400L
  * @param job The cron job.
  * @return A short status label.
  */
+@Composable
 private fun formatJobStatus(job: CronJob): String =
     when {
-        job.paused -> "Paused"
-        job.lastStatus == "ok" -> "OK"
-        job.lastStatus != null -> "Error"
-        else -> "Pending"
+        job.paused -> stringResource(R.string.cron_jobs_status_paused)
+        job.lastStatus == "ok" -> stringResource(R.string.cron_jobs_status_ok)
+        job.lastStatus != null -> stringResource(R.string.cron_jobs_status_error)
+        else -> stringResource(R.string.cron_jobs_status_pending)
     }
 
 /**
@@ -376,14 +393,31 @@ private fun formatJobStatus(job: CronJob): String =
  * @param nextRunMs Epoch milliseconds of the next scheduled run.
  * @return Human-readable relative time (e.g. "in 5m", "in 2h").
  */
+@Composable
 private fun formatNextRun(nextRunMs: Long): String {
     val nowMs = System.currentTimeMillis()
     val diffSeconds = (nextRunMs - nowMs) / MS_PER_SECOND
     return when {
-        diffSeconds < 0 -> "overdue"
-        diffSeconds < SECONDS_PER_MINUTE -> "in ${diffSeconds}s"
-        diffSeconds < SECONDS_PER_HOUR -> "in ${diffSeconds / SECONDS_PER_MINUTE}m"
-        diffSeconds < SECONDS_PER_DAY -> "in ${diffSeconds / SECONDS_PER_HOUR}h"
-        else -> "in ${diffSeconds / SECONDS_PER_DAY}d"
+        diffSeconds < 0 -> stringResource(R.string.cron_jobs_next_overdue)
+        diffSeconds < SECONDS_PER_MINUTE ->
+            stringResource(R.string.cron_jobs_next_in_seconds, diffSeconds)
+
+        diffSeconds < SECONDS_PER_HOUR ->
+            stringResource(
+                R.string.cron_jobs_next_in_minutes,
+                diffSeconds / SECONDS_PER_MINUTE,
+            )
+
+        diffSeconds < SECONDS_PER_DAY ->
+            stringResource(
+                R.string.cron_jobs_next_in_hours,
+                diffSeconds / SECONDS_PER_HOUR,
+            )
+
+        else ->
+            stringResource(
+                R.string.cron_jobs_next_in_days,
+                diffSeconds / SECONDS_PER_DAY,
+            )
     }
 }

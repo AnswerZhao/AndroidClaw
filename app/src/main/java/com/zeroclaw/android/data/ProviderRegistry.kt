@@ -23,13 +23,52 @@ object ProviderRegistry {
     /** Google Favicon API icon size in pixels. */
     private const val FAVICON_SIZE = 128
 
+    /**
+     * English fallback help text used by legacy consumers that still read
+     * [ProviderInfo.helpText] directly.
+     */
+    private val fallbackHelpTextById =
+        mapOf(
+            "openai" to "Requires billing. Free $5 credit for new accounts",
+            "anthropic" to "Accepts API keys or OAuth tokens (sk-ant-oat01-...)",
+            "openrouter" to "Aggregator: access 100+ models with one key. Free tier available",
+            "google-gemini" to "Free tier: 15 req/min for Flash models",
+            "ollama" to "URL is optional - defaults to localhost:11434",
+            "lmstudio" to "Start LM Studio's local server first, or scan your network",
+            "vllm" to "Start your vLLM server first, or scan your network",
+            "localai" to "Start your LocalAI server first, or scan your network",
+            "groq" to "Free tier: 30 req/min. Ultra-fast inference",
+            "mistral" to "Free tier available for small models",
+            "xai" to "Grok models. Free tier with monthly credits",
+            "deepseek" to "Budget-friendly reasoning models",
+            "together" to "Inference platform with 100+ open models",
+            "bedrock" to "Uses AWS IAM credentials. Set region in base URL",
+            "novita" to "Affordable open-source model inference",
+            "telnyx" to "AI inference with 53+ models via OpenAI-compatible API",
+        )
+
+    /**
+     * English fallback prefix hints used by legacy consumers that still read
+     * [ProviderInfo.keyPrefixHint] directly.
+     */
+    private val fallbackKeyPrefixHintById =
+        mapOf(
+            "openai" to "Keys start with sk- (usually sk-proj-...)",
+            "anthropic" to "Keys start with sk-ant-",
+            "openrouter" to "Keys start with sk-or-",
+            "google-gemini" to "Keys start with AIza",
+            "groq" to "Keys start with gsk_",
+            "xai" to "Keys start with xai-",
+            "deepseek" to "Keys start with sk-",
+        )
+
     /** All known providers ordered by category then display name. */
     val allProviders: List<ProviderInfo> =
         buildList {
             addAll(primaryProviders())
             addAll(ecosystemProviders())
             addAll(customProviders())
-        }
+        }.map(::applyLegacyMetadataFallback)
 
     private val byId: Map<String, ProviderInfo> by lazy {
         buildMap {
@@ -65,6 +104,25 @@ object ProviderRegistry {
         "https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON" +
             "&fallback_opts=TYPE,SIZE,URL&url=https://$domain&size=$FAVICON_SIZE"
 
+    /**
+     * Keeps legacy metadata fields populated while consumers are being migrated
+     * to string-resource based lookup.
+     */
+    private fun applyLegacyMetadataFallback(provider: ProviderInfo): ProviderInfo {
+        val fallbackPrefixHint = fallbackKeyPrefixHintById[provider.id]
+        val fallbackHelpText = fallbackHelpTextById[provider.id]
+
+        val keyPrefixHint =
+            if (provider.keyPrefixHint.isNotBlank()) provider.keyPrefixHint else fallbackPrefixHint.orEmpty()
+        val helpText =
+            if (provider.helpText.isNotBlank()) provider.helpText else fallbackHelpText.orEmpty()
+
+        if (keyPrefixHint == provider.keyPrefixHint && helpText == provider.helpText) {
+            return provider
+        }
+        return provider.copy(keyPrefixHint = keyPrefixHint, helpText = helpText)
+    }
+
     @Suppress("LongMethod")
     private fun primaryProviders(): List<ProviderInfo> =
         listOf(
@@ -89,8 +147,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
                 keyCreationUrl = "https://platform.openai.com/api-keys",
                 keyPrefix = "sk-",
-                keyPrefixHint = "Keys start with sk- (usually sk-proj-...)",
-                helpText = "Requires billing. Free \$5 credit for new accounts",
                 oauthClientId = "app_EMoamEEZ73f0CkXaXp7hrann",
             ),
             ProviderInfo(
@@ -129,8 +185,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.ANTHROPIC,
                 keyCreationUrl = "https://console.anthropic.com/settings/keys",
                 keyPrefix = "sk-ant-",
-                keyPrefixHint = "Keys start with sk-ant-",
-                helpText = "Accepts API keys or OAuth tokens (sk-ant-oat01-...)",
             ),
             ProviderInfo(
                 id = "openrouter",
@@ -148,8 +202,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.OPENROUTER,
                 keyCreationUrl = "https://openrouter.ai/keys",
                 keyPrefix = "sk-or-",
-                keyPrefixHint = "Keys start with sk-or-",
-                helpText = "Aggregator: access 100+ models with one key. Free tier available",
             ),
             ProviderInfo(
                 id = "google-gemini",
@@ -169,8 +221,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.GOOGLE_GEMINI,
                 keyCreationUrl = "https://aistudio.google.com/apikey",
                 keyPrefix = "AIza",
-                keyPrefixHint = "Keys start with AIza",
-                helpText = "Free tier: 15 req/min for Flash models",
             ),
             ProviderInfo(
                 id = "ollama",
@@ -190,7 +240,6 @@ object ProviderRegistry {
                 iconUrl = faviconUrl("ollama.com"),
                 modelListUrl = "http://localhost:11434/api/tags",
                 modelListFormat = ModelListFormat.OLLAMA,
-                helpText = "URL is optional \u2014 defaults to localhost:11434",
             ),
             ProviderInfo(
                 id = "lmstudio",
@@ -200,7 +249,6 @@ object ProviderRegistry {
                 category = ProviderCategory.PRIMARY,
                 iconUrl = faviconUrl("lmstudio.ai"),
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
-                helpText = "Start LM Studio's local server first, or scan your network",
             ),
             ProviderInfo(
                 id = "vllm",
@@ -210,7 +258,6 @@ object ProviderRegistry {
                 category = ProviderCategory.PRIMARY,
                 iconUrl = faviconUrl("docs.vllm.ai"),
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
-                helpText = "Start your vLLM server first, or scan your network",
             ),
             ProviderInfo(
                 id = "localai",
@@ -220,7 +267,6 @@ object ProviderRegistry {
                 category = ProviderCategory.PRIMARY,
                 iconUrl = faviconUrl("localai.io"),
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
-                helpText = "Start your LocalAI server first, or scan your network",
             ),
         )
 
@@ -244,8 +290,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
                 keyCreationUrl = "https://console.groq.com/keys",
                 keyPrefix = "gsk_",
-                keyPrefixHint = "Keys start with gsk_",
-                helpText = "Free tier: 30 req/min. Ultra-fast inference",
             ),
             ProviderInfo(
                 id = "mistral",
@@ -263,7 +307,6 @@ object ProviderRegistry {
                 modelListUrl = "https://api.mistral.ai/v1/models",
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
                 keyCreationUrl = "https://console.mistral.ai/api-keys",
-                helpText = "Free tier available for small models",
             ),
             ProviderInfo(
                 id = "xai",
@@ -277,8 +320,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
                 keyCreationUrl = "https://console.x.ai/",
                 keyPrefix = "xai-",
-                keyPrefixHint = "Keys start with xai-",
-                helpText = "Grok models. Free tier with monthly credits",
             ),
             ProviderInfo(
                 id = "deepseek",
@@ -291,8 +332,6 @@ object ProviderRegistry {
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
                 keyCreationUrl = "https://platform.deepseek.com/api_keys",
                 keyPrefix = "sk-",
-                keyPrefixHint = "Keys start with sk-",
-                helpText = "Budget-friendly reasoning models",
             ),
             ProviderInfo(
                 id = "together",
@@ -308,7 +347,6 @@ object ProviderRegistry {
                 modelListUrl = "https://api.together.xyz/v1/models",
                 modelListFormat = ModelListFormat.TOGETHER,
                 keyCreationUrl = "https://api.together.ai/settings/api-keys",
-                helpText = "Inference platform with 100+ open models",
             ),
             ProviderInfo(
                 id = "fireworks",
@@ -409,7 +447,6 @@ object ProviderRegistry {
                 category = ProviderCategory.ECOSYSTEM,
                 iconUrl = faviconUrl("aws.amazon.com"),
                 keyCreationUrl = "https://console.aws.amazon.com/iam/home#/security_credentials",
-                helpText = "Uses AWS IAM credentials. Set region in base URL",
             ),
             ProviderInfo(
                 id = "novita",
@@ -421,7 +458,6 @@ object ProviderRegistry {
                 modelListUrl = "https://api.novita.ai/v3/openai/models",
                 modelListFormat = ModelListFormat.OPENAI_COMPATIBLE,
                 keyCreationUrl = "https://novita.ai/settings/key-management",
-                helpText = "Affordable open-source model inference",
             ),
             ProviderInfo(
                 id = "telnyx",
@@ -434,7 +470,6 @@ object ProviderRegistry {
                     ),
                 category = ProviderCategory.ECOSYSTEM,
                 iconUrl = faviconUrl("telnyx.com"),
-                helpText = "AI inference with 53+ models via OpenAI-compatible API",
             ),
             ProviderInfo(
                 id = "synthetic",

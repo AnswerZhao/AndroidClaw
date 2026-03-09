@@ -25,6 +25,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ServiceState
 import com.zeroclaw.android.service.ZeroClawDaemonService
@@ -307,13 +308,13 @@ fun ZeroClawNavHost(
                             putExtra(Intent.EXTRA_TEXT, payload)
                             putExtra(
                                 Intent.EXTRA_SUBJECT,
-                                "ZeroClaw API Keys (encrypted)",
+                                context.getString(R.string.api_keys_share_subject),
                             )
                         }
                     context.startActivity(
                         Intent.createChooser(
                             shareIntent,
-                            "Share encrypted keys",
+                            context.getString(R.string.api_keys_share_chooser_title),
                         ),
                     )
                 },

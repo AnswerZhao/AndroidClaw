@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.AppSettings
 import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.SettingsToggleRow
@@ -89,12 +91,12 @@ fun ServiceConfigScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Network")
+        SectionHeader(title = stringResource(R.string.service_config_section_network))
 
         OutlinedTextField(
             value = settings.host,
             onValueChange = { settingsViewModel.updateHost(it) },
-            label = { Text("Host") },
+            label = { Text(stringResource(R.string.service_config_host_label)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -107,12 +109,20 @@ fun ServiceConfigScreen(
             onValueChange = { value ->
                 value.toIntOrNull()?.let { settingsViewModel.updatePort(it) }
             },
-            label = { Text("Port") },
+            label = { Text(stringResource(R.string.service_config_port_label)) },
             singleLine = true,
             isError = portError,
             supportingText =
                 if (portError) {
-                    { Text("Port must be between $PORT_MIN and $PORT_MAX") }
+                    {
+                        Text(
+                            stringResource(
+                                R.string.service_config_port_error,
+                                PORT_MIN,
+                                PORT_MAX,
+                            ),
+                        )
+                    }
                 } else {
                     null
                 },
@@ -120,14 +130,14 @@ fun ServiceConfigScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Startup")
+        SectionHeader(title = stringResource(R.string.service_config_section_startup))
 
         SettingsToggleRow(
-            title = "Auto-start on boot",
-            subtitle = "Start the daemon automatically after device reboot",
+            title = stringResource(R.string.service_config_auto_start_title),
+            subtitle = stringResource(R.string.service_config_auto_start_subtitle),
             checked = settings.autoStartOnBoot,
             onCheckedChange = { settingsViewModel.updateAutoStartOnBoot(it) },
-            contentDescription = "Auto-start on boot",
+            contentDescription = stringResource(R.string.service_config_auto_start_title),
         )
 
         DefaultsSection(settings = settings, viewModel = settingsViewModel)
@@ -153,12 +163,12 @@ private fun DefaultsSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Defaults")
+    SectionHeader(title = stringResource(R.string.service_config_section_defaults))
 
     OutlinedTextField(
         value = settings.defaultProvider,
         onValueChange = { viewModel.updateDefaultProvider(it) },
-        label = { Text("Default Provider") },
+        label = { Text(stringResource(R.string.service_config_default_provider_label)) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -168,7 +178,7 @@ private fun DefaultsSection(
     OutlinedTextField(
         value = settings.defaultModel,
         onValueChange = { viewModel.updateDefaultModel(it) },
-        label = { Text("Default Model") },
+        label = { Text(stringResource(R.string.service_config_default_model_label)) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
@@ -185,10 +195,17 @@ private fun InferenceSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Inference")
+    val temperatureSliderDescription =
+        stringResource(R.string.service_config_temperature_slider_content_description)
+
+    SectionHeader(title = stringResource(R.string.service_config_section_inference))
 
     Text(
-        text = "Temperature: ${"%.1f".format(settings.defaultTemperature)}",
+        text =
+            stringResource(
+                R.string.service_config_temperature_value,
+                settings.defaultTemperature,
+            ),
         style = MaterialTheme.typography.bodyLarge,
     )
     Slider(
@@ -199,23 +216,25 @@ private fun InferenceSection(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Temperature slider" },
+                .semantics {
+                    contentDescription = temperatureSliderDescription
+                },
     )
 
     SettingsToggleRow(
-        title = "Compact context",
-        subtitle = "Reduce token usage by compressing conversation context",
+        title = stringResource(R.string.service_config_compact_context_title),
+        subtitle = stringResource(R.string.service_config_compact_context_subtitle),
         checked = settings.compactContext,
         onCheckedChange = { viewModel.updateCompactContext(it) },
-        contentDescription = "Compact context",
+        contentDescription = stringResource(R.string.service_config_compact_context_title),
     )
 
     SettingsToggleRow(
-        title = "Strip thinking tags",
-        subtitle = "Client-side only — strips thinking tags from console display without affecting daemon behavior",
+        title = stringResource(R.string.service_config_strip_thinking_tags_title),
+        subtitle = stringResource(R.string.service_config_strip_thinking_tags_subtitle),
         checked = settings.stripThinkingTags,
         onCheckedChange = { viewModel.updateStripThinkingTags(it) },
-        contentDescription = "Strip thinking tags from responses",
+        contentDescription = stringResource(R.string.service_config_strip_thinking_tags_content_description),
     )
 }
 
@@ -231,7 +250,7 @@ private fun MemorySection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Memory")
+    SectionHeader(title = stringResource(R.string.service_config_section_memory))
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -243,7 +262,7 @@ private fun MemorySection(
             value = settings.memoryBackend,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Backend") },
+            label = { Text(stringResource(R.string.service_config_memory_backend_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier =
                 Modifier
@@ -267,11 +286,11 @@ private fun MemorySection(
     }
 
     SettingsToggleRow(
-        title = "Auto-save",
-        subtitle = "Automatically save conversation context to memory",
+        title = stringResource(R.string.service_config_memory_auto_save_title),
+        subtitle = stringResource(R.string.service_config_memory_auto_save_subtitle),
         checked = settings.memoryAutoSave,
         onCheckedChange = { viewModel.updateMemoryAutoSave(it) },
-        contentDescription = "Memory auto-save",
+        contentDescription = stringResource(R.string.service_config_memory_auto_save_title),
     )
 }
 
@@ -286,7 +305,7 @@ private fun ReliabilitySection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Reliability")
+    SectionHeader(title = stringResource(R.string.service_config_section_reliability))
 
     val retriesError = settings.providerRetries !in 0..RETRIES_MAX
 
@@ -295,12 +314,12 @@ private fun ReliabilitySection(
         onValueChange = { value ->
             value.toIntOrNull()?.let { viewModel.updateProviderRetries(it) }
         },
-        label = { Text("Provider retries") },
+        label = { Text(stringResource(R.string.service_config_provider_retries_label)) },
         singleLine = true,
         isError = retriesError,
         supportingText =
             if (retriesError) {
-                { Text("Must be between 0 and $RETRIES_MAX") }
+                { Text(stringResource(R.string.service_config_provider_retries_error, RETRIES_MAX)) }
             } else {
                 null
             },
@@ -311,8 +330,8 @@ private fun ReliabilitySection(
     OutlinedTextField(
         value = settings.fallbackProviders,
         onValueChange = { viewModel.updateFallbackProviders(it) },
-        label = { Text("Fallback providers") },
-        supportingText = { Text("Comma-separated (e.g. groq, anthropic)") },
+        label = { Text(stringResource(R.string.service_config_fallback_providers_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_fallback_providers_hint)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -322,8 +341,8 @@ private fun ReliabilitySection(
         onValueChange = { value ->
             value.toLongOrNull()?.let { viewModel.updateReliabilityBackoffMs(it) }
         },
-        label = { Text("Provider backoff (ms)") },
-        supportingText = { Text("Wait time before retrying a failed provider") },
+        label = { Text(stringResource(R.string.service_config_provider_backoff_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_provider_backoff_hint)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
@@ -332,8 +351,8 @@ private fun ReliabilitySection(
     OutlinedTextField(
         value = settings.reliabilityApiKeysJson,
         onValueChange = { viewModel.updateReliabilityApiKeysJson(it) },
-        label = { Text("Provider API keys (JSON)") },
-        supportingText = { Text("{\"provider\": \"key\", ...}") },
+        label = { Text(stringResource(R.string.service_config_provider_api_keys_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_provider_api_keys_hint)) },
         minLines = 3,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -351,20 +370,20 @@ private fun CostLimitsSection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Cost Limits")
+    SectionHeader(title = stringResource(R.string.service_config_section_cost_limits))
 
     Text(
-        text = "Budget tracking and usage warnings",
+        text = stringResource(R.string.service_config_budget_tracking_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
     SettingsToggleRow(
-        title = "Enable cost limits",
-        subtitle = "Enforce daily and monthly spending caps",
+        title = stringResource(R.string.service_config_enable_cost_limits_title),
+        subtitle = stringResource(R.string.service_config_enable_cost_limits_subtitle),
         checked = settings.costEnabled,
         onCheckedChange = { viewModel.updateCostEnabled(it) },
-        contentDescription = "Enable cost limits",
+        contentDescription = stringResource(R.string.service_config_enable_cost_limits_title),
     )
 
     val dailyError = settings.costEnabled && settings.dailyLimitUsd < 0f
@@ -374,12 +393,12 @@ private fun CostLimitsSection(
         onValueChange = { value ->
             value.toFloatOrNull()?.let { viewModel.updateDailyLimitUsd(it) }
         },
-        label = { Text("Daily limit (USD)") },
+        label = { Text(stringResource(R.string.service_config_daily_limit_label)) },
         singleLine = true,
         isError = dailyError,
         supportingText =
             if (dailyError) {
-                { Text("Must be a positive amount") }
+                { Text(stringResource(R.string.service_config_positive_amount_error)) }
             } else {
                 null
             },
@@ -395,12 +414,12 @@ private fun CostLimitsSection(
         onValueChange = { value ->
             value.toFloatOrNull()?.let { viewModel.updateMonthlyLimitUsd(it) }
         },
-        label = { Text("Monthly limit (USD)") },
+        label = { Text(stringResource(R.string.service_config_monthly_limit_label)) },
         singleLine = true,
         isError = monthlyError,
         supportingText =
             if (monthlyError) {
-                { Text("Must be a positive amount") }
+                { Text(stringResource(R.string.service_config_positive_amount_error)) }
             } else {
                 null
             },
@@ -416,12 +435,12 @@ private fun CostLimitsSection(
         onValueChange = { value ->
             value.toIntOrNull()?.let { viewModel.updateCostWarnAtPercent(it) }
         },
-        label = { Text("Warn at (%)") },
+        label = { Text(stringResource(R.string.service_config_warn_percent_label)) },
         singleLine = true,
         isError = warnError,
         supportingText =
             if (warnError) {
-                { Text("Must be between 0 and $WARN_PERCENT_MAX") }
+                { Text(stringResource(R.string.service_config_warn_percent_error, WARN_PERCENT_MAX)) }
             } else {
                 null
             },
@@ -442,21 +461,21 @@ private fun ProxySection(
     settings: AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Proxy")
+    SectionHeader(title = stringResource(R.string.service_config_section_proxy))
 
     SettingsToggleRow(
-        title = "Enable proxy",
-        subtitle = "Route outbound traffic through a proxy",
+        title = stringResource(R.string.service_config_enable_proxy_title),
+        subtitle = stringResource(R.string.service_config_enable_proxy_subtitle),
         checked = settings.proxyEnabled,
         onCheckedChange = { viewModel.updateProxyEnabled(it) },
-        contentDescription = "Enable proxy",
+        contentDescription = stringResource(R.string.service_config_enable_proxy_title),
     )
 
     OutlinedTextField(
         value = settings.proxyHttpProxy,
         onValueChange = { viewModel.updateProxyHttpProxy(it) },
-        label = { Text("HTTP proxy") },
-        supportingText = { Text("e.g. http://proxy:8080") },
+        label = { Text(stringResource(R.string.service_config_http_proxy_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_http_proxy_hint)) },
         singleLine = true,
         enabled = settings.proxyEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -465,7 +484,7 @@ private fun ProxySection(
     OutlinedTextField(
         value = settings.proxyHttpsProxy,
         onValueChange = { viewModel.updateProxyHttpsProxy(it) },
-        label = { Text("HTTPS proxy") },
+        label = { Text(stringResource(R.string.service_config_https_proxy_label)) },
         singleLine = true,
         enabled = settings.proxyEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -474,8 +493,8 @@ private fun ProxySection(
     OutlinedTextField(
         value = settings.proxyAllProxy,
         onValueChange = { viewModel.updateProxyAllProxy(it) },
-        label = { Text("All proxy") },
-        supportingText = { Text("Catch-all for all protocols") },
+        label = { Text(stringResource(R.string.service_config_all_proxy_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_all_proxy_hint)) },
         singleLine = true,
         enabled = settings.proxyEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -484,8 +503,8 @@ private fun ProxySection(
     OutlinedTextField(
         value = settings.proxyNoProxy,
         onValueChange = { viewModel.updateProxyNoProxy(it) },
-        label = { Text("No proxy") },
-        supportingText = { Text("Comma-separated bypass domains") },
+        label = { Text(stringResource(R.string.service_config_no_proxy_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_no_proxy_hint)) },
         enabled = settings.proxyEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -494,8 +513,8 @@ private fun ProxySection(
     OutlinedTextField(
         value = settings.proxyScope,
         onValueChange = { viewModel.updateProxyScope(it) },
-        label = { Text("Scope") },
-        supportingText = { Text("zeroclaw or system") },
+        label = { Text(stringResource(R.string.service_config_scope_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_scope_hint)) },
         singleLine = true,
         enabled = settings.proxyEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -504,8 +523,8 @@ private fun ProxySection(
     OutlinedTextField(
         value = settings.proxyServiceSelectors,
         onValueChange = { viewModel.updateProxyServiceSelectors(it) },
-        label = { Text("Service selectors") },
-        supportingText = { Text("Comma-separated service names for selective routing") },
+        label = { Text(stringResource(R.string.service_config_service_selectors_label)) },
+        supportingText = { Text(stringResource(R.string.service_config_service_selectors_hint)) },
         enabled = settings.proxyEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),

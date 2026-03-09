@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -97,6 +99,11 @@ fun SetupBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val progress by progressFlow.collectAsStateWithLifecycle()
     val powerSave = LocalPowerSaveMode.current
+    val applyingChangesTitle = stringResource(R.string.setup_bottom_sheet_applying_changes_title)
+    val restartingDaemonLabel =
+        stringResource(R.string.setup_bottom_sheet_restarting_daemon_label)
+    val checkingHealthLabel =
+        stringResource(R.string.setup_bottom_sheet_checking_health_label)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -112,19 +119,19 @@ fun SetupBottomSheet(
                     .navigationBarsPadding(),
         ) {
             Text(
-                text = "Applying changes",
+                text = applyingChangesTitle,
                 style = MaterialTheme.typography.titleMedium,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             HotReloadStepRow(
-                label = "Restarting daemon",
+                label = restartingDaemonLabel,
                 status = progress.daemonStart,
                 powerSave = powerSave,
             )
             HotReloadStepRow(
-                label = "Checking health",
+                label = checkingHealthLabel,
                 status = progress.daemonHealth,
                 powerSave = powerSave,
             )
@@ -154,7 +161,7 @@ fun SetupBottomSheet(
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = MinTouchTarget),
                 ) {
-                    Text("Done")
+                    Text(stringResource(R.string.common_done))
                 }
             }
 
@@ -184,11 +191,13 @@ private fun HotReloadStepRow(
 ) {
     val statusText =
         when (status) {
-            SetupStepStatus.Pending -> "pending"
-            SetupStepStatus.Running -> "running"
-            SetupStepStatus.Success -> "success"
-            is SetupStepStatus.Failed -> "failed"
+            SetupStepStatus.Pending -> stringResource(R.string.setup_status_pending)
+            SetupStepStatus.Running -> stringResource(R.string.setup_status_running)
+            SetupStepStatus.Success -> stringResource(R.string.setup_status_success)
+            is SetupStepStatus.Failed -> stringResource(R.string.setup_status_failed)
         }
+    val stepContentDescription =
+        stringResource(R.string.setup_step_content_description, label, statusText)
 
     Row(
         modifier =
@@ -196,7 +205,7 @@ private fun HotReloadStepRow(
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = MinTouchTarget)
                 .padding(vertical = StepRowVerticalPadding)
-                .semantics { contentDescription = "$label: $statusText" },
+                .semantics { contentDescription = stepContentDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HotReloadStepIcon(status = status, powerSave = powerSave)
@@ -247,7 +256,7 @@ private fun HotReloadStepIcon(
         SetupStepStatus.Running -> {
             if (powerSave) {
                 Text(
-                    text = "\u2026",
+                    text = stringResource(R.string.common_ellipsis),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.size(StepIconSize),
                 )

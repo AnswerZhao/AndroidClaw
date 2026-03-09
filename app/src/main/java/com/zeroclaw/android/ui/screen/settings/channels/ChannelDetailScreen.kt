@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.screen.settings.channels
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.channel.ChannelSetupSpec
 import com.zeroclaw.android.data.channel.ChannelSetupSpecs
 import com.zeroclaw.android.data.validation.ChannelValidator
@@ -55,6 +57,8 @@ import com.zeroclaw.android.model.FieldInputType
 import com.zeroclaw.android.ui.component.CollapsibleSection
 import com.zeroclaw.android.ui.component.SecretTextField
 import com.zeroclaw.android.ui.component.setup.ChannelSetupFlow
+import com.zeroclaw.android.ui.i18n.localizedLabel
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 import com.zeroclaw.android.ui.screen.settings.apikeys.SaveState
 import java.util.UUID
 import kotlinx.coroutines.launch
@@ -303,15 +307,21 @@ private fun EditChannelFormContent(
     ) {
         Spacer(modifier = Modifier.height(HEADING_SPACING_DP.dp))
 
-        Text(
-            text =
-                if (channelId != null) {
-                    "Edit ${currentType.displayName}"
-                } else {
-                    "Add ${currentType.displayName}"
-                },
-            style = MaterialTheme.typography.headlineSmall,
-        )
+    Text(
+        text =
+            if (channelId != null) {
+                stringResource(
+                    R.string.channel_detail_title_edit,
+                    currentType.localizedDisplayName(),
+                )
+            } else {
+                stringResource(
+                    R.string.channel_detail_title_add,
+                    currentType.localizedDisplayName(),
+                )
+            },
+        style = MaterialTheme.typography.headlineSmall,
+    )
         if (currentType.tomlKey == "irc" || currentType.tomlKey == "lark") {
             Card(
                 colors =
@@ -324,7 +334,7 @@ private fun EditChannelFormContent(
                         .padding(vertical = 8.dp),
             ) {
                 Text(
-                    text = "This channel type does not support automatic restart on failure.",
+                    text = stringResource(R.string.channel_detail_unsupported_auto_restart_message),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(FIELD_SPACING_DP.dp),
                 )
@@ -341,7 +351,7 @@ private fun EditChannelFormContent(
         }
 
         if (hasAdvanced) {
-            CollapsibleSection(title = "Advanced") {
+            CollapsibleSection(title = stringResource(R.string.channel_detail_section_advanced)) {
                 optionalFields.forEach { spec ->
                     ChannelField(
                         spec = spec,
@@ -378,7 +388,13 @@ private fun EditChannelFormContent(
             enabled = allRequiredFilled && saveState !is SaveState.Saving,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (channelId != null) "Save Changes" else "Add Channel")
+            Text(
+                if (channelId != null) {
+                    stringResource(R.string.channel_detail_save_changes_action)
+                } else {
+                    stringResource(R.string.channel_detail_add_channel_action)
+                },
+            )
         }
 
         if (saveState is SaveState.Error) {
@@ -407,17 +423,18 @@ private fun ChannelField(
     value: String,
     onValueChange: (String) -> Unit,
 ) {
+    val localizedLabel = spec.localizedLabel()
     when (spec.inputType) {
         FieldInputType.BOOLEAN -> {
             BooleanField(
-                label = spec.label,
+                label = localizedLabel,
                 checked = value.lowercase() == "true",
                 onCheckedChange = { onValueChange(it.toString()) },
             )
         }
         FieldInputType.SECRET -> {
             SecretField(
-                label = spec.label,
+                label = localizedLabel,
                 value = value,
                 onValueChange = onValueChange,
                 isRequired = spec.isRequired,
@@ -435,12 +452,12 @@ private fun ChannelField(
                 onValueChange = onValueChange,
                 label = {
                     Text(
-                        if (spec.isRequired) "${spec.label} *" else spec.label,
+                        if (spec.isRequired) "$localizedLabel *" else localizedLabel,
                     )
                 },
                 supportingText =
                     if (spec.inputType == FieldInputType.LIST) {
-                        { Text("Comma-separated values") }
+                        { Text(stringResource(R.string.common_comma_separated_values)) }
                     } else {
                         null
                     },
@@ -465,6 +482,14 @@ private fun BooleanField(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val enabledLabel = stringResource(R.string.common_enabled)
+    val disabledLabel = stringResource(R.string.common_disabled)
+    val switchContentDescription =
+        stringResource(
+            R.string.channel_detail_boolean_field_content_description,
+            label,
+            if (checked) enabledLabel else disabledLabel,
+        )
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -479,7 +504,7 @@ private fun BooleanField(
             onCheckedChange = onCheckedChange,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "$label ${if (checked) "enabled" else "disabled"}"
+                    contentDescription = switchContentDescription
                 },
         )
     }

@@ -17,7 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.ActivityEvent
 import com.zeroclaw.android.model.ActivityType
 import java.time.Instant
@@ -35,6 +37,7 @@ fun ActivityFeedSection(
     events: List<ActivityEvent>,
     modifier: Modifier = Modifier,
 ) {
+    val noRecentActivityText = stringResource(R.string.dashboard_activity_no_recent)
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -48,7 +51,7 @@ fun ActivityFeedSection(
                     ),
             ) {
                 Text(
-                    text = "No recent activity",
+                    text = noRecentActivityText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp),

@@ -28,6 +28,22 @@ object ProviderKeyValidator {
         )
 
     /**
+     * Returns whether [key] mismatches the expected [ProviderInfo.keyPrefix].
+     *
+     * @param providerInfo Provider metadata containing the expected prefix.
+     * @param key The API key value entered by the user.
+     * @return True when the key is non-blank and does not start with [ProviderInfo.keyPrefix].
+     */
+    fun hasKeyFormatWarning(
+        providerInfo: ProviderInfo,
+        key: String,
+    ): Boolean {
+        if (providerInfo.keyPrefix.isEmpty()) return false
+        if (key.isBlank()) return false
+        return !key.startsWith(providerInfo.keyPrefix)
+    }
+
+    /**
      * Validates that [key] matches the expected format for [providerInfo].
      *
      * Returns a human-readable warning hint if the key does not start with
@@ -42,9 +58,7 @@ object ProviderKeyValidator {
         providerInfo: ProviderInfo,
         key: String,
     ): String? {
-        if (providerInfo.keyPrefix.isEmpty()) return null
-        if (key.isBlank()) return null
-        if (key.startsWith(providerInfo.keyPrefix)) return null
+        if (!hasKeyFormatWarning(providerInfo, key)) return null
         return providerInfo.keyPrefixHint
     }
 

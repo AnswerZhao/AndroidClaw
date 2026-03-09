@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.data.validation
 
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.ChannelType
 import java.net.HttpURLConnection
 import java.net.URL
@@ -41,12 +42,6 @@ object ChannelValidator {
     /** HTTP 403 Forbidden. */
     private const val HTTP_FORBIDDEN = 403
 
-    /** Message returned for channels without a live validation endpoint. */
-    private const val DEFERRED_MESSAGE = "Will be verified when daemon starts"
-
-    /** Error message returned when a token is rejected by the remote API. */
-    private const val INVALID_TOKEN_MESSAGE = "Invalid token"
-
     /**
      * Validates a channel token by probing the channel's external API.
      *
@@ -74,7 +69,9 @@ object ChannelValidator {
                 }
             } catch (e: Exception) {
                 ValidationResult.Offline(
-                    message = "Connection failed \u2014 ${e.message.orEmpty()}",
+                    message = "",
+                    messageResId = R.string.validation_channel_connection_failed,
+                    messageArgs = listOf(e.message.orEmpty()),
                 )
             }
         }
@@ -96,34 +93,46 @@ object ChannelValidator {
     ): ValidationResult {
         if (isAuthError(responseCode)) {
             return ValidationResult.Failure(
-                message = INVALID_TOKEN_MESSAGE,
+                message = "",
                 retryable = false,
+                messageResId = R.string.validation_channel_invalid_token,
             )
         }
         if (responseCode != HTTP_OK) {
             return ValidationResult.Offline(
-                message = "Telegram API returned HTTP $responseCode",
+                message = "",
+                messageResId = R.string.validation_channel_telegram_api_http_error,
+                messageArgs = listOf(responseCode),
             )
         }
         return try {
             val json = JSONObject(body)
             if (!json.optBoolean("ok", false)) {
                 return ValidationResult.Failure(
-                    message = INVALID_TOKEN_MESSAGE,
+                    message = "",
                     retryable = false,
+                    messageResId = R.string.validation_channel_invalid_token,
                 )
             }
             val username = json.getJSONObject("result").optString("username", "")
             if (username.isEmpty()) {
                 return ValidationResult.Offline(
-                    message = "Unexpected response format",
+                    message = "",
+                    messageResId = R.string.validation_channel_unexpected_response,
                 )
             }
-            ValidationResult.Success(details = "Connected as @$username")
+            ValidationResult.Success(
+                details = "",
+                detailsResId = R.string.validation_channel_connected_as_telegram,
+                detailsArgs = listOf(username),
+            )
         } catch (
             @Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception,
         ) {
-            ValidationResult.Offline(message = "Failed to parse response")
+            ValidationResult.Offline(
+                message = "",
+                messageResId = R.string.validation_channel_parse_failed,
+            )
         }
     }
 
@@ -143,13 +152,16 @@ object ChannelValidator {
     ): ValidationResult {
         if (isAuthError(responseCode)) {
             return ValidationResult.Failure(
-                message = INVALID_TOKEN_MESSAGE,
+                message = "",
                 retryable = false,
+                messageResId = R.string.validation_channel_invalid_token,
             )
         }
         if (responseCode != HTTP_OK) {
             return ValidationResult.Offline(
-                message = "Discord API returned HTTP $responseCode",
+                message = "",
+                messageResId = R.string.validation_channel_discord_api_http_error,
+                messageArgs = listOf(responseCode),
             )
         }
         return try {
@@ -157,14 +169,22 @@ object ChannelValidator {
             val username = json.optString("username", "")
             if (username.isEmpty()) {
                 return ValidationResult.Offline(
-                    message = "Unexpected response format",
+                    message = "",
+                    messageResId = R.string.validation_channel_unexpected_response,
                 )
             }
-            ValidationResult.Success(details = "Connected as $username")
+            ValidationResult.Success(
+                details = "",
+                detailsResId = R.string.validation_channel_connected_as,
+                detailsArgs = listOf(username),
+            )
         } catch (
             @Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception,
         ) {
-            ValidationResult.Offline(message = "Failed to parse response")
+            ValidationResult.Offline(
+                message = "",
+                messageResId = R.string.validation_channel_parse_failed,
+            )
         }
     }
 
@@ -184,35 +204,47 @@ object ChannelValidator {
     ): ValidationResult {
         if (isAuthError(responseCode)) {
             return ValidationResult.Failure(
-                message = INVALID_TOKEN_MESSAGE,
+                message = "",
                 retryable = false,
+                messageResId = R.string.validation_channel_invalid_token,
             )
         }
         if (responseCode != HTTP_OK) {
             return ValidationResult.Offline(
-                message = "Slack API returned HTTP $responseCode",
+                message = "",
+                messageResId = R.string.validation_channel_slack_api_http_error,
+                messageArgs = listOf(responseCode),
             )
         }
         return try {
             val json = JSONObject(body)
             if (!json.optBoolean("ok", false)) {
                 return ValidationResult.Failure(
-                    message = INVALID_TOKEN_MESSAGE,
+                    message = "",
                     retryable = false,
+                    messageResId = R.string.validation_channel_invalid_token,
                 )
             }
             val team = json.optString("team", "")
             val user = json.optString("user", "")
             if (team.isEmpty() || user.isEmpty()) {
                 return ValidationResult.Offline(
-                    message = "Unexpected response format",
+                    message = "",
+                    messageResId = R.string.validation_channel_unexpected_response,
                 )
             }
-            ValidationResult.Success(details = "Connected to $team as $user")
+            ValidationResult.Success(
+                details = "",
+                detailsResId = R.string.validation_channel_connected_to_as,
+                detailsArgs = listOf(team, user),
+            )
         } catch (
             @Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception,
         ) {
-            ValidationResult.Offline(message = "Failed to parse response")
+            ValidationResult.Offline(
+                message = "",
+                messageResId = R.string.validation_channel_parse_failed,
+            )
         }
     }
 
@@ -232,13 +264,16 @@ object ChannelValidator {
     ): ValidationResult {
         if (isAuthError(responseCode)) {
             return ValidationResult.Failure(
-                message = INVALID_TOKEN_MESSAGE,
+                message = "",
                 retryable = false,
+                messageResId = R.string.validation_channel_invalid_token,
             )
         }
         if (responseCode != HTTP_OK) {
             return ValidationResult.Offline(
-                message = "Matrix API returned HTTP $responseCode",
+                message = "",
+                messageResId = R.string.validation_channel_matrix_api_http_error,
+                messageArgs = listOf(responseCode),
             )
         }
         return try {
@@ -246,14 +281,22 @@ object ChannelValidator {
             val userId = json.optString("user_id", "")
             if (userId.isEmpty()) {
                 return ValidationResult.Offline(
-                    message = "Unexpected response format",
+                    message = "",
+                    messageResId = R.string.validation_channel_unexpected_response,
                 )
             }
-            ValidationResult.Success(details = "Connected as $userId")
+            ValidationResult.Success(
+                details = "",
+                detailsResId = R.string.validation_channel_connected_as,
+                detailsArgs = listOf(userId),
+            )
         } catch (
             @Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception,
         ) {
-            ValidationResult.Offline(message = "Failed to parse response")
+            ValidationResult.Offline(
+                message = "",
+                messageResId = R.string.validation_channel_parse_failed,
+            )
         }
     }
 
@@ -263,7 +306,11 @@ object ChannelValidator {
      *
      * @return [ValidationResult.Success] with a deferred-validation message.
      */
-    internal fun classifyOtherChannel(): ValidationResult.Success = ValidationResult.Success(details = DEFERRED_MESSAGE)
+    internal fun classifyOtherChannel(): ValidationResult.Success =
+        ValidationResult.Success(
+            details = "",
+            detailsResId = R.string.validation_channel_deferred,
+        )
 
     /**
      * Validates a Telegram bot token by calling the `getMe` endpoint.
@@ -275,8 +322,10 @@ object ChannelValidator {
         val token = fields["bot_token"]
         if (token.isNullOrBlank()) {
             return ValidationResult.Failure(
-                message = "Missing required field: bot_token",
+                message = "",
                 retryable = true,
+                messageResId = R.string.validation_channel_missing_required_field,
+                messageArgs = listOf("bot_token"),
             )
         }
         val url = "https://api.telegram.org/bot$token/getMe"
@@ -294,8 +343,10 @@ object ChannelValidator {
         val token = fields["bot_token"]
         if (token.isNullOrBlank()) {
             return ValidationResult.Failure(
-                message = "Missing required field: bot_token",
+                message = "",
                 retryable = true,
+                messageResId = R.string.validation_channel_missing_required_field,
+                messageArgs = listOf("bot_token"),
             )
         }
         val url = "https://discord.com/api/v10/users/@me"
@@ -314,8 +365,10 @@ object ChannelValidator {
         val token = fields["bot_token"]
         if (token.isNullOrBlank()) {
             return ValidationResult.Failure(
-                message = "Missing required field: bot_token",
+                message = "",
                 retryable = true,
+                messageResId = R.string.validation_channel_missing_required_field,
+                messageArgs = listOf("bot_token"),
             )
         }
         val url = "https://slack.com/api/auth.test"
@@ -334,15 +387,19 @@ object ChannelValidator {
         val homeserver = fields["homeserver"]
         if (homeserver.isNullOrBlank()) {
             return ValidationResult.Failure(
-                message = "Missing required field: homeserver",
+                message = "",
                 retryable = true,
+                messageResId = R.string.validation_channel_missing_required_field,
+                messageArgs = listOf("homeserver"),
             )
         }
         val accessToken = fields["access_token"]
         if (accessToken.isNullOrBlank()) {
             return ValidationResult.Failure(
-                message = "Missing required field: access_token",
+                message = "",
                 retryable = true,
+                messageResId = R.string.validation_channel_missing_required_field,
+                messageArgs = listOf("access_token"),
             )
         }
         val url =

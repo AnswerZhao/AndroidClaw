@@ -46,10 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.remote.NetworkScanner
 import com.zeroclaw.android.model.DiscoveredServer
 import com.zeroclaw.android.model.LocalServerType
@@ -182,25 +185,30 @@ fun NetworkScanSheet(
 @Composable
 private fun ScanSheetHeader(scanState: ScanState) {
     Text(
-        text = "Scan Local Network",
+        text = stringResource(R.string.network_scan_title),
         style = MaterialTheme.typography.headlineSmall,
     )
     Spacer(modifier = Modifier.height(CARD_INTERNAL_SPACING_DP.dp))
-    Text(
-        text =
-            when (scanState) {
-                is ScanState.Idle -> "Preparing to scan..."
-                is ScanState.Scanning -> "Scanning your network for AI servers..."
-                is ScanState.Completed -> {
-                    val count = scanState.servers.size
-                    if (count == 0) {
-                        "No AI servers found"
-                    } else {
-                        "$count server${if (count != 1) "s" else ""} found"
-                    }
+    val subtitleText =
+        when (scanState) {
+            is ScanState.Idle -> stringResource(R.string.network_scan_preparing)
+            is ScanState.Scanning -> stringResource(R.string.network_scan_scanning)
+            is ScanState.Completed -> {
+                val count = scanState.servers.size
+                if (count == 0) {
+                    stringResource(R.string.network_scan_no_servers_found)
+                } else {
+                    pluralStringResource(
+                        R.plurals.network_scan_servers_found,
+                        count,
+                        count,
+                    )
                 }
-                is ScanState.Error -> scanState.message
-            },
+            }
+            is ScanState.Error -> scanState.message
+        }
+    Text(
+        text = subtitleText,
         style = MaterialTheme.typography.bodyMedium,
         color =
             if (scanState is ScanState.Error) {
@@ -219,12 +227,14 @@ private fun ScanSheetHeader(scanState: ScanState) {
 @Composable
 private fun ScanSheetProgress(scanState: ScanState) {
     if (scanState is ScanState.Scanning) {
+        val progressContentDescription =
+            stringResource(R.string.network_scan_progress_content_description)
         LinearProgressIndicator(
             progress = { scanState.progress },
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "Scan progress" },
+                    .semantics { contentDescription = progressContentDescription },
         )
         Spacer(modifier = Modifier.height(HEADER_SPACING_DP.dp))
     }
@@ -241,16 +251,20 @@ private fun ServerCard(
     server: DiscoveredServer,
     onClick: () -> Unit,
 ) {
+    val serverCardContentDescription =
+        stringResource(
+            R.string.network_scan_server_card_content_description,
+            server.serverType.label,
+            server.host,
+            server.port,
+        )
+
     ElevatedCard(
         onClick = onClick,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .semantics {
-                    contentDescription =
-                        "${server.serverType.label} server at " +
-                        "${server.host} port ${server.port}"
-                },
+                .semantics { contentDescription = serverCardContentDescription },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -276,7 +290,12 @@ private fun ServerCard(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "${server.host}:${server.port}",
+                    text =
+                        stringResource(
+                            R.string.network_scan_host_port,
+                            server.host,
+                            server.port,
+                        ),
                     style =
                         MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
@@ -287,8 +306,11 @@ private fun ServerCard(
                     Spacer(modifier = Modifier.height(CARD_INTERNAL_SPACING_DP.dp))
                     Text(
                         text =
-                            "${server.models.size} " +
-                                "model${if (server.models.size != 1) "s" else ""} loaded",
+                            pluralStringResource(
+                                R.plurals.network_scan_models_loaded,
+                                server.models.size,
+                                server.models.size,
+                            ),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -302,7 +324,7 @@ private fun ServerCard(
             }
             Icon(
                 imageVector = Icons.Default.CheckCircle,
-                contentDescription = "Verified server",
+                contentDescription = stringResource(R.string.network_scan_verified_server),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(SHEET_PADDING_DP.dp),
             )
@@ -330,14 +352,12 @@ private fun EmptyScanResult() {
         )
         Spacer(modifier = Modifier.height(HEADER_SPACING_DP.dp))
         Text(
-            text = "No AI servers found",
+            text = stringResource(R.string.network_scan_no_servers_found),
             style = MaterialTheme.typography.titleMedium,
         )
         Spacer(modifier = Modifier.height(CARD_INTERNAL_SPACING_DP.dp))
         Text(
-            text =
-                "Make sure a local AI server (Ollama, LM Studio, vLLM, or LocalAI) " +
-                    "is running on a device connected to the same network.",
+            text = stringResource(R.string.network_scan_empty_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -369,12 +389,18 @@ private fun ScanSheetFooter(
                     modifier = Modifier.size(FOOTER_ICON_SIZE_DP.dp),
                 )
                 Spacer(modifier = Modifier.width(CARD_INTERNAL_SPACING_DP.dp))
-                Text("Scan Again")
+                Text(stringResource(R.string.network_scan_scan_again))
             }
             Spacer(modifier = Modifier.width(CARD_INTERNAL_SPACING_DP.dp))
         }
         TextButton(onClick = onDismiss) {
-            Text(if (scanState is ScanState.Scanning) "Cancel" else "Close")
+            Text(
+                if (scanState is ScanState.Scanning) {
+                    stringResource(R.string.common_cancel)
+                } else {
+                    stringResource(R.string.common_close)
+                },
+            )
         }
     }
 }

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.zeroclaw.android.data.ProviderRegistry
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 
 /** Minimum touch target size for accessibility. */
 private const val ICON_SIZE_DP = 40
@@ -138,13 +141,15 @@ fun ProviderIcon(
     provider: String,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val resolved = ProviderRegistry.findById(provider)
-    val displayName = resolved?.displayName ?: provider
+    val displayName = resolved?.localizedDisplayName(context) ?: provider
     val resolvedId = resolved?.id ?: provider.lowercase()
     val iconUrl = resolved?.iconUrl.orEmpty()
+    val providerContentDescription =
+        stringResource(R.string.provider_icon_content_description, displayName)
 
     if (iconUrl.isNotEmpty()) {
-        val context = LocalContext.current
         val imageRequest =
             remember(iconUrl) {
                 ImageRequest
@@ -155,7 +160,7 @@ fun ProviderIcon(
             }
         SubcomposeAsyncImage(
             model = imageRequest,
-            contentDescription = "$displayName provider",
+            contentDescription = providerContentDescription,
             contentScale = ContentScale.Crop,
             modifier =
                 modifier
@@ -188,6 +193,8 @@ private fun InitialCircle(
     val bgColor = brandBg ?: fallbackBg
     val fgColor = if (brandBg != null) contrastingForeground(brandBg) else fallbackFg
     val initial = displayName.firstOrNull()?.uppercase() ?: "?"
+    val providerContentDescription =
+        stringResource(R.string.provider_icon_content_description, displayName)
 
     Box(
         modifier =
@@ -195,7 +202,7 @@ private fun InitialCircle(
                 .size(ICON_SIZE_DP.dp)
                 .clip(CircleShape)
                 .background(bgColor)
-                .semantics { contentDescription = "$displayName provider" },
+                .semantics { contentDescription = providerContentDescription },
         contentAlignment = Alignment.Center,
     ) {
         Text(

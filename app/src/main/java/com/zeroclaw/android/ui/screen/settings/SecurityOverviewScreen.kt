@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.StorageHealth
 import com.zeroclaw.android.ui.component.CollapsibleSection
@@ -91,44 +93,44 @@ fun SecurityOverviewScreen(
 
         Spacer(modifier = Modifier.height(SPACING_LARGE))
 
-        SectionHeader(title = "Access Controls")
+        SectionHeader(title = stringResource(R.string.security_overview_section_access_controls))
         AccessControlItem(
-            label = "Workspace restriction",
+            label = stringResource(R.string.security_overview_workspace_restriction_label),
             enabled = settings.workspaceOnly,
-            enabledDescription = "Enabled",
-            disabledDescription = "Disabled",
+            enabledDescription = stringResource(R.string.security_overview_state_enabled),
+            disabledDescription = stringResource(R.string.security_overview_state_disabled),
             disabledSeverity = DisabledSeverity.WARNING,
         )
         AccessControlItem(
-            label = "High-risk command blocking",
+            label = stringResource(R.string.security_overview_high_risk_command_blocking_label),
             enabled = settings.blockHighRiskCommands,
-            enabledDescription = "Enabled",
-            disabledDescription = "Disabled",
+            enabledDescription = stringResource(R.string.security_overview_state_enabled),
+            disabledDescription = stringResource(R.string.security_overview_state_disabled),
             disabledSeverity = DisabledSeverity.CRITICAL,
         )
         AccessControlItem(
-            label = "Medium-risk approval required",
+            label = stringResource(R.string.security_overview_medium_risk_approval_label),
             enabled = settings.requireApprovalMediumRisk,
-            enabledDescription = "Enabled",
-            disabledDescription = "Disabled",
+            enabledDescription = stringResource(R.string.security_overview_state_enabled),
+            disabledDescription = stringResource(R.string.security_overview_state_disabled),
             disabledSeverity = DisabledSeverity.WARNING,
         )
 
         Spacer(modifier = Modifier.height(SPACING_LARGE))
 
-        SectionHeader(title = "Rate Limits")
+        SectionHeader(title = stringResource(R.string.security_overview_section_rate_limits))
         RateLimitItem(
-            label = "Max actions per hour",
+            label = stringResource(R.string.security_overview_max_actions_per_hour_label),
             value = settings.maxActionsPerHour.toString(),
         )
         RateLimitItem(
-            label = "Max cost per day",
+            label = stringResource(R.string.security_overview_max_cost_per_day_label),
             value = formatCentsToDollars(settings.maxCostPerDayCents),
         )
 
         Spacer(modifier = Modifier.height(SPACING_LARGE))
 
-        SectionHeader(title = "API Key Health")
+        SectionHeader(title = stringResource(R.string.security_overview_section_api_key_health))
         ApiKeyHealthSection(
             keyCount = apiKeys.size,
             storageHealth = storageHealth,
@@ -169,7 +171,7 @@ private fun AutonomyLevelCard(autonomyLevel: String) {
     val color = autonomyLevelColor(autonomyLevel)
     val description = autonomyLevelDescription(autonomyLevel)
     val displayName = autonomyLevelDisplayName(autonomyLevel)
-    val a11yDescription = "Autonomy level: $displayName. $description"
+    val a11yDescription = stringResource(R.string.security_overview_autonomy_a11y, displayName, description)
 
     Card(
         modifier =
@@ -240,7 +242,7 @@ private fun AccessControlItem(
             }
         }
     val statusText = if (enabled) enabledDescription else disabledDescription
-    val a11yDescription = "$label: $statusText"
+    val a11yDescription = stringResource(R.string.security_overview_label_value_a11y, label, statusText)
 
     Row(
         modifier =
@@ -284,13 +286,15 @@ private fun RateLimitItem(
     label: String,
     value: String,
 ) {
+    val a11yDescription = stringResource(R.string.security_overview_label_value_a11y, label, value)
+
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = SPACING_SMALL)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "$label: $value"
+                    contentDescription = a11yDescription
                 },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -320,7 +324,7 @@ private fun ApiKeyHealthSection(
 ) {
     val healthLabel = storageHealthLabel(storageHealth)
     val healthColor = storageHealthColor(storageHealth)
-    val a11yDescription = "API key storage: $healthLabel. $keyCount keys stored"
+    val a11yDescription = stringResource(R.string.security_overview_api_key_storage_a11y, healthLabel, keyCount)
 
     Column(
         modifier =
@@ -347,7 +351,7 @@ private fun ApiKeyHealthSection(
             )
             Spacer(modifier = Modifier.width(SPACING_MEDIUM))
             Text(
-                text = "Storage: $healthLabel",
+                text = stringResource(R.string.security_overview_storage_value, healthLabel),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
             )
@@ -368,7 +372,7 @@ private fun ApiKeyHealthSection(
                 modifier = Modifier.width(STATUS_DOT_SIZE_SMALL + SPACING_MEDIUM),
             )
             Text(
-                text = "$keyCount keys stored",
+                text = stringResource(R.string.security_overview_keys_stored_count, keyCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -393,10 +397,10 @@ private fun AllowedForbiddenSection(
     val commands = remember(allowedCommands) { parseCommaSeparated(allowedCommands) }
     val paths = remember(forbiddenPaths) { parseCommaSeparated(forbiddenPaths) }
 
-    CollapsibleSection(title = "Allowed Commands (${commands.size})") {
+    CollapsibleSection(title = stringResource(R.string.security_overview_allowed_commands_title, commands.size)) {
         if (commands.isEmpty()) {
             Text(
-                text = "No commands configured",
+                text = stringResource(R.string.security_overview_no_commands_configured),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -417,10 +421,10 @@ private fun AllowedForbiddenSection(
 
     Spacer(modifier = Modifier.height(SPACING_MEDIUM))
 
-    CollapsibleSection(title = "Forbidden Paths (${paths.size})") {
+    CollapsibleSection(title = stringResource(R.string.security_overview_forbidden_paths_title, paths.size)) {
         if (paths.isEmpty()) {
             Text(
-                text = "No paths configured",
+                text = stringResource(R.string.security_overview_no_paths_configured),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -466,7 +470,7 @@ private fun AppLockSection(
     var showPinSheet by remember { mutableStateOf(false) }
     var showTimeoutMenu by remember { mutableStateOf(false) }
 
-    SectionHeader(title = "App Lock")
+    SectionHeader(title = stringResource(R.string.security_overview_section_app_lock))
 
     FilledTonalButton(
         onClick = { showPinSheet = true },
@@ -475,16 +479,22 @@ private fun AppLockSection(
                 .fillMaxWidth()
                 .padding(vertical = SPACING_SMALL),
     ) {
-        Text(if (pinHashSet) "Change PIN" else "Set up a PIN")
+        Text(
+            if (pinHashSet) {
+                stringResource(R.string.security_overview_change_pin)
+            } else {
+                stringResource(R.string.security_overview_set_up_pin)
+            },
+        )
     }
 
     if (pinHashSet) {
         SettingsToggleRow(
-            title = "Enable app lock",
-            subtitle = "Require PIN on launch and after timeout",
+            title = stringResource(R.string.security_overview_enable_app_lock_title),
+            subtitle = stringResource(R.string.security_overview_enable_app_lock_subtitle),
             checked = lockEnabled,
             onCheckedChange = onLockEnabledChange,
-            contentDescription = "Enable app lock",
+            contentDescription = stringResource(R.string.security_overview_enable_app_lock_content_description),
         )
 
         Row(
@@ -496,7 +506,7 @@ private fun AppLockSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Lock after",
+                text = stringResource(R.string.security_overview_lock_after),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Box {
@@ -553,12 +563,13 @@ private fun autonomyLevelColor(level: String): Color =
  *
  * @return Description string explaining what the level permits.
  */
+@Composable
 private fun autonomyLevelDescription(level: String): String =
     when (level) {
-        AUTONOMY_READONLY -> "Agent can only read files"
-        AUTONOMY_SUPERVISED -> "Agent asks for approval"
-        AUTONOMY_FULL -> "Unrestricted access"
-        else -> "Unknown autonomy level"
+        AUTONOMY_READONLY -> stringResource(R.string.security_overview_autonomy_readonly_description)
+        AUTONOMY_SUPERVISED -> stringResource(R.string.security_overview_autonomy_supervised_description)
+        AUTONOMY_FULL -> stringResource(R.string.security_overview_autonomy_full_description)
+        else -> stringResource(R.string.security_overview_autonomy_unknown)
     }
 
 /**
@@ -566,11 +577,12 @@ private fun autonomyLevelDescription(level: String): String =
  *
  * @return Capitalized level name suitable for UI display.
  */
+@Composable
 private fun autonomyLevelDisplayName(level: String): String =
     when (level) {
-        AUTONOMY_READONLY -> "Read-only"
-        AUTONOMY_SUPERVISED -> "Supervised"
-        AUTONOMY_FULL -> "Full"
+        AUTONOMY_READONLY -> stringResource(R.string.security_overview_autonomy_readonly)
+        AUTONOMY_SUPERVISED -> stringResource(R.string.security_overview_autonomy_supervised)
+        AUTONOMY_FULL -> stringResource(R.string.security_overview_autonomy_full)
         else -> level.replaceFirstChar { it.uppercase() }
     }
 
@@ -579,11 +591,12 @@ private fun autonomyLevelDisplayName(level: String): String =
  *
  * @return "Healthy", "Degraded", or "Error" string.
  */
+@Composable
 private fun storageHealthLabel(health: StorageHealth): String =
     when (health) {
-        is StorageHealth.Healthy -> "Healthy"
-        is StorageHealth.Recovered -> "Recovered"
-        is StorageHealth.Degraded -> "Degraded"
+        is StorageHealth.Healthy -> stringResource(R.string.security_overview_storage_healthy)
+        is StorageHealth.Recovered -> stringResource(R.string.security_overview_storage_recovered)
+        is StorageHealth.Degraded -> stringResource(R.string.security_overview_storage_degraded)
     }
 
 /**
@@ -651,7 +664,8 @@ private enum class DisabledSeverity {
  *
  * @return e.g. "1 min", "5 min", "30 min".
  */
-private fun formatTimeout(minutes: Int): String = "$minutes min"
+@Composable
+private fun formatTimeout(minutes: Int): String = stringResource(R.string.security_overview_timeout_minutes, minutes)
 
 /** Available lock timeout options in minutes. */
 private val TIMEOUT_OPTIONS = listOf(1, 5, 15, 30)

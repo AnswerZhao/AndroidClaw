@@ -9,6 +9,7 @@ package com.zeroclaw.android.ui.screen.onboarding
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.data.remote.ModelFetcher
@@ -90,7 +91,10 @@ class OnboardingViewModel(
     /** Model name selected or typed in the provider step. */
     val selectedModel: StateFlow<String> = _selectedModel.asStateFlow()
 
-    private val _agentName = MutableStateFlow("My Agent")
+    private val _agentName =
+        MutableStateFlow(
+            getString(R.string.onboarding_default_agent_name),
+        )
 
     /** Name for the first agent configured in onboarding. */
     val agentName: StateFlow<String> = _agentName.asStateFlow()
@@ -289,7 +293,7 @@ class OnboardingViewModel(
 
         if (authErrorForProvider(provider, key, url)) {
             _completeError.value =
-                "Invalid API key — verify your credentials before starting the daemon"
+                getString(R.string.onboarding_complete_error_invalid_api_key)
             return
         }
 
@@ -427,7 +431,7 @@ class OnboardingViewModel(
         try {
             app.daemonBridge.ensureWorkspace(
                 agentName = agentName,
-                userName = "User",
+                userName = getString(R.string.onboarding_default_user_name),
                 timezone = TimeZone.getDefault().id,
                 communicationStyle = "",
             )
@@ -492,6 +496,11 @@ class OnboardingViewModel(
             )
         channelConfigRepository.save(channel, secrets)
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 }
 
 /**

@@ -24,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.AppSettings
 import com.zeroclaw.android.model.OfficialPlugins
 import com.zeroclaw.android.ui.component.SecretTextField
@@ -90,7 +92,7 @@ private fun WebSearchConfig(
             value = settings.webSearchProvider,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Search engine") },
+            label = { Text(stringResource(R.string.official_plugin_search_engine_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(engineExpanded) },
             enabled = settings.webSearchEnabled,
             modifier =
@@ -119,8 +121,8 @@ private fun WebSearchConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateWebSearchMaxResults(it) }
         },
-        label = { Text("Max results") },
-        supportingText = { Text("Number of search results (1\u201310)") },
+        label = { Text(stringResource(R.string.official_plugin_max_results_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_search_results_hint)) },
         singleLine = true,
         enabled = settings.webSearchEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -132,7 +134,7 @@ private fun WebSearchConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateWebSearchTimeoutSecs(it) }
         },
-        label = { Text("Timeout (seconds)") },
+        label = { Text(stringResource(R.string.official_plugin_timeout_seconds_label)) },
         singleLine = true,
         enabled = settings.webSearchEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -154,8 +156,8 @@ private fun WebFetchConfig(
     OutlinedTextField(
         value = settings.webFetchAllowedDomains,
         onValueChange = { viewModel.updateWebFetchAllowedDomains(it) },
-        label = { Text("Allowed domains") },
-        supportingText = { Text("Comma-separated (empty allows all)") },
+        label = { Text(stringResource(R.string.official_plugin_allowed_domains_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_allowed_domains_optional_hint)) },
         enabled = settings.webFetchEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -164,8 +166,8 @@ private fun WebFetchConfig(
     OutlinedTextField(
         value = settings.webFetchBlockedDomains,
         onValueChange = { viewModel.updateWebFetchBlockedDomains(it) },
-        label = { Text("Blocked domains") },
-        supportingText = { Text("Comma-separated domains to deny") },
+        label = { Text(stringResource(R.string.official_plugin_blocked_domains_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_blocked_domains_hint)) },
         enabled = settings.webFetchEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -176,7 +178,7 @@ private fun WebFetchConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateWebFetchMaxResponseSize(it) }
         },
-        label = { Text("Max response size (bytes)") },
+        label = { Text(stringResource(R.string.official_plugin_max_response_size_label)) },
         singleLine = true,
         enabled = settings.webFetchEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -188,7 +190,7 @@ private fun WebFetchConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateWebFetchTimeoutSecs(it) }
         },
-        label = { Text("Timeout (seconds)") },
+        label = { Text(stringResource(R.string.official_plugin_timeout_seconds_label)) },
         singleLine = true,
         enabled = settings.webFetchEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -211,8 +213,8 @@ private fun HttpRequestConfig(
     OutlinedTextField(
         value = settings.httpRequestAllowedDomains,
         onValueChange = { viewModel.updateHttpRequestAllowedDomains(it) },
-        label = { Text("Allowed domains") },
-        supportingText = { Text("Comma-separated (required, deny-by-default)") },
+        label = { Text(stringResource(R.string.official_plugin_allowed_domains_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_allowed_domains_required_hint)) },
         enabled = settings.httpRequestEnabled,
         minLines = 2,
         modifier = Modifier.fillMaxWidth(),
@@ -223,7 +225,7 @@ private fun HttpRequestConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateHttpRequestMaxResponseSize(it) }
         },
-        label = { Text("Max response size (bytes)") },
+        label = { Text(stringResource(R.string.official_plugin_max_response_size_label)) },
         singleLine = true,
         enabled = settings.httpRequestEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -235,7 +237,7 @@ private fun HttpRequestConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateHttpRequestTimeoutSecs(it) }
         },
-        label = { Text("Timeout (seconds)") },
+        label = { Text(stringResource(R.string.official_plugin_timeout_seconds_label)) },
         singleLine = true,
         enabled = settings.httpRequestEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -243,9 +245,7 @@ private fun HttpRequestConfig(
     )
 
     Text(
-        text =
-            "HTTP requests use a deny-by-default policy. Only domains listed " +
-                "above will be accessible. Leave empty to block all requests.",
+        text = stringResource(R.string.official_plugin_http_request_policy_note),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp),
@@ -253,7 +253,7 @@ private fun HttpRequestConfig(
 
     if (settings.httpRequestEnabled && settings.httpRequestAllowedDomains.isBlank()) {
         Text(
-            text = "No allowed domains configured \u2014 HTTP requests will be rejected",
+            text = stringResource(R.string.official_plugin_http_request_empty_warning),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(top = 4.dp),
@@ -275,7 +275,7 @@ private fun ComposioConfig(
     SecretTextField(
         value = settings.composioApiKey,
         onValueChange = { viewModel.updateComposioApiKey(it) },
-        label = "API key",
+        label = stringResource(R.string.official_plugin_composio_api_key_label),
         enabled = settings.composioEnabled,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -283,7 +283,7 @@ private fun ComposioConfig(
     OutlinedTextField(
         value = settings.composioEntityId,
         onValueChange = { viewModel.updateComposioEntityId(it) },
-        label = { Text("Entity ID") },
+        label = { Text(stringResource(R.string.official_plugin_entity_id_label)) },
         singleLine = true,
         enabled = settings.composioEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -291,7 +291,7 @@ private fun ComposioConfig(
 
     if (settings.composioEnabled && settings.composioApiKey.isBlank()) {
         Text(
-            text = "Composio requires an API key",
+            text = stringResource(R.string.official_plugin_composio_api_key_required_error),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(top = 4.dp),
@@ -315,8 +315,8 @@ private fun VisionConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateMultimodalMaxImages(it) }
         },
-        label = { Text("Max images per request") },
-        supportingText = { Text("Number of images allowed (1\u201316)") },
+        label = { Text(stringResource(R.string.official_plugin_max_images_per_request_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_max_images_hint)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
@@ -327,19 +327,19 @@ private fun VisionConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateMultimodalMaxImageSizeMb(it) }
         },
-        label = { Text("Max image size (MB)") },
-        supportingText = { Text("Maximum file size per image (1\u201320)") },
+        label = { Text(stringResource(R.string.official_plugin_max_image_size_mb_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_max_image_size_hint)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
     )
 
     SettingsToggleRow(
-        title = "Allow remote fetch",
-        subtitle = "Let the agent download images from remote URLs for vision",
+        title = stringResource(R.string.official_plugin_allow_remote_fetch_title),
+        subtitle = stringResource(R.string.official_plugin_allow_remote_fetch_subtitle),
         checked = settings.multimodalAllowRemoteFetch,
         onCheckedChange = { viewModel.updateMultimodalAllowRemoteFetch(it) },
-        contentDescription = "Allow remote image fetch for vision",
+        contentDescription = stringResource(R.string.official_plugin_allow_remote_fetch_content_description),
     )
 }
 
@@ -357,8 +357,8 @@ private fun TranscriptionConfig(
     OutlinedTextField(
         value = settings.transcriptionApiUrl,
         onValueChange = { viewModel.updateTranscriptionApiUrl(it) },
-        label = { Text("API URL") },
-        supportingText = { Text("Whisper-compatible transcription endpoint") },
+        label = { Text(stringResource(R.string.official_plugin_api_url_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_transcription_endpoint_hint)) },
         singleLine = true,
         enabled = settings.transcriptionEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -367,8 +367,8 @@ private fun TranscriptionConfig(
     OutlinedTextField(
         value = settings.transcriptionModel,
         onValueChange = { viewModel.updateTranscriptionModel(it) },
-        label = { Text("Model") },
-        supportingText = { Text("Transcription model name") },
+        label = { Text(stringResource(R.string.official_plugin_model_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_transcription_model_hint)) },
         singleLine = true,
         enabled = settings.transcriptionEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -377,8 +377,8 @@ private fun TranscriptionConfig(
     OutlinedTextField(
         value = settings.transcriptionLanguage,
         onValueChange = { viewModel.updateTranscriptionLanguage(it) },
-        label = { Text("Language hint") },
-        supportingText = { Text("ISO 639-1 code (e.g. \"en\", \"es\") or blank for auto-detect") },
+        label = { Text(stringResource(R.string.official_plugin_language_hint_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_language_hint_supporting)) },
         singleLine = true,
         enabled = settings.transcriptionEnabled,
         modifier = Modifier.fillMaxWidth(),
@@ -389,8 +389,8 @@ private fun TranscriptionConfig(
         onValueChange = { v ->
             v.toIntOrNull()?.let { viewModel.updateTranscriptionMaxDurationSecs(it) }
         },
-        label = { Text("Max duration (seconds)") },
-        supportingText = { Text("Maximum audio clip length to transcribe") },
+        label = { Text(stringResource(R.string.official_plugin_max_duration_seconds_label)) },
+        supportingText = { Text(stringResource(R.string.official_plugin_max_duration_supporting)) },
         singleLine = true,
         enabled = settings.transcriptionEnabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -411,9 +411,7 @@ private fun QueryClassificationConfig(
     @Suppress("UNUSED_PARAMETER") viewModel: SettingsViewModel,
 ) {
     Text(
-        text =
-            "Query classification analyses incoming messages to route them to " +
-                "the most appropriate model. No additional configuration is required.",
+        text = stringResource(R.string.official_plugin_query_classification_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp),

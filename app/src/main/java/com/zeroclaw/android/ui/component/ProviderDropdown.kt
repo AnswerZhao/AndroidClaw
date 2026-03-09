@@ -26,13 +26,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.model.ProviderCategory
 import com.zeroclaw.android.model.ProviderInfo
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 
 /** Spacing between the provider icon and display name in dropdown items. */
 private const val ICON_NAME_SPACING_DP = 12
@@ -59,14 +63,26 @@ fun ProviderDropdown(
     selectedProviderId: String,
     onProviderSelected: (ProviderInfo) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Provider",
+    label: String = "",
     enabled: Boolean = true,
 ) {
+    val fieldLabel =
+        if (label.isBlank()) {
+            stringResource(R.string.provider_dropdown_label)
+        } else {
+            label
+        }
+    val dropdownContentDescription =
+        stringResource(
+            R.string.provider_dropdown_content_description,
+            fieldLabel,
+        )
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var filterText by remember { mutableStateOf("") }
     val displayText =
-        ProviderRegistry.findById(selectedProviderId)?.displayName
+        ProviderRegistry.findById(selectedProviderId)?.localizedDisplayName(context)
             ?: selectedProviderId.ifEmpty { "" }
 
     val grouped =
@@ -85,7 +101,7 @@ fun ProviderDropdown(
                 grouped
                     .mapValues { (_, providers) ->
                         providers.filter { provider ->
-                            provider.displayName.lowercase().contains(query) ||
+                            provider.localizedDisplayName(context).lowercase().contains(query) ||
                                 provider.id.contains(query) ||
                                 provider.aliases.any { it.contains(query) }
                         }
@@ -102,7 +118,7 @@ fun ProviderDropdown(
             value = if (expanded) filterText else displayText,
             onValueChange = { filterText = it },
             readOnly = !expanded,
-            label = { Text(label) },
+            label = { Text(fieldLabel) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             singleLine = true,
             enabled = enabled,
@@ -110,7 +126,7 @@ fun ProviderDropdown(
                 Modifier
                     .fillMaxWidth()
                     .menuAnchor(MenuAnchorType.PrimaryEditable)
-                    .semantics { contentDescription = "$label dropdown" },
+                    .semantics { contentDescription = dropdownContentDescription },
         )
 
         ExposedDropdownMenu(
@@ -124,8 +140,17 @@ fun ProviderDropdown(
             filteredGrouped.forEach { (category, providers) ->
                 DropdownMenuItem(
                     text = {
+                        val categoryLabel =
+                            when (category) {
+                                ProviderCategory.PRIMARY ->
+                                    stringResource(R.string.provider_dropdown_category_popular)
+                                ProviderCategory.ECOSYSTEM ->
+                                    stringResource(R.string.provider_dropdown_category_more_providers)
+                                ProviderCategory.CUSTOM ->
+                                    stringResource(R.string.provider_dropdown_category_custom_endpoints)
+                            }
                         Text(
-                            text = categoryLabel(category),
+                            text = categoryLabel,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(vertical = SECTION_HEADER_PADDING_DP.dp),
@@ -141,7 +166,7 @@ fun ProviderDropdown(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 ProviderIcon(provider = provider.id)
                                 Spacer(modifier = Modifier.width(ICON_NAME_SPACING_DP.dp))
-                                Text(provider.displayName)
+                                Text(provider.localizedDisplayName())
                             }
                         },
                         onClick = {
@@ -156,16 +181,3 @@ fun ProviderDropdown(
         }
     }
 }
-
-/**
- * Returns a human-readable label for a [ProviderCategory].
- *
- * @param category The category to label.
- * @return Display string for section headers.
- */
-private fun categoryLabel(category: ProviderCategory): String =
-    when (category) {
-        ProviderCategory.PRIMARY -> "Popular"
-        ProviderCategory.ECOSYSTEM -> "More Providers"
-        ProviderCategory.CUSTOM -> "Custom Endpoints"
-    }

@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Extension
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.zeroclaw.android.R
 
 /**
  * Top-level navigation destinations displayed in the bottom navigation bar.
@@ -27,20 +29,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
  *
  * @property selectedIcon Icon displayed when this destination is active.
  * @property unselectedIcon Icon displayed when this destination is inactive.
- * @property label Human-readable label for the destination.
+ * @property labelResId String resource ID for the destination label.
  * @property route Navigation route object for this destination.
  */
 enum class TopLevelDestination(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
-    val label: String,
+    @StringRes val labelResId: Int,
     val route: Any,
 ) {
     /** Dashboard overview with daemon status and activity feed. */
     DASHBOARD(
         selectedIcon = Icons.Filled.Dashboard,
         unselectedIcon = Icons.Outlined.Dashboard,
-        label = "Dashboard",
+        labelResId = R.string.top_level_destination_dashboard,
         route = DashboardRoute,
     ),
 
@@ -48,7 +50,7 @@ enum class TopLevelDestination(
     AGENTS(
         selectedIcon = Icons.Filled.SmartToy,
         unselectedIcon = Icons.Outlined.SmartToy,
-        label = "Connections",
+        labelResId = R.string.top_level_destination_connections,
         route = AgentsRoute,
     ),
 
@@ -56,7 +58,7 @@ enum class TopLevelDestination(
     PLUGINS(
         selectedIcon = Icons.Filled.Extension,
         unselectedIcon = Icons.Outlined.Extension,
-        label = "Plugins",
+        labelResId = R.string.top_level_destination_plugins,
         route = PluginsRoute,
     ),
 
@@ -64,7 +66,7 @@ enum class TopLevelDestination(
     TERMINAL(
         selectedIcon = Icons.Filled.Terminal,
         unselectedIcon = Icons.Outlined.Terminal,
-        label = "Terminal",
+        labelResId = R.string.top_level_destination_terminal,
         route = TerminalRoute,
     ),
 
@@ -72,7 +74,7 @@ enum class TopLevelDestination(
     SETTINGS(
         selectedIcon = Icons.Filled.Settings,
         unselectedIcon = Icons.Outlined.Settings,
-        label = "Settings",
+        labelResId = R.string.top_level_destination_settings,
         route = SettingsRoute,
     ),
 }

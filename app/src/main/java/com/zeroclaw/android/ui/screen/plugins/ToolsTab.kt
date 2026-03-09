@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.plugins
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -67,10 +69,13 @@ fun ToolsTab(
     val searchQuery by toolsBrowserViewModel.searchQuery.collectAsStateWithLifecycle()
     val sourceFilter by toolsBrowserViewModel.sourceFilter.collectAsStateWithLifecycle()
     val sources by toolsBrowserViewModel.availableSources.collectAsStateWithLifecycle()
+    val crossChannelNote = stringResource(R.string.tools_tab_cross_channel_note)
+    val emptyNoToolsAvailable = stringResource(R.string.tools_tab_empty_no_tools_available)
+    val emptyNoToolsMatch = stringResource(R.string.tools_tab_empty_no_tools_match)
 
     Column(modifier = modifier.fillMaxSize()) {
         Text(
-            text = "All tools are available across every channel (Telegram, Discord, REPL, etc.).",
+            text = crossChannelNote,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -78,7 +83,7 @@ fun ToolsTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { toolsBrowserViewModel.updateSearch(it) },
-            label = { Text("Search tools") },
+            label = { Text(stringResource(R.string.plugins_search_tools)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -109,9 +114,9 @@ fun ToolsTab(
                         icon = Icons.Outlined.Build,
                         message =
                             if (searchQuery.isBlank() && sourceFilter == SOURCE_ALL) {
-                                "No tools available. Start the daemon to see tools."
+                                emptyNoToolsAvailable
                             } else {
-                                "No tools match your filters"
+                                emptyNoToolsMatch
                             },
                         modifier =
                             Modifier.semantics {
@@ -144,13 +149,15 @@ private fun SourceFilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         sources.forEach { source ->
+            val filterBySourceContentDescription =
+                stringResource(R.string.tools_tab_filter_by_source_content_description, source)
             FilterChip(
                 selected = source == selected,
                 onClick = { onSelect(source) },
                 label = { Text(source) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Filter by source: $source"
+                        contentDescription = filterBySourceContentDescription
                     },
             )
         }
@@ -191,18 +198,36 @@ private fun ToolCard(
     tool: ToolSpec,
     modifier: Modifier = Modifier,
 ) {
-    val descriptionPart =
-        if (tool.description.isNotBlank()) ": ${tool.description}" else ""
     val statusLabel =
-        if (tool.isActive) "active" else "inactive, ${tool.inactiveReason}"
+        if (tool.isActive) {
+            stringResource(R.string.tools_tab_status_active)
+        } else {
+            stringResource(R.string.tools_tab_status_inactive_with_reason, tool.inactiveReason)
+        }
+    val toolCardContentDescription =
+        if (tool.description.isNotBlank()) {
+            stringResource(
+                R.string.tools_tab_tool_card_content_description_with_description,
+                tool.name,
+                tool.description,
+                tool.source,
+                statusLabel,
+            )
+        } else {
+            stringResource(
+                R.string.tools_tab_tool_card_content_description_no_description,
+                tool.name,
+                tool.source,
+                statusLabel,
+            )
+        }
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 48.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "${tool.name}$descriptionPart, source: ${tool.source}, $statusLabel"
+                    contentDescription = toolCardContentDescription
                 },
         colors =
             CardDefaults.cardColors(

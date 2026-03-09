@@ -2,6 +2,7 @@
 
 package com.zeroclaw.android.ui.screen.dashboard
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.CostSummary
 import com.zeroclaw.android.util.BUDGET_WARNING_THRESHOLD
 import com.zeroclaw.android.util.DEFAULT_MONTHLY_BUDGET_USD
@@ -62,6 +64,22 @@ fun CostSummaryCard(
     val dailyFormatted = formatUsd(costSummary.dailyCostUsd)
     val monthlyFormatted = formatUsd(costSummary.monthlyCostUsd)
     val budgetFormatted = formatUsd(budgetLimit)
+    val costSummaryContentDescription =
+        stringResource(
+            R.string.dashboard_cost_summary_content_description,
+            dailyFormatted,
+            monthlyFormatted,
+        )
+    val costTrackingTitle = stringResource(R.string.dashboard_cost_tracking_title)
+    val todayLabel = stringResource(R.string.dashboard_cost_label_today)
+    val monthLabel = stringResource(R.string.dashboard_cost_label_month)
+    val requestsLabel = stringResource(R.string.dashboard_cost_label_requests)
+    val monthlyBudgetText =
+        stringResource(
+            R.string.dashboard_cost_monthly_budget_progress,
+            monthlyFormatted,
+            budgetFormatted,
+        )
 
     Card(
         modifier =
@@ -71,9 +89,7 @@ fun CostSummaryCard(
                 .clickable(onClick = onClick)
                 .semantics {
                     role = Role.Button
-                    contentDescription =
-                        "Cost summary: $dailyFormatted today, " +
-                        "$monthlyFormatted this month. Tap for details."
+                    contentDescription = costSummaryContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -82,7 +98,7 @@ fun CostSummaryCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Cost Tracking",
+                text = costTrackingTitle,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -91,9 +107,9 @@ fun CostSummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                CostLabel(label = "Today", value = dailyFormatted)
-                CostLabel(label = "Month", value = monthlyFormatted)
-                CostLabel(label = "Requests", value = costSummary.requestCount.toString())
+                CostLabel(label = todayLabel, value = dailyFormatted)
+                CostLabel(label = monthLabel, value = monthlyFormatted)
+                CostLabel(label = requestsLabel, value = costSummary.requestCount.toString())
             }
             Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
@@ -104,7 +120,7 @@ fun CostSummaryCard(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$monthlyFormatted / $budgetFormatted monthly budget",
+                text = monthlyBudgetText,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

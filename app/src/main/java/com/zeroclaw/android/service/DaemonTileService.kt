@@ -123,36 +123,40 @@ class DaemonTileService : TileService() {
     private fun refreshTile(state: ServiceState) {
         val tile = qsTile ?: return
         tile.icon = Icon.createWithResource(this, R.drawable.ic_notification)
+        val runningLabel = getString(R.string.daemon_tile_label_running)
+        val stoppedLabel = getString(R.string.daemon_tile_label_stopped)
+        val errorLabel = getString(R.string.daemon_tile_label_error)
+        val transitioningLabel = getString(R.string.daemon_tile_label_transitioning)
 
         when (state) {
             ServiceState.RUNNING -> {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = LABEL_RUNNING
-                tile.contentDescription = LABEL_RUNNING
+                tile.label = runningLabel
+                tile.contentDescription = runningLabel
             }
 
             ServiceState.STOPPED -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = LABEL_STOPPED
-                tile.contentDescription = LABEL_STOPPED
+                tile.label = stoppedLabel
+                tile.contentDescription = stoppedLabel
             }
 
             ServiceState.ERROR -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = LABEL_ERROR
-                tile.contentDescription = LABEL_ERROR
+                tile.label = errorLabel
+                tile.contentDescription = errorLabel
             }
 
             ServiceState.STARTING -> {
                 tile.state = Tile.STATE_UNAVAILABLE
-                tile.label = LABEL_TRANSITIONING
-                tile.contentDescription = LABEL_TRANSITIONING
+                tile.label = transitioningLabel
+                tile.contentDescription = transitioningLabel
             }
 
             ServiceState.STOPPING -> {
                 tile.state = Tile.STATE_UNAVAILABLE
-                tile.label = LABEL_TRANSITIONING
-                tile.contentDescription = LABEL_TRANSITIONING
+                tile.label = transitioningLabel
+                tile.contentDescription = transitioningLabel
             }
         }
         tile.updateTile()
@@ -193,13 +197,5 @@ class DaemonTileService : TileService() {
                 this.action = action
             }
         startForegroundService(intent)
-    }
-
-    /** Constants for [DaemonTileService]. */
-    companion object {
-        private const val LABEL_RUNNING = "ZeroClaw: Running"
-        private const val LABEL_STOPPED = "ZeroClaw: Stopped"
-        private const val LABEL_ERROR = "ZeroClaw: Error"
-        private const val LABEL_TRANSITIONING = "ZeroClaw: ..."
     }
 }

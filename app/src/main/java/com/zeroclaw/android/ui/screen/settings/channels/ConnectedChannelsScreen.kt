@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings.channels
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,6 +55,7 @@ import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.ConnectedChannel
 import com.zeroclaw.android.ui.component.EmptyState
 import com.zeroclaw.android.ui.component.setup.ChannelSelectionGrid
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 
 /** Minimum touch target height in dp. */
 private const val MIN_TOUCH_TARGET_DP = 48
@@ -95,6 +98,9 @@ fun ConnectedChannelsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showTypePicker by remember { mutableStateOf(false) }
     var channelToDelete by remember { mutableStateOf<ConnectedChannel?>(null) }
+    val addConnectedChannelContentDescription =
+        stringResource(R.string.connected_channels_add_channel_content_description)
+    val noChannelsConnectedMessage = stringResource(R.string.connected_channels_empty_message)
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -110,7 +116,7 @@ fun ConnectedChannelsScreen(
                 onClick = { showTypePicker = true },
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Add connected channel"
+                        contentDescription = addConnectedChannelContentDescription
                     },
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null)
@@ -130,7 +136,7 @@ fun ConnectedChannelsScreen(
             if (channels.isEmpty()) {
                 EmptyState(
                     icon = Icons.Outlined.Forum,
-                    message = "No channels connected yet",
+                    message = noChannelsConnectedMessage,
                 )
             } else {
                 LazyColumn(
@@ -168,7 +174,7 @@ fun ConnectedChannelsScreen(
 
     channelToDelete?.let { channel ->
         ConfirmDeleteDialog(
-            channelName = channel.type.displayName,
+            channelName = channel.type.localizedDisplayName(),
             onConfirm = {
                 channelsViewModel.deleteChannel(channel.id)
                 channelToDelete = null
@@ -193,6 +199,24 @@ private fun ChannelListItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val channelName = channel.type.localizedDisplayName()
+    val enabledLabel = stringResource(R.string.common_enabled)
+    val disabledLabel = stringResource(R.string.common_disabled)
+    val channelStatus =
+        if (channel.isEnabled) {
+            enabledLabel
+        } else {
+            disabledLabel
+        }
+    val channelToggleContentDescription =
+        stringResource(
+            R.string.connected_channels_toggle_content_description,
+            channelName,
+            channelStatus,
+        )
+    val deleteChannelContentDescription =
+        stringResource(R.string.connected_channels_delete_content_description, channelName)
+
     Card(
         onClick = onClick,
         modifier =
@@ -212,11 +236,11 @@ private fun ChannelListItem(
             Spacer(modifier = Modifier.width(ICON_TEXT_SPACING_DP.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = channel.type.displayName,
+                    text = channelName,
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(
-                    text = if (channel.isEnabled) "Enabled" else "Disabled",
+                    text = if (channel.isEnabled) enabledLabel else disabledLabel,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -226,14 +250,13 @@ private fun ChannelListItem(
                 onCheckedChange = { onToggle() },
                 modifier =
                     Modifier.semantics {
-                        contentDescription =
-                            "${channel.type.displayName} ${if (channel.isEnabled) "enabled" else "disabled"}"
+                        contentDescription = channelToggleContentDescription
                     },
             )
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = "Delete ${channel.type.displayName}",
+                    contentDescription = deleteChannelContentDescription,
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -263,7 +286,7 @@ private fun ChannelTypePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Channel") },
+        title = { Text(stringResource(R.string.connected_channels_add_channel)) },
         text = {
             ChannelSelectionGrid(
                 selectedTypes = pendingSelection,
@@ -283,7 +306,7 @@ private fun ChannelTypePickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )
@@ -304,18 +327,18 @@ private fun ConfirmDeleteDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete $channelName?") },
+        title = { Text(stringResource(R.string.connected_channels_delete_title, channelName)) },
         text = {
-            Text("This will remove the channel configuration and all stored credentials.")
+            Text(stringResource(R.string.connected_channels_delete_message))
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )

@@ -10,6 +10,7 @@ import android.app.Application
 import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ActivityEvent
 import com.zeroclaw.android.model.CostSummary
@@ -195,7 +196,11 @@ class DaemonViewModel(
                         stopAllPolling()
                         _statusState.value =
                             DaemonUiState.Error(
-                                detail = bridge.lastError.value ?: "Unknown daemon error",
+                                detail =
+                                    bridge.lastError.value
+                                        ?: getApplication<Application>().getString(
+                                            R.string.daemon_unknown_error_fallback,
+                                        ),
                                 retry = { requestStart() },
                             )
                         _healthDetail.value = null

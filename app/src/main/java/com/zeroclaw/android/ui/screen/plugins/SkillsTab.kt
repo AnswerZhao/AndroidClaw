@@ -2,6 +2,8 @@
 
 package com.zeroclaw.android.ui.screen.plugins
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,7 +65,7 @@ fun SkillsTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { skillsViewModel.updateSearch(it) },
-            label = { Text("Search skills") },
+            label = { Text(stringResource(R.string.plugins_search_skills)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -83,14 +85,15 @@ fun SkillsTab(
             }
             is SkillsUiState.Content -> {
                 if (state.data.isEmpty()) {
+                    val emptyMessage =
+                        if (searchQuery.isBlank()) {
+                            stringResource(R.string.skills_tab_empty_no_skills)
+                        } else {
+                            stringResource(R.string.skills_tab_empty_no_match)
+                        }
                     EmptyState(
                         icon = Icons.Outlined.AutoFixHigh,
-                        message =
-                            if (searchQuery.isBlank()) {
-                                "No skills installed. Use install to add skills from a URL."
-                            } else {
-                                "No skills match your search"
-                            },
+                        message = emptyMessage,
                     )
                 } else {
                     LazyColumn(
@@ -129,15 +132,28 @@ private fun SkillCard(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val cardContentDescription =
+        stringResource(
+            R.string.skills_tab_skill_card_content_description,
+            skill.name,
+            skill.description,
+            skill.toolCount,
+            skill.version,
+        )
+    val removeSkillContentDescription =
+        stringResource(
+            R.string.skills_tab_remove_skill_content_description,
+            skill.name,
+        )
+    val versionLabel = stringResource(R.string.skills_tab_version_label, skill.version)
+    val toolsCountLabel = stringResource(R.string.skills_tab_tools_count, skill.toolCount)
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 48.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "${skill.name}: ${skill.description}, " +
-                        "${skill.toolCount} tools, version ${skill.version}"
+                    contentDescription = cardContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -168,7 +184,7 @@ private fun SkillCard(
                     modifier =
                         Modifier
                             .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .semantics { contentDescription = "Remove skill ${skill.name}" },
+                            .semantics { contentDescription = removeSkillContentDescription },
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
@@ -182,20 +198,20 @@ private fun SkillCard(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "v${skill.version}",
+                    text = versionLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 skill.author?.let { author ->
                     Text(
-                        text = " \u2022 $author",
+                        text = stringResource(R.string.skills_tab_author_with_bullet, author),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "${skill.toolCount} tools",
+                    text = toolsCountLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -219,7 +235,14 @@ private fun SkillCard(
                 Text(
                     text =
                         displayNames.joinToString(", ") +
-                            if (remaining > 0) " +$remaining more" else "",
+                            if (remaining > 0) {
+                                stringResource(
+                                    R.string.skills_tab_more_tools_suffix,
+                                    remaining,
+                                )
+                            } else {
+                                ""
+                            },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

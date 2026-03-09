@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.SettingsToggleRow
 
@@ -57,14 +59,14 @@ fun SchedulerScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Task Scheduler")
+        SectionHeader(title = stringResource(R.string.scheduler_section_task_scheduler))
 
         SettingsToggleRow(
-            title = "Enable scheduler",
-            subtitle = "Allow cron-style scheduled tasks",
+            title = stringResource(R.string.scheduler_enable_scheduler_title),
+            subtitle = stringResource(R.string.scheduler_enable_scheduler_subtitle),
             checked = settings.schedulerEnabled,
             onCheckedChange = { settingsViewModel.updateSchedulerEnabled(it) },
-            contentDescription = "Enable task scheduler",
+            contentDescription = stringResource(R.string.scheduler_enable_scheduler_content_description),
         )
 
         OutlinedTextField(
@@ -72,7 +74,7 @@ fun SchedulerScreen(
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateSchedulerMaxTasks(it) }
             },
-            label = { Text("Max tasks") },
+            label = { Text(stringResource(R.string.scheduler_max_tasks_label)) },
             singleLine = true,
             enabled = settings.schedulerEnabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -84,21 +86,21 @@ fun SchedulerScreen(
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateSchedulerMaxConcurrent(it) }
             },
-            label = { Text("Max concurrent") },
+            label = { Text(stringResource(R.string.scheduler_max_concurrent_label)) },
             singleLine = true,
             enabled = settings.schedulerEnabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Heartbeat")
+        SectionHeader(title = stringResource(R.string.scheduler_section_heartbeat))
 
         SettingsToggleRow(
-            title = "Enable heartbeat",
-            subtitle = "Periodic heartbeat ticks for keep-alive and monitoring",
+            title = stringResource(R.string.scheduler_enable_heartbeat_title),
+            subtitle = stringResource(R.string.scheduler_enable_heartbeat_subtitle),
             checked = settings.heartbeatEnabled,
             onCheckedChange = { settingsViewModel.updateHeartbeatEnabled(it) },
-            contentDescription = "Enable heartbeat",
+            contentDescription = stringResource(R.string.scheduler_enable_heartbeat_content_description),
         )
 
         OutlinedTextField(
@@ -106,7 +108,7 @@ fun SchedulerScreen(
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateHeartbeatIntervalMinutes(it) }
             },
-            label = { Text("Interval (minutes)") },
+            label = { Text(stringResource(R.string.scheduler_interval_minutes_label)) },
             singleLine = true,
             enabled = settings.heartbeatEnabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

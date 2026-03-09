@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.data.validation
 
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.data.remote.ModelFetcher
 import com.zeroclaw.android.model.ModelListFormat
@@ -54,13 +55,15 @@ object ProviderValidator {
             val provider =
                 ProviderRegistry.findById(providerId)
                     ?: return@withContext ValidationResult.Failure(
-                        message = "Unknown provider",
+                        message = "",
                         retryable = false,
+                        messageResId = R.string.validation_provider_unknown_provider,
                     )
 
             if (provider.modelListFormat == ModelListFormat.NONE) {
                 return@withContext ValidationResult.Success(
-                    details = "Provider configured (no endpoint to validate)",
+                    details = "",
+                    detailsResId = R.string.validation_provider_configured_no_endpoint,
                 )
             }
 
@@ -97,13 +100,15 @@ object ProviderValidator {
         val provider =
             ProviderRegistry.findById(providerId)
                 ?: return ValidationResult.Failure(
-                    message = "Unknown provider",
+                    message = "",
                     retryable = false,
+                    messageResId = R.string.validation_provider_unknown_provider,
                 )
 
         if (provider.modelListFormat == ModelListFormat.NONE) {
             return ValidationResult.Success(
-                details = "Provider configured (no endpoint to validate)",
+                details = "",
+                detailsResId = R.string.validation_provider_configured_no_endpoint,
             )
         }
 
@@ -121,9 +126,16 @@ object ProviderValidator {
      */
     private fun classifySuccess(models: List<String>): ValidationResult.Success {
         val count = models.size
-        val noun = if (count == 1) "model" else "models"
+        val detailsResId =
+            if (count == 1) {
+                R.string.validation_provider_connected_models_singular
+            } else {
+                R.string.validation_provider_connected_models_plural
+            }
         return ValidationResult.Success(
-            details = "Connected \u2014 $count $noun available",
+            details = "",
+            detailsResId = detailsResId,
+            detailsArgs = listOf(count),
         )
     }
 
@@ -144,14 +156,17 @@ object ProviderValidator {
 
         if (AUTH_PATTERN_401 in message || AUTH_PATTERN_403 in message) {
             return ValidationResult.Failure(
-                message = "Invalid API key \u2014 check your credentials",
+                message = "",
                 retryable = false,
+                messageResId = R.string.validation_provider_invalid_api_key,
             )
         }
 
         val safeMessage = LogSanitizer.sanitizeLogMessage(message)
         return ValidationResult.Offline(
-            message = "Could not reach provider \u2014 $safeMessage",
+            message = "",
+            messageResId = R.string.validation_provider_unreachable,
+            messageArgs = listOf(safeMessage),
         )
     }
 }

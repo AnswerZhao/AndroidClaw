@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,13 +63,13 @@ fun RestartRequiredBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Restart daemon to apply configuration changes",
+                text = stringResource(R.string.restart_required_banner_message),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
                 modifier = Modifier.weight(1f),
             )
             FilledTonalButton(onClick = onRestartDaemon) {
-                Text("Restart")
+                Text(stringResource(R.string.common_restart))
             }
         }
     }

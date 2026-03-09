@@ -31,17 +31,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.channel.ChannelSetupSpecs
 import com.zeroclaw.android.ui.component.setup.ChannelSelectionGrid
 import com.zeroclaw.android.ui.component.setup.ChannelSetupFlow
 import com.zeroclaw.android.ui.component.setup.IdentityConfigFlow
 import com.zeroclaw.android.ui.component.setup.MemoryConfigFlow
 import com.zeroclaw.android.ui.component.setup.TunnelConfigFlow
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 import com.zeroclaw.android.ui.screen.onboarding.state.ChannelSubFlowState
 import com.zeroclaw.android.ui.screen.onboarding.steps.ActivationStep
 import com.zeroclaw.android.ui.screen.onboarding.steps.PermissionsStep
@@ -182,6 +185,13 @@ internal fun OnboardingContent(
     stepContent: @Composable (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val stepIndicatorText =
+        stringResource(
+            R.string.onboarding_step_indicator,
+            state.currentStep + 1,
+            state.totalSteps,
+        )
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
@@ -199,15 +209,14 @@ internal fun OnboardingContent(
                     Modifier
                         .fillMaxWidth()
                         .semantics {
-                            contentDescription =
-                                "Step ${state.currentStep + 1} of ${state.totalSteps}"
+                            contentDescription = stepIndicatorText
                         },
             )
 
             Spacer(modifier = Modifier.height(ProgressLabelSpacing))
 
             Text(
-                text = "Step ${state.currentStep + 1} of ${state.totalSteps}",
+                text = stepIndicatorText,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -227,7 +236,7 @@ internal fun OnboardingContent(
                         onClick = onPreviousStep,
                         modifier = Modifier.defaultMinSize(minHeight = MinButtonHeight),
                     ) {
-                        Text("Back")
+                        Text(stringResource(R.string.onboarding_nav_back))
                     }
                 } else {
                     Spacer(modifier = Modifier)
@@ -237,7 +246,7 @@ internal fun OnboardingContent(
                         onClick = onNextStep,
                         modifier = Modifier.defaultMinSize(minHeight = MinButtonHeight),
                     ) {
-                        Text("Next")
+                        Text(stringResource(R.string.onboarding_nav_next))
                     }
                 }
             }
@@ -368,9 +377,15 @@ private fun ChannelStepCollector(coordinator: OnboardingCoordinator) {
                     val state = subFlowStates[type]
                     val label =
                         if (state?.completed == true) {
-                            "Reconfigure ${type.displayName}"
+                            stringResource(
+                                R.string.onboarding_channel_reconfigure,
+                                type.localizedDisplayName(),
+                            )
                         } else {
-                            "Configure ${type.displayName}"
+                            stringResource(
+                                R.string.onboarding_channel_configure,
+                                type.localizedDisplayName(),
+                            )
                         }
                     FilledTonalButton(
                         onClick = { coordinator.startChannelSubFlow(type) },

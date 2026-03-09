@@ -26,10 +26,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
+import com.zeroclaw.android.model.ChannelType
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Internal padding for the summary card. */
@@ -60,7 +64,7 @@ private val IconTextSpacing = 8.dp
  * @property autonomy Autonomy level: "supervised", "constrained", or "unconstrained".
  * @property memoryBackend Memory backend: "sqlite", "markdown", or "none".
  * @property autoSave Whether the memory auto-save feature is enabled.
- * @property channels List of configured channel display names.
+ * @property channels List of configured channel identifiers (TOML keys) or display names.
  * @property tunnel Tunnel provider: "none", "ngrok", "cloudflare", or "custom".
  * @property identityFormat Identity format: "openclaw" or "aieos".
  * @property agentName The configured agent name, or blank if not set.
@@ -99,35 +103,63 @@ fun ConfigSummaryCard(
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
     ) {
+        val notConfiguredText = stringResource(R.string.config_summary_not_configured)
+        val noneConfiguredText = stringResource(R.string.config_summary_none_configured)
+        val notNamedText = stringResource(R.string.config_summary_not_named)
+        val autoSaveSuffix = stringResource(R.string.config_summary_auto_save_suffix)
+        val autonomyValue =
+            when (summary.autonomy) {
+                "supervised" -> stringResource(R.string.autonomy_option_supervised_title)
+                "constrained" -> stringResource(R.string.autonomy_option_constrained_title)
+                "unconstrained" -> stringResource(R.string.autonomy_option_unconstrained_title)
+                else -> summary.autonomy.replaceFirstChar { it.uppercase() }
+            }
+        val memoryBackendValue =
+            when (summary.memoryBackend) {
+                "sqlite" -> stringResource(R.string.memory_backend_sqlite_title)
+                "markdown" -> stringResource(R.string.memory_backend_markdown_title)
+                "none" -> stringResource(R.string.memory_backend_none_title)
+                else -> summary.memoryBackend.replaceFirstChar { it.uppercase() }
+            }
+        val tunnelValue =
+            when (summary.tunnel) {
+                "none" -> stringResource(R.string.tunnel_option_none_title)
+                "ngrok" -> stringResource(R.string.tunnel_option_ngrok_title)
+                "cloudflare" -> stringResource(R.string.tunnel_option_cloudflare_title)
+                "tailscale" -> stringResource(R.string.tunnel_option_tailscale_title)
+                "custom" -> stringResource(R.string.tunnel_option_custom_title)
+                else -> summary.tunnel.replaceFirstChar { it.uppercase() }
+            }
+
         Column(
             modifier = Modifier.padding(CardPadding),
         ) {
             Text(
-                text = "Configuration Summary",
+                text = stringResource(R.string.config_summary_title),
                 style = MaterialTheme.typography.titleLarge,
             )
 
             Spacer(modifier = Modifier.height(TitleSpacing))
 
             SummaryRow(
-                label = "Provider",
-                value = summary.provider.ifBlank { "Not configured" },
+                label = stringResource(R.string.config_summary_label_provider),
+                value = summary.provider.ifBlank { notConfiguredText },
                 isConfigured = summary.provider.isNotBlank(),
             )
 
             Spacer(modifier = Modifier.height(RowSpacing))
 
             SummaryRow(
-                label = "Model",
-                value = summary.model.ifBlank { "Not configured" },
+                label = stringResource(R.string.config_summary_label_model),
+                value = summary.model.ifBlank { notConfiguredText },
                 isConfigured = summary.model.isNotBlank(),
             )
 
             Spacer(modifier = Modifier.height(RowSpacing))
 
             SummaryRow(
-                label = "Autonomy",
-                value = summary.autonomy.replaceFirstChar { it.uppercase() },
+                label = stringResource(R.string.config_summary_label_autonomy),
+                value = autonomyValue,
                 isConfigured = true,
             )
 
@@ -135,13 +167,15 @@ fun ConfigSummaryCard(
 
             val memoryValue =
                 buildString {
-                    append(summary.memoryBackend.replaceFirstChar { it.uppercase() })
+                    append(memoryBackendValue)
                     if (summary.autoSave) {
-                        append(" (auto-save)")
+                        append(" (")
+                        append(autoSaveSuffix)
+                        append(")")
                     }
                 }
             SummaryRow(
-                label = "Memory",
+                label = stringResource(R.string.config_summary_label_memory),
                 value = memoryValue,
                 isConfigured = true,
             )
@@ -150,12 +184,19 @@ fun ConfigSummaryCard(
 
             val channelsValue =
                 if (summary.channels.isEmpty()) {
-                    "None configured"
+                    noneConfiguredText
                 } else {
-                    summary.channels.joinToString(", ")
+                    summary.channels
+                        .map { channel ->
+                            ChannelType.entries
+                                .find {
+                                    it.tomlKey == channel ||
+                                        it.displayName.equals(channel, ignoreCase = true)
+                                }?.localizedDisplayName() ?: channel
+                        }.joinToString(", ")
                 }
             SummaryRow(
-                label = "Channels",
+                label = stringResource(R.string.config_summary_label_channels),
                 value = channelsValue,
                 isConfigured = summary.channels.isNotEmpty(),
             )
@@ -163,19 +204,19 @@ fun ConfigSummaryCard(
             Spacer(modifier = Modifier.height(RowSpacing))
 
             SummaryRow(
-                label = "Tunnel",
-                value = summary.tunnel.replaceFirstChar { it.uppercase() },
+                label = stringResource(R.string.config_summary_label_tunnel),
+                value = tunnelValue,
                 isConfigured = true,
             )
 
             Spacer(modifier = Modifier.height(RowSpacing))
 
             SummaryRow(
-                label = "Identity",
+                label = stringResource(R.string.config_summary_label_identity),
                 value =
                     when (summary.identityFormat) {
-                        "aieos" -> "AIEOS"
-                        else -> "OpenClaw"
+                        "aieos" -> stringResource(R.string.identity_format_aieos_title)
+                        else -> stringResource(R.string.identity_format_openclaw_title)
                     },
                 isConfigured = true,
             )
@@ -183,8 +224,8 @@ fun ConfigSummaryCard(
             Spacer(modifier = Modifier.height(RowSpacing))
 
             SummaryRow(
-                label = "Agent",
-                value = summary.agentName.ifBlank { "Not named" },
+                label = stringResource(R.string.config_summary_label_agent),
+                value = summary.agentName.ifBlank { notNamedText },
                 isConfigured = summary.agentName.isNotBlank(),
             )
         }
@@ -208,14 +249,19 @@ private fun SummaryRow(
     value: String,
     isConfigured: Boolean,
 ) {
+    val rowContentDescription =
+        stringResource(
+            R.string.config_summary_row_content_description,
+            label,
+            value,
+        )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .semantics(mergeDescendants = true) {
-                    contentDescription = "$label: $value"
-                },
+                .semantics(mergeDescendants = true) { contentDescription = rowContentDescription },
     ) {
         Icon(
             imageVector =

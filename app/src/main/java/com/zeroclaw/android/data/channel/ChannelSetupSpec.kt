@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.data.channel
 
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.ChannelFieldSpec
 import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.util.DeepLinkTarget
@@ -40,7 +41,8 @@ data class ChannelSetupSpec(
  * @property optional Whether the user may skip this step entirely.
  */
 data class ChannelSetupStepSpec(
-    val title: String,
+    val title: String = "",
+    val titleResId: Int? = null,
     val instructions: List<InstructionItem>,
     val deepLink: DeepLinkTarget? = null,
     val fields: List<ChannelFieldSpec>,
@@ -61,7 +63,8 @@ sealed interface InstructionItem {
      * @property content The text content to display.
      */
     data class Text(
-        val content: String,
+        val content: String = "",
+        val contentResId: Int? = null,
     ) : InstructionItem
 
     /**
@@ -72,7 +75,8 @@ sealed interface InstructionItem {
      */
     data class NumberedStep(
         val number: Int,
-        val content: String,
+        val content: String = "",
+        val contentResId: Int? = null,
     ) : InstructionItem
 
     /**
@@ -81,7 +85,8 @@ sealed interface InstructionItem {
      * @property content The warning message to display.
      */
     data class Warning(
-        val content: String,
+        val content: String = "",
+        val contentResId: Int? = null,
     ) : InstructionItem
 
     /**
@@ -91,7 +96,8 @@ sealed interface InstructionItem {
      * @property expandable Whether the hint is initially collapsed.
      */
     data class Hint(
-        val content: String,
+        val content: String = "",
+        val contentResId: Int? = null,
         val expandable: Boolean = false,
     ) : InstructionItem
 }
@@ -177,12 +183,11 @@ object ChannelSetupSpecs {
             buildList {
                 add(
                     ChannelSetupStepSpec(
-                        title = "Credentials",
+                        titleResId = R.string.channel_setup_title_credentials,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Enter the credentials for your " +
-                                        "${type.displayName} integration.",
+                                    contentResId = R.string.channel_setup_instruction_generic_credentials,
                                 ),
                             ),
                         fields = credentials,
@@ -191,12 +196,11 @@ object ChannelSetupSpecs {
                 if (configuration.isNotEmpty()) {
                     add(
                         ChannelSetupStepSpec(
-                            title = "Configuration",
+                            titleResId = R.string.channel_setup_title_configuration,
                             instructions =
                                 listOf(
                                     InstructionItem.Text(
-                                        "Configure additional settings for " +
-                                            "${type.displayName}.",
+                                        contentResId = R.string.channel_setup_instruction_generic_configuration,
                                     ),
                                 ),
                             fields = configuration,
@@ -230,27 +234,26 @@ object ChannelSetupSpecs {
             steps =
                 listOf(
                     ChannelSetupStepSpec(
-                        title = "Create a Telegram Bot",
+                        titleResId = R.string.channel_setup_title_create_telegram_bot,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Create a new bot using Telegram's BotFather.",
+                                    contentResId = R.string.channel_setup_instruction_telegram_create_bot,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    1,
-                                    "Open BotFather using the link below.",
+                                    number = 1,
+                                    contentResId = R.string.channel_setup_instruction_telegram_open_botfather,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    2,
-                                    "Send /newbot and follow the prompts.",
+                                    number = 2,
+                                    contentResId = R.string.channel_setup_instruction_telegram_send_newbot,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    3,
-                                    "Copy the API token BotFather gives you.",
+                                    number = 3,
+                                    contentResId = R.string.channel_setup_instruction_telegram_copy_token,
                                 ),
                                 InstructionItem.Warning(
-                                    "Keep your bot token secret. Anyone with the " +
-                                        "token can control your bot.",
+                                    contentResId = R.string.channel_setup_instruction_telegram_keep_token_secret,
                                 ),
                             ),
                         deepLink = ExternalAppLauncher.TELEGRAM_BOTFATHER,
@@ -258,28 +261,26 @@ object ChannelSetupSpecs {
                         validatorType = ValidatorType.TELEGRAM_BOT_TOKEN,
                     ),
                     ChannelSetupStepSpec(
-                        title = "Allow Your Account",
+                        titleResId = R.string.channel_setup_title_allow_your_account,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Restrict which Telegram users can interact " +
-                                        "with your bot.",
+                                    contentResId = R.string.channel_setup_instruction_telegram_restrict_users,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    1,
-                                    "Open the userinfobot link below.",
+                                    number = 1,
+                                    contentResId = R.string.channel_setup_instruction_telegram_open_userinfobot,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    2,
-                                    "Send any message to get your numeric user ID.",
+                                    number = 2,
+                                    contentResId = R.string.channel_setup_instruction_telegram_get_user_id,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    3,
-                                    "Paste your user ID into the field below.",
+                                    number = 3,
+                                    contentResId = R.string.channel_setup_instruction_telegram_paste_user_id,
                                 ),
                                 InstructionItem.Hint(
-                                    "You can add multiple user IDs separated " +
-                                        "by commas.",
+                                    contentResId = R.string.channel_setup_instruction_telegram_multiple_user_ids,
                                     expandable = true,
                                 ),
                             ),
@@ -287,11 +288,11 @@ object ChannelSetupSpecs {
                         fields = ChannelType.TELEGRAM.fieldsByKey("allowed_users"),
                     ),
                     ChannelSetupStepSpec(
-                        title = "Advanced Settings",
+                        titleResId = R.string.channel_setup_title_advanced_settings,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Configure optional Telegram-specific behaviour.",
+                                    contentResId = R.string.channel_setup_instruction_telegram_advanced,
                                 ),
                             ),
                         fields =
@@ -311,32 +312,30 @@ object ChannelSetupSpecs {
             steps =
                 listOf(
                     ChannelSetupStepSpec(
-                        title = "Create a Discord Bot",
+                        titleResId = R.string.channel_setup_title_create_discord_bot,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Create a new application in the Discord " +
-                                        "Developer Portal.",
+                                    contentResId = R.string.channel_setup_instruction_discord_create_application,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    1,
-                                    "Open the Developer Portal using the link below.",
+                                    number = 1,
+                                    contentResId = R.string.channel_setup_instruction_discord_open_portal,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    2,
-                                    "Click \"New Application\" and give it a name.",
+                                    number = 2,
+                                    contentResId = R.string.channel_setup_instruction_discord_new_application,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    3,
-                                    "Go to the Bot section and click \"Reset Token\".",
+                                    number = 3,
+                                    contentResId = R.string.channel_setup_instruction_discord_reset_token,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    4,
-                                    "Copy the bot token.",
+                                    number = 4,
+                                    contentResId = R.string.channel_setup_instruction_discord_copy_token,
                                 ),
                                 InstructionItem.Warning(
-                                    "Enable the Message Content Intent under " +
-                                        "Privileged Gateway Intents.",
+                                    contentResId = R.string.channel_setup_instruction_discord_enable_intent,
                                 ),
                             ),
                         deepLink = ExternalAppLauncher.DISCORD_DEV_PORTAL,
@@ -344,16 +343,14 @@ object ChannelSetupSpecs {
                         validatorType = ValidatorType.DISCORD_BOT_TOKEN,
                     ),
                     ChannelSetupStepSpec(
-                        title = "Configure Server",
+                        titleResId = R.string.channel_setup_title_configure_server,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Specify which Discord server the bot should " +
-                                        "operate in.",
+                                    contentResId = R.string.channel_setup_instruction_discord_configure_server,
                                 ),
                                 InstructionItem.Hint(
-                                    "Enable Developer Mode in Discord settings " +
-                                        "to copy server and user IDs.",
+                                    contentResId = R.string.channel_setup_instruction_discord_enable_dev_mode,
                                     expandable = true,
                                 ),
                             ),
@@ -364,11 +361,11 @@ object ChannelSetupSpecs {
                             ),
                     ),
                     ChannelSetupStepSpec(
-                        title = "Advanced Settings",
+                        titleResId = R.string.channel_setup_title_advanced_settings,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Configure optional Discord-specific behaviour.",
+                                    contentResId = R.string.channel_setup_instruction_discord_advanced,
                                 ),
                             ),
                         fields = ChannelType.DISCORD.fieldsByKey("listen_to_bots"),
@@ -384,40 +381,34 @@ object ChannelSetupSpecs {
             steps =
                 listOf(
                     ChannelSetupStepSpec(
-                        title = "Create a Slack App",
+                        titleResId = R.string.channel_setup_title_create_slack_app,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Create a new Slack app with bot and event " +
-                                        "subscriptions.",
+                                    contentResId = R.string.channel_setup_instruction_slack_create_app,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    1,
-                                    "Open the Slack App Console using the link below.",
+                                    number = 1,
+                                    contentResId = R.string.channel_setup_instruction_slack_open_console,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    2,
-                                    "Click \"Create New App\" and choose " +
-                                        "\"From scratch\".",
+                                    number = 2,
+                                    contentResId = R.string.channel_setup_instruction_slack_create_new_app,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    3,
-                                    "Under OAuth & Permissions, add the " +
-                                        "required bot scopes.",
+                                    number = 3,
+                                    contentResId = R.string.channel_setup_instruction_slack_add_scopes,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    4,
-                                    "Install the app to your workspace and copy " +
-                                        "the Bot Token (xoxb-...).",
+                                    number = 4,
+                                    contentResId = R.string.channel_setup_instruction_slack_install_copy_bot_token,
                                 ),
                                 InstructionItem.NumberedStep(
-                                    5,
-                                    "Under Basic Information, generate an App-Level " +
-                                        "Token (xapp-...) with connections:write scope.",
+                                    number = 5,
+                                    contentResId = R.string.channel_setup_instruction_slack_generate_app_token,
                                 ),
                                 InstructionItem.Warning(
-                                    "You need both a Bot Token (xoxb-...) and an " +
-                                        "App Token (xapp-...) for Socket Mode.",
+                                    contentResId = R.string.channel_setup_instruction_slack_need_both_tokens,
                                 ),
                             ),
                         deepLink = ExternalAppLauncher.SLACK_APP_CONSOLE,
@@ -429,17 +420,14 @@ object ChannelSetupSpecs {
                         validatorType = ValidatorType.SLACK_BOT_TOKEN,
                     ),
                     ChannelSetupStepSpec(
-                        title = "Configure Channel",
+                        titleResId = R.string.channel_setup_title_configure_channel,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Specify which Slack channel the bot should " +
-                                        "listen in.",
+                                    contentResId = R.string.channel_setup_instruction_slack_configure_channel,
                                 ),
                                 InstructionItem.Hint(
-                                    "Right-click a channel name and select " +
-                                        "\"View channel details\" to find the " +
-                                        "Channel ID at the bottom.",
+                                    contentResId = R.string.channel_setup_instruction_slack_find_channel_id,
                                     expandable = true,
                                 ),
                             ),
@@ -450,11 +438,11 @@ object ChannelSetupSpecs {
                             ),
                     ),
                     ChannelSetupStepSpec(
-                        title = "Advanced Settings",
+                        titleResId = R.string.channel_setup_title_advanced_settings,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Configure optional Slack-specific behaviour.",
+                                    contentResId = R.string.channel_setup_instruction_slack_advanced,
                                 ),
                             ),
                         fields =
@@ -476,22 +464,18 @@ object ChannelSetupSpecs {
             steps =
                 listOf(
                     ChannelSetupStepSpec(
-                        title = "Connect to Matrix",
+                        titleResId = R.string.channel_setup_title_connect_to_matrix,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Enter your Matrix homeserver URL and access " +
-                                        "token.",
+                                    contentResId = R.string.channel_setup_instruction_matrix_enter_homeserver_token,
                                 ),
                                 InstructionItem.Hint(
-                                    "You can generate an access token from your " +
-                                        "Matrix client's security settings or via " +
-                                        "the /_matrix/client/v3/login API.",
+                                    contentResId = R.string.channel_setup_instruction_matrix_generate_access_token,
                                     expandable = true,
                                 ),
                                 InstructionItem.Warning(
-                                    "Keep your access token secret. It grants " +
-                                        "full access to your Matrix account.",
+                                    contentResId = R.string.channel_setup_instruction_matrix_keep_token_secret,
                                 ),
                             ),
                         fields =
@@ -502,16 +486,14 @@ object ChannelSetupSpecs {
                         validatorType = ValidatorType.MATRIX_ACCESS_TOKEN,
                     ),
                     ChannelSetupStepSpec(
-                        title = "Configure Room",
+                        titleResId = R.string.channel_setup_title_configure_room,
                         instructions =
                             listOf(
                                 InstructionItem.Text(
-                                    "Specify the Matrix room and allowed users.",
+                                    contentResId = R.string.channel_setup_instruction_matrix_configure_room_users,
                                 ),
                                 InstructionItem.Hint(
-                                    "The room ID looks like !abc123:matrix.org. " +
-                                        "Find it in your client's room settings " +
-                                        "under \"Advanced\".",
+                                    contentResId = R.string.channel_setup_instruction_matrix_find_room_id,
                                     expandable = true,
                                 ),
                             ),

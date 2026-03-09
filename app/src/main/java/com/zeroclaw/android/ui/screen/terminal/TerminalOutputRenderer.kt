@@ -8,6 +8,8 @@
 
 package com.zeroclaw.android.ui.screen.terminal
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -95,7 +97,12 @@ private fun InputBlock(
     modifier: Modifier = Modifier,
 ) {
     val isCommand = block.text.startsWith("/")
-    val description = if (isCommand) "Command: ${block.text}" else "Message: ${block.text}"
+    val description =
+        if (isCommand) {
+            stringResource(R.string.terminal_output_command_content_description, block.text)
+        } else {
+            stringResource(R.string.terminal_output_message_content_description, block.text)
+        }
 
     Column(
         modifier =
@@ -126,7 +133,11 @@ private fun InputBlock(
         )
         for (imageName in block.imageNames) {
             Text(
-                text = "  [image: $imageName]",
+                text =
+                    stringResource(
+                        R.string.terminal_output_image_attachment,
+                        imageName,
+                    ),
                 style = TerminalTypography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -186,7 +197,11 @@ private fun StructuredBlock(
     modifier: Modifier = Modifier,
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
-    val formattedContent = remember(block.json) { formatStructuredJson(block.json) }
+    val emptyValueLabel = stringResource(R.string.terminal_output_empty)
+    val formattedContent =
+        remember(block.json, emptyValueLabel) {
+            formatStructuredJson(block.json, emptyValueLabel)
+        }
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -232,8 +247,9 @@ private fun ErrorBlock(
     onCopy: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val errorText = stringResource(R.string.terminal_output_error_message, block.message)
     Text(
-        text = "Error: ${block.message}",
+        text = errorText,
         style = TerminalTypography.bodyMedium,
         color = MaterialTheme.colorScheme.error,
         modifier =
@@ -243,7 +259,7 @@ private fun ErrorBlock(
                     onClick = {},
                     onLongClick = { onCopy(block.message) },
                 ).semantics(mergeDescendants = true) {
-                    contentDescription = "Error: ${block.message}"
+                    contentDescription = errorText
                 }.padding(
                     horizontal = BLOCK_HORIZONTAL_PADDING_DP.dp,
                     vertical = BLOCK_VERTICAL_PADDING_DP.dp,
@@ -296,13 +312,16 @@ private fun SystemBlock(
  * @param json The raw JSON string to format.
  * @return A human-readable text representation.
  */
-private fun formatStructuredJson(json: String): String {
+private fun formatStructuredJson(
+    json: String,
+    emptyValueLabel: String,
+): String {
     val trimmed = json.trim()
     if (trimmed.startsWith("{")) {
         return formatJsonObject(trimmed)
     }
     if (trimmed.startsWith("[")) {
-        return formatJsonArray(trimmed)
+        return formatJsonArray(trimmed, emptyValueLabel)
     }
     return trimmed
 }
@@ -370,13 +389,16 @@ private fun formatCostObject(obj: JSONObject): String =
  * @param json A JSON array string.
  * @return A numbered list of entries, or pretty-printed JSON on parse failure.
  */
-private fun formatJsonArray(json: String): String {
+private fun formatJsonArray(
+    json: String,
+    emptyValueLabel: String,
+): String {
     val arr =
         runCatching { JSONArray(json) }.getOrNull()
             ?: return json
 
     if (arr.length() == 0) {
-        return "(empty)"
+        return emptyValueLabel
     }
 
     return buildString {

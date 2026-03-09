@@ -1510,6 +1510,10 @@ pub(crate) fn session_send_inner(
             zeroclaw_dir: config.config_path.parent().map(std::path::PathBuf::from),
             secrets_encrypt: config.secrets.encrypt,
             reasoning_enabled: config.runtime.reasoning_enabled,
+            reasoning_level: None,
+            custom_provider_api_mode: None,
+            max_tokens_override: None,
+            model_support_vision: None,
         };
 
         let provider = zeroclaw::providers::create_routed_provider_with_options(

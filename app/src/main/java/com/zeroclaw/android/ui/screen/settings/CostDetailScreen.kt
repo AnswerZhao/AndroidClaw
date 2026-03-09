@@ -2,6 +2,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +38,7 @@ import com.zeroclaw.android.util.BUDGET_WARNING_THRESHOLD
 import com.zeroclaw.android.util.DEFAULT_MONTHLY_BUDGET_USD
 import com.zeroclaw.android.util.MAX_PROGRESS
 import com.zeroclaw.android.util.formatUsd
+import java.text.NumberFormat
 import java.util.Locale
 
 /**
@@ -127,13 +130,13 @@ private fun CostDetailContent(
         }
 
         item(key = "breakdown_header") {
-            SectionHeader(title = "Per-Model Breakdown")
+            SectionHeader(title = stringResource(R.string.cost_detail_section_per_model_breakdown))
         }
 
         if (data.modelBreakdown.isEmpty()) {
             item(key = "no_breakdown") {
                 Text(
-                    text = "No model usage data available yet.",
+                    text = stringResource(R.string.cost_detail_no_model_usage_data),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -154,7 +157,7 @@ private fun CostDetailContent(
                 horizontalArrangement = Arrangement.Center,
             ) {
                 TextButton(onClick = onRefresh) {
-                    Text("Refresh")
+                    Text(stringResource(R.string.common_refresh))
                 }
             }
         }
@@ -192,17 +195,17 @@ private fun CostTotalsCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Cost Summary",
+                text = stringResource(R.string.cost_detail_cost_summary_title),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            CostRow(label = "Session", value = formatUsd(sessionCost))
-            CostRow(label = "Today", value = formatUsd(dailyCost))
-            CostRow(label = "This Month", value = formatUsd(monthlyCost))
+            CostRow(label = stringResource(R.string.cost_detail_session_label), value = formatUsd(sessionCost))
+            CostRow(label = stringResource(R.string.cost_detail_today_label), value = formatUsd(dailyCost))
+            CostRow(label = stringResource(R.string.cost_detail_this_month_label), value = formatUsd(monthlyCost))
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            CostRow(label = "Total Tokens", value = formatTokens(totalTokens))
-            CostRow(label = "Requests", value = requestCount.toString())
+            CostRow(label = stringResource(R.string.cost_detail_total_tokens_label), value = formatTokens(totalTokens))
+            CostRow(label = stringResource(R.string.cost_detail_requests_label), value = requestCount.toString())
         }
     }
 }
@@ -235,7 +238,7 @@ private fun BudgetCard(monthlyCost: Double) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Monthly Budget",
+                text = stringResource(R.string.cost_detail_monthly_budget_title),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -248,7 +251,7 @@ private fun BudgetCard(monthlyCost: Double) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${formatUsd(monthlyCost)} / ${formatUsd(budgetLimit)}",
+                text = stringResource(R.string.cost_detail_budget_value, formatUsd(monthlyCost), formatUsd(budgetLimit)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -267,15 +270,21 @@ private fun ModelBreakdownRow(
     entry: ModelCostEntry,
     modifier: Modifier = Modifier,
 ) {
+    val breakdownContentDescription =
+        stringResource(
+            R.string.cost_detail_model_breakdown_content_description,
+            entry.model,
+            formatUsd(entry.costUsd),
+            formatTokens(entry.tokens),
+            entry.requests,
+        )
+
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "${entry.model}: ${formatUsd(entry.costUsd)}, " +
-                        "${formatTokens(entry.tokens)} tokens, " +
-                        "${entry.requests} requests"
+                    contentDescription = breakdownContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -299,12 +308,12 @@ private fun ModelBreakdownRow(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "${formatTokens(entry.tokens)} tokens",
+                    text = stringResource(R.string.cost_detail_tokens_value, formatTokens(entry.tokens)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${entry.requests} reqs",
+                    text = stringResource(R.string.cost_detail_requests_value, entry.requests),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -365,8 +374,16 @@ private const val MEGA_DIVISOR = 1_000_000.0
 private fun formatTokens(tokens: Long): String =
     when {
         tokens >= MEGA_THRESHOLD ->
-            String.format(Locale.US, "%.1fM", tokens / MEGA_DIVISOR)
+            "${formatCompactValue(tokens / MEGA_DIVISOR)}M"
         tokens >= KILO_THRESHOLD ->
-            String.format(Locale.US, "%.1fk", tokens / KILO_DIVISOR)
+            "${formatCompactValue(tokens / KILO_DIVISOR)}k"
         else -> tokens.toString()
     }
+
+private fun formatCompactValue(value: Double): String =
+    NumberFormat
+        .getNumberInstance(Locale.getDefault())
+        .apply {
+            minimumFractionDigits = 1
+            maximumFractionDigits = 1
+        }.format(value)

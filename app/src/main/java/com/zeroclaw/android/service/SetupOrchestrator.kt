@@ -9,6 +9,7 @@ package com.zeroclaw.android.service
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.screen.setup.SetupProgress
 import com.zeroclaw.android.ui.screen.setup.SetupStepStatus
 import com.zeroclaw.ffi.FfiException
@@ -42,6 +43,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * @param healthBridge Bridge for structured health detail queries.
  */
 class SetupOrchestrator(
+    private val appContext: Context,
     private val daemonBridge: DaemonServiceBridge,
     private val healthBridge: HealthBridge,
 ) {
@@ -234,7 +236,7 @@ class SetupOrchestrator(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val msg = e.message ?: "Config validation failed"
+            val msg = e.message ?: appContext.getString(R.string.setup_orchestrator_config_validation_failed)
             Log.e(TAG, "Config validation error: $msg")
             _progress.value =
                 _progress.value.copy(
@@ -271,7 +273,7 @@ class SetupOrchestrator(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val msg = e.message ?: "Workspace scaffolding failed"
+            val msg = e.message ?: appContext.getString(R.string.setup_orchestrator_workspace_scaffolding_failed)
             Log.e(TAG, "Workspace scaffold error: $msg")
             _progress.value =
                 _progress.value.copy(
@@ -313,7 +315,7 @@ class SetupOrchestrator(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val msg = e.message ?: "Daemon start failed"
+            val msg = e.message ?: appContext.getString(R.string.setup_orchestrator_daemon_start_failed)
             Log.e(TAG, "Daemon start error: $msg")
             _progress.value =
                 _progress.value.copy(
@@ -360,7 +362,11 @@ class SetupOrchestrator(
                 _progress.value.copy(
                     daemonHealth =
                         SetupStepStatus.Failed(
-                            error = "Daemon did not become healthy within ${DAEMON_HEALTH_TIMEOUT_MS / MILLIS_PER_SECOND}s",
+                            error =
+                                appContext.getString(
+                                    R.string.setup_orchestrator_daemon_health_timeout,
+                                    DAEMON_HEALTH_TIMEOUT_MS / MILLIS_PER_SECOND,
+                                ),
                         ),
                 )
         }
@@ -543,7 +549,7 @@ class SetupOrchestrator(
                     put(
                         key,
                         SetupStepStatus.Failed(
-                            error = "Disabled: channel failed to start",
+                            error = appContext.getString(R.string.setup_orchestrator_channel_disabled_failed_start),
                             canRetry = false,
                         ),
                     )
@@ -621,7 +627,8 @@ class SetupOrchestrator(
             }
             "error" -> {
                 val errorMsg =
-                    channelsComponent.lastError ?: "Channel component reported error"
+                    channelsComponent.lastError
+                        ?: appContext.getString(R.string.setup_orchestrator_channel_component_reported_error)
                 _progress.value =
                     _progress.value.copy(
                         channels =
@@ -644,7 +651,10 @@ class SetupOrchestrator(
      */
     private fun markChannelsTimedOut() {
         val timeoutMsg =
-            "Channels did not become healthy within ${CHANNEL_HEALTH_TIMEOUT_MS / MILLIS_PER_SECOND}s"
+            appContext.getString(
+                R.string.setup_orchestrator_channel_health_timeout,
+                CHANNEL_HEALTH_TIMEOUT_MS / MILLIS_PER_SECOND,
+            )
         val currentChannels = _progress.value.channels
         _progress.value =
             _progress.value.copy(

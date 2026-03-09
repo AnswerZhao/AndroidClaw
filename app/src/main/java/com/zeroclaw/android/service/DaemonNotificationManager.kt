@@ -175,7 +175,10 @@ class DaemonNotificationManager(
                 context.getString(R.string.notification_status_stopping)
             ServiceState.ERROR ->
                 if (errorDetail != null) {
-                    "Error: ${errorDetail.take(MAX_ERROR_DISPLAY_LENGTH)}"
+                    context.getString(
+                        R.string.notification_status_error_with_detail,
+                        errorDetail.take(MAX_ERROR_DISPLAY_LENGTH),
+                    )
                 } else {
                     context.getString(R.string.notification_status_error)
                 }

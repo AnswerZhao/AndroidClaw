@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.util
 
+import android.content.Context
+import com.zeroclaw.android.R
 import com.zeroclaw.ffi.FfiException
 
 /**
@@ -19,50 +21,56 @@ object ErrorSanitizer {
     /** Maximum length for a user-visible error message. */
     private const val MAX_UI_MESSAGE_LENGTH = 200
 
-    /** Known error message patterns mapped to user-friendly messages. */
-    private val KNOWN_PATTERNS: Map<String, String> =
+    /** Known error message patterns mapped to resource IDs. */
+    private val KNOWN_PATTERN_RES_IDS: Map<String, Int> =
         mapOf(
-            "daemon not running" to "The daemon is not running. Start it from the Dashboard.",
-            "daemon already running" to "The daemon is already running.",
+            "daemon not running" to R.string.error_sanitizer_daemon_not_running,
+            "daemon already running" to R.string.error_sanitizer_daemon_already_running,
+            "registry url must use https" to R.string.error_sanitizer_registry_https_required,
+            "registry fetch failed" to R.string.error_sanitizer_registry_fetch_failed,
+            "empty response body from registry" to R.string.error_sanitizer_registry_empty_response,
+            "registry response exceeds" to R.string.error_sanitizer_registry_response_too_large,
+            "native layer returned invalid status json" to R.string.error_sanitizer_native_status_json_invalid,
+            "malformed status json" to R.string.error_sanitizer_native_status_json_invalid,
+            "storage directory" to R.string.error_sanitizer_storage_unavailable,
+            "read-back mismatch in" to R.string.error_sanitizer_storage_readback_failed,
         )
 
     /**
-     * Returns a user-safe error message from an exception.
+     * Returns a localized user-safe error message from an exception.
      *
-     * [FfiException.InternalPanic] and [FfiException.StateCorrupted] are
-     * mapped to generic messages because their `detail` fields may contain
-     * stack traces or memory addresses. JSON parse errors are given a
-     * static message. All other messages are truncated to
-     * [MAX_UI_MESSAGE_LENGTH] characters.
-     *
+     * @param context Context used for resolving string resources.
      * @param e The exception to sanitise.
-     * @return A user-safe error string.
+     * @return A localized, user-safe error string.
      */
-    fun sanitizeForUi(e: Exception): String =
+    fun sanitizeForUi(
+        context: Context,
+        e: Exception,
+    ): String =
         when (e) {
             is FfiException.InternalPanic ->
-                "An internal error occurred. Please restart the service."
+                context.getString(R.string.error_sanitizer_internal_error_restart_service)
             is FfiException.StateCorrupted ->
-                "Internal state corrupted. Please restart the app."
+                context.getString(R.string.error_sanitizer_internal_state_corrupted_restart_app)
             is org.json.JSONException ->
-                "Received malformed data from the native layer."
-            else -> sanitizeMessage(e.message)
+                context.getString(R.string.error_sanitizer_malformed_native_data)
+            else -> sanitizeMessage(context, e.message)
         }
 
     /**
-     * Sanitises a raw error message string for user display.
+     * Sanitises a raw error message string for user display using resources.
      *
-     * Strips `detail=` prefixes commonly seen in FFI error messages,
-     * matches against [KNOWN_PATTERNS] for user-friendly translations,
-     * and truncates anything else to [MAX_UI_MESSAGE_LENGTH] characters.
-     *
+     * @param context Context used for resolving string resources.
      * @param raw The raw error message, possibly null.
-     * @return A sanitised, user-safe error string.
+     * @return A localized, user-safe error string.
      */
-    fun sanitizeMessage(raw: String?): String {
-        val msg = raw?.removePrefix("detail=")?.trim() ?: return "Unknown error"
-        KNOWN_PATTERNS.forEach { (pattern, friendly) ->
-            if (msg.contains(pattern, ignoreCase = true)) return friendly
+    fun sanitizeMessage(
+        context: Context,
+        raw: String?,
+    ): String {
+        val msg = raw?.removePrefix("detail=")?.trim() ?: return context.getString(R.string.error_sanitizer_unknown_error)
+        KNOWN_PATTERN_RES_IDS.forEach { (pattern, resId) ->
+            if (msg.contains(pattern, ignoreCase = true)) return context.getString(resId)
         }
         return if (msg.length > MAX_UI_MESSAGE_LENGTH) {
             msg.take(MAX_UI_MESSAGE_LENGTH) + "..."
@@ -71,12 +79,4 @@ object ErrorSanitizer {
         }
     }
 
-    /**
-     * Fixed message for status JSON parse failures.
-     *
-     * Never includes the raw JSON content or exception detail, which
-     * could leak internal health snapshot data. Use directly as the
-     * message for [IllegalStateException].
-     */
-    const val STATUS_PARSE_ERROR = "Native layer returned invalid status JSON"
 }

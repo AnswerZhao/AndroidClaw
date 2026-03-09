@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -85,6 +87,8 @@ private fun GatewayScreenContent(
     edgeMargin: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val scanQrContentDescription = stringResource(R.string.gateway_scan_qr_add_pairing_token_content_description)
+
     Column(
         modifier =
             modifier
@@ -95,22 +99,22 @@ private fun GatewayScreenContent(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Access Control")
+        SectionHeader(title = stringResource(R.string.gateway_section_access_control))
 
         GatewayToggle(
-            title = "Require pairing",
-            subtitle = "Enforce token-based pairing for gateway connections",
+            title = stringResource(R.string.gateway_require_pairing_title),
+            subtitle = stringResource(R.string.gateway_require_pairing_subtitle),
             checked = settings.gatewayRequirePairing,
             onCheckedChange = { settingsViewModel.updateGatewayRequirePairing(it) },
-            description = "Require pairing",
+            description = stringResource(R.string.gateway_require_pairing_content_description),
         )
 
         GatewayToggle(
-            title = "Allow public bind",
-            subtitle = "Bind the gateway to 0.0.0.0 instead of localhost only",
+            title = stringResource(R.string.gateway_allow_public_bind_title),
+            subtitle = stringResource(R.string.gateway_allow_public_bind_subtitle),
             checked = settings.gatewayAllowPublicBind,
             onCheckedChange = { settingsViewModel.updateGatewayAllowPublicBind(it) },
-            description = "Allow public bind",
+            description = stringResource(R.string.gateway_allow_public_bind_content_description),
         )
 
         Row(
@@ -120,8 +124,8 @@ private fun GatewayScreenContent(
             OutlinedTextField(
                 value = settings.gatewayPairedTokens,
                 onValueChange = { settingsViewModel.updateGatewayPairedTokens(it) },
-                label = { Text("Paired tokens") },
-                supportingText = { Text("Comma-separated authorized tokens") },
+                label = { Text(stringResource(R.string.gateway_paired_tokens_label)) },
+                supportingText = { Text(stringResource(R.string.gateway_paired_tokens_hint)) },
                 enabled = settings.gatewayRequirePairing,
                 minLines = 2,
                 modifier = Modifier.weight(1f),
@@ -131,7 +135,7 @@ private fun GatewayScreenContent(
                 enabled = settings.gatewayRequirePairing,
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Scan QR code to add pairing token"
+                        contentDescription = scanQrContentDescription
                     },
             ) {
                 Icon(
@@ -141,14 +145,14 @@ private fun GatewayScreenContent(
             }
         }
 
-        SectionHeader(title = "Rate Limits")
+        SectionHeader(title = stringResource(R.string.gateway_section_rate_limits))
 
         OutlinedTextField(
             value = settings.gatewayPairRateLimit.toString(),
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateGatewayPairRateLimit(it) }
             },
-            label = { Text("Pair rate limit (per minute)") },
+            label = { Text(stringResource(R.string.gateway_pair_rate_limit_label)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
@@ -159,7 +163,7 @@ private fun GatewayScreenContent(
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateGatewayWebhookRateLimit(it) }
             },
-            label = { Text("Webhook rate limit (per minute)") },
+            label = { Text(stringResource(R.string.gateway_webhook_rate_limit_label)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
@@ -170,7 +174,7 @@ private fun GatewayScreenContent(
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateGatewayIdempotencyTtl(it) }
             },
-            label = { Text("Idempotency TTL (seconds)") },
+            label = { Text(stringResource(R.string.gateway_idempotency_ttl_label)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),

@@ -9,6 +9,7 @@ package com.zeroclaw.android.ui.screen.settings.apikeys
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.util.ErrorSanitizer
 import com.zeroclaw.ffi.FfiAuthProfile
 import com.zeroclaw.ffi.listAuthProfiles
@@ -135,7 +136,7 @@ class AuthProfilesViewModel(
         profileName: String,
     ) {
         viewModelScope.launch {
-            runMutation("Profile removed") {
+            runMutation(getString(R.string.auth_profiles_snackbar_profile_removed)) {
                 withContext(Dispatchers.IO) {
                     removeAuthProfile(provider, profileName)
                 }
@@ -160,7 +161,7 @@ class AuthProfilesViewModel(
         } catch (e: Exception) {
             _uiState.value =
                 AuthProfilesUiState.Error(
-                    ErrorSanitizer.sanitizeForUi(e),
+                    ErrorSanitizer.sanitizeForUi(getApplication(), e),
                 )
         }
     }
@@ -175,9 +176,14 @@ class AuthProfilesViewModel(
             _snackbarMessage.value = successMessage
             loadProfilesInternal()
         } catch (e: Exception) {
-            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(e)
+            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(getApplication(), e)
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Utility functions for mapping FFI profiles to presentation models. */
     companion object {

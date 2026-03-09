@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +44,8 @@ fun PinKeypad(
     onBackspace: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val deleteLastDigitContentDescription =
+        stringResource(R.string.pin_keypad_delete_last_digit_content_description)
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -61,7 +65,7 @@ fun PinKeypad(
                 modifier =
                     Modifier
                         .size(BUTTON_SIZE)
-                        .semantics { contentDescription = "Delete last digit" },
+                        .semantics { contentDescription = deleteLastDigitContentDescription },
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Backspace,
@@ -93,12 +97,14 @@ private fun DigitButton(
     digit: Char,
     onClick: () -> Unit,
 ) {
+    val digitContentDescription =
+        stringResource(R.string.pin_keypad_digit_content_description, digit.toString())
     TextButton(
         onClick = onClick,
         modifier =
             Modifier
                 .size(BUTTON_SIZE)
-                .semantics { contentDescription = "Digit $digit" },
+                .semantics { contentDescription = digitContentDescription },
     ) {
         Text(
             text = digit.toString(),

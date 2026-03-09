@@ -33,9 +33,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.component.PinEntryMode
 import com.zeroclaw.android.ui.component.PinEntrySheet
 import com.zeroclaw.android.util.BatteryOptimization
@@ -93,27 +95,23 @@ fun PermissionsStep(
 
     Column {
         Text(
-            text = "Permissions",
+            text = stringResource(R.string.permissions_step_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text =
-                "ZeroClaw needs a few permissions to run " +
-                    "reliably in the background.",
+            text = stringResource(R.string.permissions_step_description),
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(modifier = Modifier.height(24.dp))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Text(
-                text = "Notification Permission",
+                text = stringResource(R.string.permissions_step_notification_title),
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(
-                text =
-                    "Required to show the foreground service " +
-                        "notification.",
+                text = stringResource(R.string.permissions_step_notification_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -125,12 +123,12 @@ fun PermissionsStep(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Permission granted",
+                        contentDescription = stringResource(R.string.permissions_step_permission_granted),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp),
                     )
                     Text(
-                        text = "Permission granted",
+                        text = stringResource(R.string.permissions_step_permission_granted),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -144,23 +142,22 @@ fun PermissionsStep(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Grant Notification Permission")
+                    Text(stringResource(R.string.permissions_step_grant_notification_permission))
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
         Text(
-            text = "Battery Optimization",
+            text = stringResource(R.string.permissions_step_battery_optimization_title),
             style = MaterialTheme.typography.titleSmall,
         )
         Text(
             text =
                 if (isExempt) {
-                    "Already exempt from battery optimization."
+                    stringResource(R.string.permissions_step_battery_already_exempt)
                 } else {
-                    "Exempt the app from battery optimization " +
-                        "so the daemon is not killed by the system."
+                    stringResource(R.string.permissions_step_battery_exempt_hint)
                 },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -177,7 +174,7 @@ fun PermissionsStep(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Request Exemption")
+                Text(stringResource(R.string.permissions_step_request_exemption))
             }
         }
 
@@ -186,13 +183,11 @@ fun PermissionsStep(
         var showPinSheet by remember { mutableStateOf(false) }
 
         Text(
-            text = "App Lock",
+            text = stringResource(R.string.permissions_step_app_lock_title),
             style = MaterialTheme.typography.titleSmall,
         )
         Text(
-            text =
-                "Set up a PIN to lock the app on launch and " +
-                    "after a period of inactivity.",
+            text = stringResource(R.string.permissions_step_app_lock_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -205,12 +200,12 @@ fun PermissionsStep(
             ) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "PIN set",
+                    contentDescription = stringResource(R.string.permissions_step_pin_set),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp),
                 )
                 Text(
-                    text = "PIN is set",
+                    text = stringResource(R.string.permissions_step_pin_set),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -220,20 +215,20 @@ fun PermissionsStep(
                 onClick = { showPinSheet = true },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Change PIN")
+                Text(stringResource(R.string.permissions_step_change_pin))
             }
         } else {
             FilledTonalButton(
                 onClick = { showPinSheet = true },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Set up a PIN")
+                Text(stringResource(R.string.permissions_step_setup_pin))
             }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "You can set up app lock later in Settings",
+            text = stringResource(R.string.permissions_step_app_lock_later_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

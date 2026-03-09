@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.component
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,9 +35,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.model.ApiKey
 import com.zeroclaw.android.model.KeyStatus
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 
 /** Icon size for provider icons inside connection cards. */
 private const val CONNECTION_ICON_SIZE_DP = 40
@@ -81,13 +84,16 @@ fun ConnectionPickerSection(
     onAddNewConnection: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val addConnectionContentDescription =
+        stringResource(R.string.connection_picker_add_api_key_connection_content_description)
+
     Column(modifier = modifier) {
-        SectionHeader(title = "Connection")
+        SectionHeader(title = stringResource(R.string.connection_picker_section_title))
         Spacer(modifier = Modifier.height(CARD_SPACING_DP.dp))
 
         if (keys.isEmpty()) {
             Text(
-                text = "No API keys configured yet.",
+                text = stringResource(R.string.connection_picker_no_api_keys),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -111,7 +117,7 @@ fun ConnectionPickerSection(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "Add new API key connection" },
+                    .semantics { contentDescription = addConnectionContentDescription },
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
@@ -119,7 +125,7 @@ fun ConnectionPickerSection(
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(CARD_SPACING_DP.dp))
-            Text("New Connection")
+            Text(stringResource(R.string.connection_picker_new_connection))
         }
     }
 }
@@ -138,9 +144,16 @@ private fun ConnectionCard(
     onClick: () -> Unit,
 ) {
     val displayName =
-        ProviderRegistry.findById(apiKey.provider)?.displayName
+        ProviderRegistry.findById(apiKey.provider)?.localizedDisplayName()
             ?: apiKey.provider
-    val selectionLabel = if (isSelected) "Selected" else "Not selected"
+    val selectionLabel =
+        if (isSelected) {
+            stringResource(R.string.connection_picker_selection_selected)
+        } else {
+            stringResource(R.string.connection_picker_selection_not_selected)
+        }
+    val selectionContentDescription =
+        stringResource(R.string.connection_picker_connection_selection_content_description, displayName, selectionLabel)
 
     OutlinedCard(
         onClick = onClick,
@@ -157,8 +170,7 @@ private fun ConnectionCard(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "$displayName connection, $selectionLabel"
+                    contentDescription = selectionContentDescription
                 },
     ) {
         Row(
@@ -207,11 +219,11 @@ private fun KeyStatusIndicator(status: KeyStatus) {
     val (color, label) =
         when (status) {
             KeyStatus.ACTIVE ->
-                MaterialTheme.colorScheme.primary to "Active"
+                MaterialTheme.colorScheme.primary to stringResource(R.string.key_status_active)
             KeyStatus.INVALID ->
-                MaterialTheme.colorScheme.error to "Invalid"
+                MaterialTheme.colorScheme.error to stringResource(R.string.key_status_invalid)
             KeyStatus.UNKNOWN ->
-                MaterialTheme.colorScheme.outline to "Unknown"
+                MaterialTheme.colorScheme.outline to stringResource(R.string.key_status_unknown)
         }
 
     Row(verticalAlignment = Alignment.CenterVertically) {

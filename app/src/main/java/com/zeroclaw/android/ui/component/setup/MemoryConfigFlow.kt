@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -47,6 +48,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Spacing after the title text. */
@@ -85,8 +87,8 @@ private const val RETENTION_FOREVER = -1
  */
 private data class BackendOption(
     val id: String,
-    val title: String,
-    val description: String,
+    val titleRes: Int,
+    val descriptionRes: Int,
 )
 
 /** Available memory backend options. */
@@ -94,18 +96,18 @@ private val BACKEND_OPTIONS =
     listOf(
         BackendOption(
             id = "sqlite",
-            title = "SQLite",
-            description = "Fast local database. Best for most users.",
+            titleRes = R.string.memory_backend_sqlite_title,
+            descriptionRes = R.string.memory_backend_sqlite_description,
         ),
         BackendOption(
             id = "markdown",
-            title = "Markdown",
-            description = "Plain text files. Easy to read and edit manually.",
+            titleRes = R.string.memory_backend_markdown_title,
+            descriptionRes = R.string.memory_backend_markdown_description,
         ),
         BackendOption(
             id = "none",
-            title = "None",
-            description = "No persistent memory. Agent starts fresh each session.",
+            titleRes = R.string.memory_backend_none_title,
+            descriptionRes = R.string.memory_backend_none_description,
         ),
     )
 
@@ -117,15 +119,15 @@ private val BACKEND_OPTIONS =
  */
 private data class EmbeddingOption(
     val id: String,
-    val displayName: String,
+    val displayNameRes: Int,
 )
 
 /** Available embedding provider options. */
 private val EMBEDDING_OPTIONS =
     listOf(
-        EmbeddingOption(id = "", displayName = "None"),
-        EmbeddingOption(id = "openai", displayName = "OpenAI"),
-        EmbeddingOption(id = "anthropic", displayName = "Anthropic"),
+        EmbeddingOption(id = "", displayNameRes = R.string.memory_embedding_provider_none),
+        EmbeddingOption(id = "openai", displayNameRes = R.string.memory_embedding_provider_openai),
+        EmbeddingOption(id = "anthropic", displayNameRes = R.string.memory_embedding_provider_anthropic),
     )
 
 /**
@@ -136,16 +138,16 @@ private val EMBEDDING_OPTIONS =
  */
 private data class RetentionOption(
     val days: Int,
-    val label: String,
+    val labelRes: Int,
 )
 
 /** Available retention period options. */
 private val RETENTION_OPTIONS =
     listOf(
-        RetentionOption(days = 7, label = "7 days"),
-        RetentionOption(days = 30, label = "30 days"),
-        RetentionOption(days = 90, label = "90 days"),
-        RetentionOption(days = RETENTION_FOREVER, label = "Forever"),
+        RetentionOption(days = 7, labelRes = R.string.memory_retention_7_days),
+        RetentionOption(days = 30, labelRes = R.string.memory_retention_30_days),
+        RetentionOption(days = 90, labelRes = R.string.memory_retention_90_days),
+        RetentionOption(days = RETENTION_FOREVER, labelRes = R.string.memory_retention_forever),
     )
 
 /**
@@ -186,14 +188,14 @@ fun MemoryConfigFlow(
         modifier = modifier.verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = "Memory Configuration",
+            text = stringResource(R.string.memory_config_title),
             style = MaterialTheme.typography.headlineMedium,
         )
 
         Spacer(modifier = Modifier.height(TitleSpacing))
 
         Text(
-            text = "Configure how your agent remembers conversations.",
+            text = stringResource(R.string.memory_config_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -252,6 +254,21 @@ private fun BackendOptionCard(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val title = stringResource(option.titleRes)
+    val description = stringResource(option.descriptionRes)
+    val selectionState =
+        if (isSelected) {
+            stringResource(R.string.common_state_selected)
+        } else {
+            stringResource(R.string.common_state_not_selected)
+        }
+    val backendContentDescription =
+        stringResource(
+            R.string.memory_backend_content_description,
+            title,
+            selectionState,
+        )
+
     Card(
         onClick = onClick,
         colors =
@@ -275,8 +292,7 @@ private fun BackendOptionCard(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "${option.title}, ${if (isSelected) "selected" else "not selected"}"
+                    contentDescription = backendContentDescription
                     role = Role.RadioButton
                     selected = isSelected
                 },
@@ -285,11 +301,11 @@ private fun BackendOptionCard(
             modifier = Modifier.padding(CardPadding),
         ) {
             Text(
-                text = option.title,
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = option.description,
+                text = description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -311,6 +327,18 @@ private fun AutoSaveToggle(
     autoSave: Boolean,
     onAutoSaveChanged: (Boolean) -> Unit,
 ) {
+    val toggleState =
+        if (autoSave) {
+            stringResource(R.string.common_state_on)
+        } else {
+            stringResource(R.string.common_state_off)
+        }
+    val autoSaveContentDescription =
+        stringResource(
+            R.string.memory_auto_save_content_description,
+            toggleState,
+        )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -318,17 +346,16 @@ private fun AutoSaveToggle(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "Auto-save conversations, ${if (autoSave) "on" else "off"}"
+                    contentDescription = autoSaveContentDescription
                 },
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Auto-save",
+                text = stringResource(R.string.memory_auto_save_title),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = "Automatically save conversation context",
+                text = stringResource(R.string.memory_auto_save_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -360,10 +387,16 @@ private fun EmbeddingProviderDropdown(
     val currentDisplay =
         EMBEDDING_OPTIONS
             .find { it.id == embeddingProvider }
-            ?.displayName ?: "None"
+            ?.let { stringResource(it.displayNameRes) }
+            ?: stringResource(R.string.memory_embedding_provider_none)
+    val embeddingProviderContentDescription =
+        stringResource(
+            R.string.memory_embedding_provider_content_description,
+            currentDisplay,
+        )
 
     Text(
-        text = "Embedding Provider",
+        text = stringResource(R.string.memory_embedding_provider_title),
         style = MaterialTheme.typography.titleMedium,
     )
 
@@ -384,9 +417,7 @@ private fun EmbeddingProviderDropdown(
                 Modifier
                     .fillMaxWidth()
                     .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    .semantics {
-                        contentDescription = "Embedding provider: $currentDisplay"
-                    },
+                    .semantics { contentDescription = embeddingProviderContentDescription },
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -394,7 +425,7 @@ private fun EmbeddingProviderDropdown(
         ) {
             EMBEDDING_OPTIONS.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.displayName) },
+                    text = { Text(stringResource(option.displayNameRes)) },
                     onClick = {
                         onEmbeddingProviderChanged(option.id)
                         expanded = false
@@ -421,7 +452,7 @@ private fun RetentionPicker(
     onRetentionDaysChanged: (Int) -> Unit,
 ) {
     Text(
-        text = "Retention Period",
+        text = stringResource(R.string.memory_retention_title),
         style = MaterialTheme.typography.titleMedium,
     )
 
@@ -432,17 +463,28 @@ private fun RetentionPicker(
     ) {
         RETENTION_OPTIONS.forEach { option ->
             val isSelected = retentionDays == option.days
+            val label = stringResource(option.labelRes)
+            val selectionState =
+                if (isSelected) {
+                    stringResource(R.string.common_state_selected)
+                } else {
+                    stringResource(R.string.common_state_not_selected)
+                }
+            val retentionChipContentDescription =
+                stringResource(
+                    R.string.memory_retention_chip_content_description,
+                    label,
+                    selectionState,
+                )
 
             FilterChip(
                 selected = isSelected,
                 onClick = { onRetentionDaysChanged(option.days) },
-                label = { Text(option.label) },
-                modifier =
-                    Modifier.semantics {
-                        contentDescription =
-                            "${option.label}, ${if (isSelected) "selected" else "not selected"}"
-                        role = Role.RadioButton
-                    },
+                label = { Text(label) },
+                modifier = Modifier.semantics {
+                    contentDescription = retentionChipContentDescription
+                    role = Role.RadioButton
+                },
             )
         }
     }

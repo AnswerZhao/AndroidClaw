@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -66,6 +69,7 @@ fun PinEntrySheet(
     onPinSet: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var phase by remember {
         mutableStateOf(
@@ -83,6 +87,8 @@ fun PinEntrySheet(
     var lockedUntil by remember { mutableLongStateOf(0L) }
     var lockCountdown by remember { mutableIntStateOf(0) }
     val isLocked = lockCountdown > 0
+    val wrongPinMessage = stringResource(R.string.pin_error_wrong_pin)
+    val pinsDoNotMatchMessage = stringResource(R.string.pin_error_pins_do_not_match)
 
     LaunchedEffect(lockedUntil) {
         if (lockedUntil > 0L) {
@@ -101,9 +107,18 @@ fun PinEntrySheet(
     val title =
         when (phase) {
             Phase.CURRENT ->
-                if (mode == PinEntryMode.VERIFY) "Enter PIN" else "Enter current PIN"
-            Phase.ENTER -> if (mode == PinEntryMode.SETUP) "Create a PIN" else "Enter new PIN"
-            Phase.CONFIRM -> "Confirm PIN"
+                if (mode == PinEntryMode.VERIFY) {
+                    stringResource(R.string.pin_entry_title_enter_pin)
+                } else {
+                    stringResource(R.string.pin_entry_title_enter_current_pin)
+                }
+            Phase.ENTER ->
+                if (mode == PinEntryMode.SETUP) {
+                    stringResource(R.string.pin_entry_title_create_pin)
+                } else {
+                    stringResource(R.string.pin_entry_title_enter_new_pin)
+                }
+            Phase.CONFIRM -> stringResource(R.string.pin_entry_title_confirm_pin)
         }
 
     ModalBottomSheet(
@@ -127,9 +142,9 @@ fun PinEntrySheet(
             Text(
                 text =
                     if (phase == Phase.ENTER) {
-                        "Enter 4-6 digits, then tap Next"
+                        stringResource(R.string.pin_entry_hint_enter_then_next)
                     } else {
-                        "4-6 digits"
+                        stringResource(R.string.pin_entry_hint_digits_only)
                     },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -170,6 +185,8 @@ fun PinEntrySheet(
                                 enteredPin = enteredPin,
                                 firstPin = firstPin,
                                 currentPinHash = currentPinHash,
+                                wrongPinMessage = wrongPinMessage,
+                                pinsDoNotMatchMessage = pinsDoNotMatchMessage,
                                 onAdvance = { nextPhase, savedFirst ->
                                     phase = nextPhase
                                     firstPin = savedFirst
@@ -181,7 +198,10 @@ fun PinEntrySheet(
                                         val lockMs = lockoutDurationMs(failedAttempts)
                                         lockedUntil = System.currentTimeMillis() + lockMs
                                         errorMessage =
-                                            "Too many attempts. Try again in ${lockMs / MILLIS_PER_SECOND}s."
+                                            context.getString(
+                                                R.string.pin_entry_too_many_attempts,
+                                                lockMs / MILLIS_PER_SECOND,
+                                            )
                                     } else {
                                         errorMessage = msg
                                     }
@@ -214,6 +234,8 @@ fun PinEntrySheet(
                             enteredPin = enteredPin,
                             firstPin = firstPin,
                             currentPinHash = currentPinHash,
+                            wrongPinMessage = wrongPinMessage,
+                            pinsDoNotMatchMessage = pinsDoNotMatchMessage,
                             onAdvance = { nextPhase, savedFirst ->
                                 phase = nextPhase
                                 firstPin = savedFirst
@@ -231,7 +253,7 @@ fun PinEntrySheet(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Next")
+                    Text(stringResource(R.string.common_next))
                 }
             }
 
@@ -251,11 +273,17 @@ private fun PinDots(
     length: Int,
     maxLength: Int,
 ) {
+    val pinEntryContentDescription =
+        stringResource(
+            R.string.pin_entry_content_description,
+            length,
+            maxLength,
+        )
     Row(
         horizontalArrangement = Arrangement.spacedBy(DOT_SPACING),
         modifier =
             Modifier.semantics {
-                contentDescription = "PIN entry, $length of $maxLength digits entered"
+                contentDescription = pinEntryContentDescription
             },
     ) {
         for (i in 0 until maxLength) {
@@ -290,6 +318,8 @@ private fun handlePinEntry(
     enteredPin: String,
     firstPin: String,
     currentPinHash: String,
+    wrongPinMessage: String,
+    pinsDoNotMatchMessage: String,
     onAdvance: (Phase, String) -> Unit,
     onError: (String) -> Unit,
     onComplete: (String) -> Unit,
@@ -303,7 +333,7 @@ private fun handlePinEntry(
                     onAdvance(Phase.ENTER, "")
                 }
             } else {
-                onError("Wrong PIN")
+                onError(wrongPinMessage)
             }
         }
         Phase.ENTER -> {
@@ -313,7 +343,7 @@ private fun handlePinEntry(
             if (enteredPin == firstPin) {
                 onComplete(PinHasher.hash(enteredPin))
             } else {
-                onError("PINs don't match")
+                onError(pinsDoNotMatchMessage)
                 onAdvance(Phase.ENTER, "")
             }
         }

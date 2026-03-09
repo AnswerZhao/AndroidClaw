@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
@@ -26,18 +28,21 @@ import androidx.compose.ui.semantics.semantics
  */
 @Composable
 fun OfficialPluginBadge(modifier: Modifier = Modifier) {
+    val officialLabel = stringResource(R.string.official_plugin_badge_label)
+    val officialPluginContentDescription =
+        stringResource(R.string.official_plugin_badge_content_description)
     SuggestionChip(
         onClick = {},
         enabled = false,
         label = {
             Text(
-                text = "Official",
+                text = officialLabel,
                 style = MaterialTheme.typography.labelSmall,
             )
         },
         modifier =
             modifier
-                .semantics { contentDescription = "Official ZeroClaw plugin" },
+                .semantics { contentDescription = officialPluginContentDescription },
         colors =
             SuggestionChipDefaults.suggestionChipColors(
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,

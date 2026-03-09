@@ -4,6 +4,8 @@
 
 package com.zeroclaw.android.ui.screen.dashboard
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
@@ -273,7 +275,7 @@ internal fun DashboardContent(
             }
         }
 
-        SectionHeader(title = "At a Glance")
+        SectionHeader(title = stringResource(R.string.dashboard_section_at_a_glance))
         MetricCardsRow(
             enabledAgentCount = state.enabledAgentCount,
             installedPluginCount = state.installedPluginCount,
@@ -297,7 +299,7 @@ internal fun DashboardContent(
             )
         }
 
-        SectionHeader(title = "Recent Activity")
+        SectionHeader(title = stringResource(R.string.dashboard_section_recent_activity))
         ActivityFeedSection(events = state.activityEvents)
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -323,6 +325,20 @@ private fun StatusHeroCard(
         serviceState == ServiceState.STARTING ||
             serviceState == ServiceState.STOPPING
     val isRunning = serviceState == ServiceState.RUNNING
+    val daemonStatusTitle = stringResource(R.string.dashboard_daemon_status_title)
+    val actionContentDescription =
+        if (isRunning) {
+            stringResource(R.string.dashboard_stop_daemon_content_description)
+        } else {
+            stringResource(R.string.dashboard_start_daemon_content_description)
+        }
+    val actionLabel =
+        if (isRunning) {
+            stringResource(R.string.dashboard_stop_daemon_action)
+        } else {
+            stringResource(R.string.dashboard_start_daemon_action)
+        }
+    val daemonErrorFallback = stringResource(R.string.dashboard_daemon_error_fallback)
 
     Card(
         modifier =
@@ -336,7 +352,7 @@ private fun StatusHeroCard(
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text(
-                text = "Daemon Status",
+                text = daemonStatusTitle,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -355,11 +371,10 @@ private fun StatusHeroCard(
                         Modifier
                             .defaultMinSize(minHeight = 48.dp)
                             .semantics {
-                                contentDescription =
-                                    if (isRunning) "Stop daemon" else "Start daemon"
+                                contentDescription = actionContentDescription
                             },
                 ) {
-                    Text(text = if (isRunning) "Stop Daemon" else "Start Daemon")
+                    Text(text = actionLabel)
                 }
                 if (isTransitioning) {
                     Spacer(modifier = Modifier.width(12.dp))
@@ -369,7 +384,7 @@ private fun StatusHeroCard(
             if (serviceState == ServiceState.ERROR) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = errorMessage ?: "Daemon encountered an error",
+                    text = errorMessage ?: daemonErrorFallback,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -400,6 +415,12 @@ private fun BatteryOptimizationBanner(
             BatteryOptimization.OemBatteryType.OPPO -> "Oppo"
             BatteryOptimization.OemBatteryType.VIVO -> "Vivo"
         }
+    val batteryOptimizationTitle = stringResource(R.string.dashboard_battery_optimization_title)
+    val batteryOptimizationDescription =
+        stringResource(
+            R.string.dashboard_battery_optimization_description,
+            oemName,
+        )
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -410,25 +431,23 @@ private fun BatteryOptimizationBanner(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Battery optimization",
+                text = batteryOptimizationTitle,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text =
-                    "$oemName devices may stop the daemon in the background. " +
-                        "Disable battery optimization for reliable operation.",
+                text = batteryOptimizationDescription,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onLearnMore) {
-                    Text("Learn More")
+                    Text(stringResource(R.string.common_learn_more))
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("Dismiss")
+                    Text(stringResource(R.string.common_dismiss))
                 }
             }
         }
@@ -442,6 +461,7 @@ private fun BatteryOptimizationBanner(
  */
 @Composable
 private fun KeyRejectionBanner(onDismiss: () -> Unit) {
+    val keyRejectionMessage = stringResource(R.string.dashboard_key_rejection_message)
     Card(
         modifier =
             Modifier
@@ -454,15 +474,13 @@ private fun KeyRejectionBanner(onDismiss: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text =
-                    "An API key may be invalid or expired. " +
-                        "Check Settings \u203A API Keys.",
+                text = keyRejectionMessage,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onDismiss) {
-                Text("Dismiss")
+                Text(stringResource(R.string.common_dismiss))
             }
         }
     }
@@ -492,27 +510,33 @@ private fun MetricCardsRow(
     serviceState: ServiceState,
 ) {
     val uptimeText = formatUptime(daemonStatus, serviceState)
+    val connectionsLabel = stringResource(R.string.dashboard_metric_connections)
+    val pluginsLabel = stringResource(R.string.dashboard_metric_plugins)
+    val uptimeLabel = stringResource(R.string.dashboard_metric_uptime)
+    val enabledLabel = stringResource(R.string.dashboard_metric_enabled)
+    val installedLabel = stringResource(R.string.dashboard_metric_installed)
+    val runningLabel = stringResource(R.string.dashboard_metric_running)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         MetricCard(
-            label = "Connections",
+            label = connectionsLabel,
             value = enabledAgentCount.toString(),
-            description = "enabled",
+            description = enabledLabel,
             modifier = Modifier.weight(1f),
         )
         MetricCard(
-            label = "Plugins",
+            label = pluginsLabel,
             value = installedPluginCount.toString(),
-            description = "installed",
+            description = installedLabel,
             modifier = Modifier.weight(1f),
         )
         MetricCard(
-            label = "Uptime",
+            label = uptimeLabel,
             value = uptimeText,
-            description = if (serviceState == ServiceState.RUNNING) "running" else "",
+            description = if (serviceState == ServiceState.RUNNING) runningLabel else "",
             modifier = Modifier.weight(1f),
         )
     }
@@ -589,30 +613,32 @@ private fun MetricCard(
  * @param serviceState Current service lifecycle state.
  * @return Formatted uptime string.
  */
+@Composable
 private fun formatUptime(
     status: DaemonStatus?,
     serviceState: ServiceState,
 ): String {
     if (serviceState != ServiceState.RUNNING || status == null) {
-        return "Offline"
+        return stringResource(R.string.dashboard_uptime_offline)
     }
     val totalSeconds = status.uptimeSeconds
     val hours = totalSeconds / SECONDS_PER_HOUR
     val minutes = (totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE
     return if (hours > 0) {
-        "${hours}h ${minutes}m"
+        stringResource(R.string.dashboard_uptime_hours_minutes, hours, minutes)
     } else {
-        "${minutes}m"
+        stringResource(R.string.dashboard_uptime_minutes, minutes)
     }
 }
 
+@Composable
 private fun serviceStateDescription(state: ServiceState): String =
     when (state) {
-        ServiceState.STOPPED -> "The daemon is not running."
-        ServiceState.STARTING -> "The daemon is starting up\u2026"
-        ServiceState.RUNNING -> "The daemon is running and healthy."
-        ServiceState.STOPPING -> "The daemon is shutting down\u2026"
-        ServiceState.ERROR -> "The daemon encountered an error."
+        ServiceState.STOPPED -> stringResource(R.string.dashboard_service_state_stopped)
+        ServiceState.STARTING -> stringResource(R.string.dashboard_service_state_starting)
+        ServiceState.RUNNING -> stringResource(R.string.dashboard_service_state_running)
+        ServiceState.STOPPING -> stringResource(R.string.dashboard_service_state_stopping)
+        ServiceState.ERROR -> stringResource(R.string.dashboard_service_state_error)
     }
 
 /** Component status value indicating healthy operation. */
@@ -642,6 +668,7 @@ private fun ComponentHealthRow(
     healthDetail: HealthDetail,
     modifier: Modifier = Modifier,
 ) {
+    val componentHealthTitle = stringResource(R.string.dashboard_component_health_title)
     Card(
         modifier = modifier.fillMaxWidth(),
         colors =
@@ -651,7 +678,7 @@ private fun ComponentHealthRow(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "Component Health",
+                text = componentHealthTitle,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -692,21 +719,30 @@ private fun ComponentHealthChip(
         }
     val statusLabel =
         when (component.status) {
-            COMPONENT_STATUS_OK -> "healthy"
-            COMPONENT_STATUS_STARTING -> "starting"
-            else -> "error"
+            COMPONENT_STATUS_OK -> stringResource(R.string.dashboard_component_status_healthy)
+            COMPONENT_STATUS_STARTING -> stringResource(R.string.dashboard_component_status_starting)
+            else -> stringResource(R.string.dashboard_component_status_error)
+        }
+    val componentContentDescription =
+        if (component.restartCount > 0) {
+            stringResource(
+                R.string.dashboard_component_status_with_restarts_content_description,
+                component.name,
+                statusLabel,
+                component.restartCount,
+            )
+        } else {
+            stringResource(
+                R.string.dashboard_component_status_content_description,
+                component.name,
+                statusLabel,
+            )
         }
 
     Card(
         modifier =
             modifier.semantics(mergeDescendants = true) {
-                contentDescription =
-                    "${component.name}: $statusLabel" +
-                    if (component.restartCount > 0) {
-                        ", ${component.restartCount} restarts"
-                    } else {
-                        ""
-                    }
+                contentDescription = componentContentDescription
             },
         colors =
             CardDefaults.cardColors(
@@ -756,27 +792,29 @@ private fun MemoryConflictDialog(
     onKeep: () -> Unit,
 ) {
     val sizeText = formatFileSize(conflict.staleSizeBytes)
-    val plural = if (conflict.staleFileCount != 1) "s" else ""
+    val memoryConflictMessage =
+        stringResource(
+            R.string.dashboard_memory_backend_changed_message,
+            conflict.staleBackend,
+            conflict.currentBackend,
+            conflict.staleFileCount,
+            conflict.staleBackend,
+            sizeText,
+        )
     AlertDialog(
         onDismissRequest = { /* non-dismissable — user must choose */ },
-        title = { Text("Memory Backend Changed") },
+        title = { Text(stringResource(R.string.dashboard_memory_backend_changed_title)) },
         text = {
-            Text(
-                "You switched from ${conflict.staleBackend} to " +
-                    "${conflict.currentBackend}. Found " +
-                    "${conflict.staleFileCount} stale ${conflict.staleBackend} " +
-                    "file$plural ($sizeText).\n\n" +
-                    "Delete old data to prevent conflicts?",
-            )
+            Text(memoryConflictMessage)
         },
         confirmButton = {
             FilledTonalButton(onClick = onDelete) {
-                Text("Delete")
+                Text(stringResource(R.string.common_delete))
             }
         },
         dismissButton = {
             TextButton(onClick = onKeep) {
-                Text("Keep")
+                Text(stringResource(R.string.common_keep))
             }
         },
     )
@@ -793,6 +831,8 @@ private fun MemoryHealthWarningBanner(
     warning: String,
     onDismiss: () -> Unit,
 ) {
+    val memoryHealthWarningText =
+        stringResource(R.string.dashboard_memory_health_warning, warning)
     Card(
         colors =
             CardDefaults.cardColors(
@@ -805,13 +845,13 @@ private fun MemoryHealthWarningBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Memory: $warning",
+                text = memoryHealthWarningText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onDismiss) {
-                Text("Dismiss")
+                Text(stringResource(R.string.common_dismiss))
             }
         }
     }
@@ -852,6 +892,10 @@ private fun EstopSection(
 @Composable
 private fun EstopButton(onEngage: () -> Unit) {
     var showConfirmDialog by remember { mutableStateOf(false) }
+    val estopButtonContentDescription =
+        stringResource(R.string.dashboard_estop_button_content_description)
+    val estopButtonLabel = stringResource(R.string.dashboard_estop_button_label)
+    val engageEstopMessage = stringResource(R.string.dashboard_engage_estop_message)
 
     Button(
         onClick = { showConfirmDialog = true },
@@ -865,22 +909,18 @@ private fun EstopButton(onEngage: () -> Unit) {
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 48.dp)
                 .semantics {
-                    contentDescription = "Emergency stop: halt all agent execution"
+                    contentDescription = estopButtonContentDescription
                 },
     ) {
-        Text(text = "Emergency Stop")
+        Text(text = estopButtonLabel)
     }
 
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Engage Emergency Stop?") },
+            title = { Text(stringResource(R.string.dashboard_engage_estop_title)) },
             text = {
-                Text(
-                    "This will immediately halt all agent execution and " +
-                        "cancel any active sessions. The daemon will remain " +
-                        "running but no actions will be processed.",
-                )
+                Text(engageEstopMessage)
             },
             confirmButton = {
                 FilledTonalButton(
@@ -889,12 +929,12 @@ private fun EstopButton(onEngage: () -> Unit) {
                         onEngage()
                     },
                 ) {
-                    Text("Engage")
+                    Text(stringResource(R.string.dashboard_engage_action))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -918,6 +958,14 @@ private fun EstopActiveBanner(onResume: () -> Unit) {
         remember { context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager }
     val isDeviceSecure = remember { keyguardManager.isDeviceSecure }
     var showResumeDialog by remember { mutableStateOf(false) }
+    val estopActiveTitle = stringResource(R.string.dashboard_estop_active_title)
+    val estopActiveMessage = stringResource(R.string.dashboard_estop_active_message)
+    val resumeEmergencyStopTitle = stringResource(R.string.dashboard_resume_emergency_stop_title)
+    val resumeEmergencyStopDescription =
+        stringResource(R.string.dashboard_resume_emergency_stop_description)
+    val resumeFromEstopContentDescription =
+        stringResource(R.string.dashboard_resume_estop_content_description)
+    val resumeExecutionMessage = stringResource(R.string.dashboard_resume_execution_message)
 
     val credentialLauncher =
         rememberLauncherForActivityResult(
@@ -940,15 +988,13 @@ private fun EstopActiveBanner(onResume: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Emergency stop active",
+                text = estopActiveTitle,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text =
-                    "All agent execution is halted. No actions will be " +
-                        "processed until the emergency stop is released.",
+                text = estopActiveMessage,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
@@ -959,8 +1005,8 @@ private fun EstopActiveBanner(onResume: () -> Unit) {
                         @Suppress("DEPRECATION")
                         val intent =
                             keyguardManager.createConfirmDeviceCredentialIntent(
-                                "Resume Emergency Stop",
-                                "Confirm your identity to resume agent execution",
+                                resumeEmergencyStopTitle,
+                                resumeEmergencyStopDescription,
                             )
                         if (intent != null) {
                             credentialLauncher.launch(intent)
@@ -975,10 +1021,10 @@ private fun EstopActiveBanner(onResume: () -> Unit) {
                     Modifier
                         .defaultMinSize(minHeight = 48.dp)
                         .semantics {
-                            contentDescription = "Resume from emergency stop"
+                            contentDescription = resumeFromEstopContentDescription
                         },
             ) {
-                Text("Resume")
+                Text(stringResource(R.string.common_resume))
             }
         }
     }
@@ -986,12 +1032,9 @@ private fun EstopActiveBanner(onResume: () -> Unit) {
     if (showResumeDialog) {
         AlertDialog(
             onDismissRequest = { showResumeDialog = false },
-            title = { Text("Resume Agent Execution?") },
+            title = { Text(stringResource(R.string.dashboard_resume_execution_title)) },
             text = {
-                Text(
-                    "This will lift the emergency stop and allow agents " +
-                        "to process actions again.",
-                )
+                Text(resumeExecutionMessage)
             },
             confirmButton = {
                 FilledTonalButton(
@@ -1000,12 +1043,12 @@ private fun EstopActiveBanner(onResume: () -> Unit) {
                         onResume()
                     },
                 ) {
-                    Text("Resume")
+                    Text(stringResource(R.string.common_resume))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showResumeDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )

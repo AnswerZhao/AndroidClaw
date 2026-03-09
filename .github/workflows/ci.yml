@@ -75,6 +75,9 @@ jobs:
       - name: Run spotlessCheck
         run: ./gradlew spotlessCheck
 
+      - name: Check i18n hardcoded UI literals
+        run: ./scripts/check_i18n_hardcoded_ui.sh
+
       - name: Run detekt
         run: ./gradlew detekt
 

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings.apikeys
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,6 +58,7 @@ import com.zeroclaw.android.ui.component.ModelSuggestionField
 import com.zeroclaw.android.ui.component.ProviderCredentialForm
 import com.zeroclaw.android.ui.component.SectionHeader
 import com.zeroclaw.android.ui.component.setup.ProviderSetupFlow
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 
 /** Standard vertical spacing between form fields. */
 private const val FIELD_SPACING_DP = 16
@@ -164,13 +167,13 @@ fun ApiKeyDetailScreen(
 
     val prefixValid =
         run {
-            val warning =
+            val hasWarning =
                 if (providerInfo != null) {
-                    ProviderKeyValidator.validateKeyFormat(providerInfo, key)
+                    ProviderKeyValidator.hasKeyFormatWarning(providerInfo, key)
                 } else {
-                    null
+                    false
                 }
-            warning == null || providerInfo?.keyPrefix.isNullOrEmpty()
+            !hasWarning || providerInfo?.keyPrefix.isNullOrEmpty()
         }
     val saveEnabled =
         providerId.isNotBlank() &&
@@ -199,7 +202,14 @@ fun ApiKeyDetailScreen(
         Spacer(modifier = Modifier.height(TOP_SPACING_DP.dp))
 
         SectionHeader(
-            title = if (isNewKey) "Add API Key" else "Edit API Key",
+            title =
+                stringResource(
+                    if (isNewKey) {
+                        R.string.api_key_detail_add_title
+                    } else {
+                        R.string.api_key_detail_edit_title
+                    },
+                ),
         )
 
         if (isNewKey) {
@@ -277,8 +287,13 @@ fun ApiKeyDetailScreen(
         }
 
         if (providerAlreadyExists) {
+            val providerDisplayName = providerInfo?.localizedDisplayName() ?: providerId
             Text(
-                text = "A key for ${providerInfo?.displayName ?: providerId} already exists",
+                text =
+                    stringResource(
+                        R.string.api_key_detail_provider_exists_message,
+                        providerDisplayName,
+                    ),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier =
@@ -399,6 +414,8 @@ private fun EditKeyForm(
     onModelChanged: (String) -> Unit,
     onNavigateToQrScanner: () -> Unit,
 ) {
+    val scanQrContentDescription =
+        stringResource(R.string.api_key_detail_scan_qr_content_description)
     ProviderCredentialForm(
         selectedProviderId = providerId,
         apiKey = apiKey,
@@ -421,7 +438,7 @@ private fun EditKeyForm(
             enabled = !isSaving,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Scan QR code to fill API key"
+                    contentDescription = scanQrContentDescription
                 },
         ) {
             Icon(
@@ -430,7 +447,7 @@ private fun EditKeyForm(
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Scan QR Code")
+            Text(stringResource(R.string.api_key_detail_scan_qr_code))
         }
     }
 
@@ -476,7 +493,7 @@ private fun NewKeySaveRow(
             onClick = { onSave(providerId, key, baseUrl, model) },
             enabled = saveEnabled,
         ) {
-            Text(text = "Save")
+            Text(text = stringResource(R.string.common_save))
         }
         if (isSaving) {
             Spacer(modifier = Modifier.width(BUTTON_INDICATOR_SPACING_DP.dp))
@@ -512,6 +529,9 @@ private fun EditKeyActions(
     onSave: (ApiKey) -> Unit,
     onTest: () -> Unit,
 ) {
+    val testConnectionContentDescription =
+        stringResource(R.string.api_key_detail_test_connection_content_description)
+    val connectionVerifiedText = stringResource(R.string.api_key_detail_connection_verified)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
@@ -530,7 +550,7 @@ private fun EditKeyActions(
             },
             enabled = saveEnabled,
         ) {
-            Text(text = "Update")
+            Text(text = stringResource(R.string.common_update))
         }
         if (isSaving) {
             Spacer(modifier = Modifier.width(BUTTON_INDICATOR_SPACING_DP.dp))
@@ -542,13 +562,13 @@ private fun EditKeyActions(
             enabled = saveEnabled && !isTesting,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Test connection to provider"
+                    contentDescription = testConnectionContentDescription
                 },
         ) {
             if (isTesting) {
                 LoadingIndicator()
             } else {
-                Text("Test")
+                Text(stringResource(R.string.common_test))
             }
         }
     }
@@ -570,7 +590,7 @@ private fun EditKeyActions(
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
-                    text = "Connection verified",
+                    text = connectionVerifiedText,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -594,12 +614,13 @@ private fun EditKeyActions(
  *
  * @return The corresponding [ValidationResult].
  */
+@Composable
 private fun ConnectionTestState.toValidationResult(): ValidationResult =
     when (this) {
         is ConnectionTestState.Idle -> ValidationResult.Idle
         is ConnectionTestState.Testing -> ValidationResult.Loading
         is ConnectionTestState.Success ->
-            ValidationResult.Success("Connection verified")
+            ValidationResult.Success(stringResource(R.string.api_key_detail_connection_verified))
         is ConnectionTestState.Failure ->
             ValidationResult.Failure(message)
     }

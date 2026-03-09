@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.screen.onboarding.steps
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 
 /**
  * Onboarding step for naming the daemon.
@@ -42,14 +44,12 @@ fun AgentConfigStep(
         modifier = Modifier.imePadding(),
     ) {
         Text(
-            text = "Name Your Daemon",
+            text = stringResource(R.string.agent_config_step_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text =
-                "Choose a name for your daemon. This becomes the AIEOS " +
-                    "identity and the nickname for your first connection.",
+            text = stringResource(R.string.agent_config_step_description),
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -63,12 +63,12 @@ fun AgentConfigStep(
                 hasInteracted = true
                 onAgentNameChanged(it)
             },
-            label = { Text("Daemon Name") },
+            label = { Text(stringResource(R.string.identity_agent_name_required_label)) },
             singleLine = true,
             isError = showError,
             supportingText =
                 if (showError) {
-                    { Text("Name is required") }
+                    { Text(stringResource(R.string.identity_agent_name_required_error)) }
                 } else {
                     null
                 },
@@ -76,7 +76,7 @@ fun AgentConfigStep(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "You can change the provider and model in connection settings.",
+            text = stringResource(R.string.agent_config_step_footer_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

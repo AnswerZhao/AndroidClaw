@@ -44,7 +44,7 @@ class SetupViewModel(
     private val app = application as ZeroClawApplication
     private val daemonBridge: DaemonServiceBridge = app.daemonBridge
     private val healthBridge: HealthBridge = app.healthBridge
-    private val orchestrator = SetupOrchestrator(daemonBridge, healthBridge)
+    private val orchestrator = SetupOrchestrator(app, daemonBridge, healthBridge)
 
     /** Observable progress across all setup steps. */
     val progress: StateFlow<SetupProgress> = orchestrator.progress

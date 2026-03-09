@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.component
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -60,7 +62,7 @@ fun ErrorCard(
             if (onRetry != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 FilledTonalButton(onClick = onRetry) {
-                    Text("Retry")
+                    Text(stringResource(R.string.common_retry))
                 }
             }
         }

@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.viewmodel
 
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.ServiceState
 import com.zeroclaw.android.service.DaemonServiceBridge
@@ -56,6 +57,7 @@ class DaemonViewModelTest {
         mockApp =
             mockk<ZeroClawApplication>(relaxed = true) {
                 every { daemonBridge } returns mockBridge
+                every { getString(R.string.daemon_unknown_error_fallback) } returns "Unknown daemon error"
             }
     }
 
@@ -103,6 +105,7 @@ class DaemonViewModelTest {
         mockApp =
             mockk<ZeroClawApplication>(relaxed = true) {
                 every { daemonBridge } returns mockBridge
+                every { getString(R.string.daemon_unknown_error_fallback) } returns "Unknown daemon error"
             }
         viewModel = DaemonViewModel(mockApp)
 
@@ -127,6 +130,7 @@ class DaemonViewModelTest {
         mockApp =
             mockk<ZeroClawApplication>(relaxed = true) {
                 every { daemonBridge } returns mockBridge
+                every { getString(R.string.daemon_unknown_error_fallback) } returns "Unknown daemon error"
             }
         viewModel = DaemonViewModel(mockApp)
 

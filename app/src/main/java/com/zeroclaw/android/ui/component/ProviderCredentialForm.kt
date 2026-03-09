@@ -32,13 +32,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.ProviderKeyValidator
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.model.DiscoveredServer
 import com.zeroclaw.android.model.ProviderAuthType
+import com.zeroclaw.android.ui.i18n.localizedHelpText
+import com.zeroclaw.android.ui.i18n.localizedKeyPrefixHint
 
 /** Standard spacing between form fields. */
 private const val FIELD_SPACING_DP = 16
@@ -99,7 +103,7 @@ fun ProviderCredentialForm(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     providerDropdownEnabled: Boolean = enabled,
-    apiKeyLabel: String = "API Key",
+    apiKeyLabel: String = "",
     showApiKeyWhenBlank: Boolean = false,
     baseUrlKeyboardType: KeyboardType = KeyboardType.Uri,
     baseUrlImeAction: ImeAction = ImeAction.Default,
@@ -107,6 +111,13 @@ fun ProviderCredentialForm(
     onServerSelected: ((DiscoveredServer) -> Unit)? = null,
     oauthConnected: Boolean = false,
 ) {
+    val resolvedApiKeyLabel =
+        if (apiKeyLabel.isBlank()) {
+            stringResource(R.string.provider_credential_api_key_label)
+        } else {
+            apiKeyLabel
+        }
+
     val providerInfo = ProviderRegistry.findById(selectedProviderId)
     val authType = providerInfo?.authType
     val needsUrl =
@@ -124,12 +135,14 @@ fun ProviderCredentialForm(
     val prefixWarning by remember(selectedProviderId, apiKey) {
         derivedStateOf {
             if (providerInfo != null) {
-                ProviderKeyValidator.validateKeyFormat(providerInfo, apiKey)
+                ProviderKeyValidator.hasKeyFormatWarning(providerInfo, apiKey)
             } else {
-                null
+                false
             }
         }
     }
+    val prefixWarningText = providerInfo?.localizedKeyPrefixHint(context).orEmpty()
+    val helpText = providerInfo?.localizedHelpText(context).orEmpty()
     var prefixOverridden by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedProviderId, apiKey) {
@@ -161,10 +174,10 @@ fun ProviderCredentialForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        if (providerInfo?.helpText?.isNotEmpty() == true) {
+        if (helpText.isNotEmpty()) {
             Spacer(modifier = Modifier.height(HINT_SPACING_DP.dp))
             Text(
-                text = providerInfo.helpText,
+                text = helpText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -185,7 +198,7 @@ fun ProviderCredentialForm(
                     modifier = Modifier.size(INLINE_ICON_SIZE_DP.dp),
                 )
                 Spacer(modifier = Modifier.width(INLINE_ICON_LABEL_SPACING_DP.dp))
-                Text("Get API Key")
+                Text(stringResource(R.string.provider_credential_get_api_key))
             }
         }
 
@@ -195,7 +208,7 @@ fun ProviderCredentialForm(
             OutlinedTextField(
                 value = baseUrl,
                 onValueChange = onBaseUrlChanged,
-                label = { Text("Base URL") },
+                label = { Text(stringResource(R.string.provider_credential_base_url_label)) },
                 singleLine = true,
                 enabled = enabled,
                 keyboardOptions =
@@ -209,10 +222,7 @@ fun ProviderCredentialForm(
             if (isLocalhostUrl) {
                 Spacer(modifier = Modifier.height(HINT_SPACING_DP.dp))
                 Text(
-                    text =
-                        "\"localhost\" refers to the phone itself on Android. " +
-                            "Enter your computer\u2019s LAN IP address or use " +
-                            "\"Scan Network\" to find servers automatically.",
+                    text = stringResource(R.string.provider_credential_localhost_warning),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary,
                 )
@@ -229,7 +239,7 @@ fun ProviderCredentialForm(
                     modifier = Modifier.size(INLINE_ICON_SIZE_DP.dp),
                 )
                 Spacer(modifier = Modifier.width(INLINE_ICON_LABEL_SPACING_DP.dp))
-                Text("Scan Network for Servers")
+                Text(stringResource(R.string.provider_credential_scan_network))
             }
             Spacer(modifier = Modifier.height(HINT_SPACING_DP.dp))
         }
@@ -238,21 +248,29 @@ fun ProviderCredentialForm(
             SecretTextField(
                 value = apiKey,
                 onValueChange = onApiKeyChanged,
-                label = if (needsKey) apiKeyLabel else "$apiKeyLabel (optional)",
+                label =
+                    if (needsKey) {
+                        resolvedApiKeyLabel
+                    } else {
+                        stringResource(
+                            R.string.provider_credential_optional_label,
+                            resolvedApiKeyLabel,
+                        )
+                    },
                 enabled = enabled,
-                isError = prefixWarning != null && !prefixOverridden,
+                isError = prefixWarning && !prefixOverridden,
                 supportingText =
-                    if (prefixWarning != null && !prefixOverridden) {
-                        { Text(prefixWarning!!) }
+                    if (prefixWarning && !prefixOverridden && prefixWarningText.isNotBlank()) {
+                        { Text(prefixWarningText) }
                     } else {
                         null
                     },
                 imeAction = apiKeyImeAction,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (prefixWarning != null && !prefixOverridden) {
+            if (prefixWarning && !prefixOverridden) {
                 TextButton(onClick = { prefixOverridden = true }) {
-                    Text("Use this key anyway")
+                    Text(stringResource(R.string.provider_credential_use_key_anyway))
                 }
             }
         }

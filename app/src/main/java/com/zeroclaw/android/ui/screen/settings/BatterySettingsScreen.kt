@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -61,7 +63,7 @@ fun BatterySettingsScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Battery Optimization")
+        SectionHeader(title = stringResource(R.string.battery_settings_section_battery_optimization))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -77,18 +79,21 @@ fun BatterySettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = if (isExempt) "Exempt from optimization" else "Not exempt",
+                    text =
+                        if (isExempt) {
+                            stringResource(R.string.battery_settings_state_exempt)
+                        } else {
+                            stringResource(R.string.battery_settings_state_not_exempt)
+                        },
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text =
                         if (isExempt) {
-                            "The app is exempt from battery optimization. " +
-                                "The daemon will run reliably in the background."
+                            stringResource(R.string.battery_settings_exempt_description)
                         } else {
-                            "The app is subject to battery optimization. " +
-                                "The daemon may be stopped by the system."
+                            stringResource(R.string.battery_settings_not_exempt_description)
                         },
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -101,14 +106,14 @@ fun BatterySettingsScreen(
                             )
                         },
                     ) {
-                        Text("Request Exemption")
+                        Text(stringResource(R.string.battery_settings_request_exemption))
                     }
                 }
             }
         }
 
         if (oemType != null) {
-            SectionHeader(title = "OEM Battery Management")
+            SectionHeader(title = stringResource(R.string.battery_settings_section_oem_management))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -118,14 +123,16 @@ fun BatterySettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Detected: ${oemName(oemType)}",
+                        text =
+                            stringResource(
+                                R.string.battery_settings_detected_oem,
+                                oemName(oemType),
+                            ),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text =
-                            "This device manufacturer has aggressive battery management. " +
-                                "Follow the guide below for instructions.",
+                        text = stringResource(R.string.battery_settings_oem_guide_description),
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -137,7 +144,7 @@ fun BatterySettingsScreen(
                             )
                         },
                     ) {
-                        Text("View Instructions")
+                        Text(stringResource(R.string.battery_settings_view_instructions))
                     }
                 }
             }

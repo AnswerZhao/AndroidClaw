@@ -2,6 +2,7 @@
 
 package com.zeroclaw.android.ui.screen.settings.memory
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.MemoryEntry
 import com.zeroclaw.android.ui.component.CategoryBadge
 import com.zeroclaw.android.ui.component.EmptyState
@@ -92,6 +94,10 @@ fun MemoryBrowserScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { innerPadding ->
+        val memoryBrowserTitle = stringResource(R.string.memory_browser_title)
+        val memoryEntriesCount = stringResource(R.string.memory_browser_entries_count, totalCount)
+        val emptyAllMessage = stringResource(R.string.memory_browser_empty_all_message)
+        val emptySearchMessage = stringResource(R.string.memory_browser_empty_search_message)
         Column(
             modifier =
                 Modifier
@@ -107,11 +113,11 @@ fun MemoryBrowserScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Memory Browser",
+                    text = memoryBrowserTitle,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "$totalCount entries",
+                    text = memoryEntriesCount,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -121,7 +127,7 @@ fun MemoryBrowserScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { memoryBrowserViewModel.updateSearch(it) },
-                label = { Text("Search memories (keyword recall)") },
+                label = { Text(stringResource(R.string.memory_browser_search_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -151,11 +157,14 @@ fun MemoryBrowserScreen(
                             icon = Icons.Outlined.Psychology,
                             message =
                                 if (searchQuery.isBlank() && categoryFilter == CATEGORY_ALL) {
-                                    "No memory entries. The daemon stores memories as it runs."
+                                    emptyAllMessage
                                 } else if (searchQuery.isNotBlank()) {
-                                    "No memories match your search"
+                                    emptySearchMessage
                                 } else {
-                                    "No entries in the \"$categoryFilter\" category"
+                                    stringResource(
+                                        R.string.memory_browser_empty_category_message,
+                                        categoryDisplayLabel(categoryFilter),
+                                    )
                                 },
                         )
                     } else {
@@ -186,25 +195,38 @@ private fun CategoryFilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         CATEGORY_FILTERS.forEach { category ->
+            val categoryLabel = categoryDisplayLabel(category)
+            val filterByCategoryContentDescription =
+                stringResource(R.string.memory_browser_filter_by_category, categoryLabel)
             FilterChip(
                 selected = category == selected,
                 onClick = { onSelect(category) },
                 label = {
                     Text(
-                        text =
-                            category.replaceFirstChar {
-                                if (it.isLowerCase()) it.titlecase() else it.toString()
-                            },
+                        text = categoryLabel,
                     )
                 },
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Filter by category: $category"
+                        contentDescription = filterByCategoryContentDescription
                     },
             )
         }
     }
 }
+
+@Composable
+private fun categoryDisplayLabel(category: String): String =
+    when (category) {
+        CATEGORY_ALL -> stringResource(R.string.memory_category_all)
+        CATEGORY_CORE -> stringResource(R.string.memory_category_core)
+        CATEGORY_DAILY -> stringResource(R.string.memory_category_daily)
+        CATEGORY_CONVERSATION -> stringResource(R.string.memory_category_conversation)
+        else ->
+            category.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase() else it.toString()
+            }
+    }
 
 /**
  * Lazy column of memory entry cards.
@@ -249,14 +271,24 @@ private fun MemoryCard(
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val memoryCardContentDescription =
+        stringResource(
+            R.string.memory_browser_memory_card_content_description,
+            entry.key,
+            entry.category,
+        )
+    val deleteMemoryContentDescription =
+        stringResource(
+            R.string.memory_browser_delete_memory_content_description,
+            entry.key,
+        )
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 48.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "Memory: ${entry.key}, category: ${entry.category}"
+                    contentDescription = memoryCardContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -286,7 +318,7 @@ private fun MemoryCard(
                         Modifier
                             .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             .semantics {
-                                contentDescription = "Delete memory: ${entry.key}"
+                                contentDescription = deleteMemoryContentDescription
                             },
                 ) {
                     Icon(
@@ -318,7 +350,11 @@ private fun MemoryCard(
                 )
                 entry.score?.let { score ->
                     Text(
-                        text = "Score: %.2f".format(score),
+                        text =
+                            stringResource(
+                                R.string.memory_browser_score_value,
+                                score,
+                            ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )

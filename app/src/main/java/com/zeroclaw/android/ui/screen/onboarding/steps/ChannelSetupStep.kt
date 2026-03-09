@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.ui.screen.onboarding.steps
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,8 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.ChannelType
 import com.zeroclaw.android.model.FieldInputType
+import com.zeroclaw.android.ui.i18n.localizedLabel
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 
 /** Standard spacing between form fields. */
 private const val FIELD_SPACING_DP = 12
@@ -65,14 +69,12 @@ fun ChannelSetupStep(
 ) {
     Column(modifier = Modifier.imePadding().verticalScroll(rememberScrollState())) {
         Text(
-            text = "Connect a Channel",
+            text = stringResource(R.string.channel_setup_step_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
         Text(
-            text =
-                "Connect a chat platform so your agent can send and receive messages. " +
-                    "You can skip this and add channels later in Settings.",
+            text = stringResource(R.string.channel_setup_step_description),
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(modifier = Modifier.height(DESCRIPTION_SPACING_DP.dp))
@@ -80,6 +82,7 @@ fun ChannelSetupStep(
         @Suppress("DEPRECATION")
         ChannelType.entries.filter { it != ChannelType.WEBHOOK }.forEach { type ->
             val isSelected = selectedType == type
+            val channelName = type.localizedDisplayName()
             Card(
                 onClick = {
                     onTypeSelected(if (isSelected) null else type)
@@ -104,7 +107,7 @@ fun ChannelSetupStep(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = type.displayName,
+                    text = channelName,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(CARD_PADDING_DP.dp),
                 )
@@ -113,12 +116,13 @@ fun ChannelSetupStep(
             if (isSelected) {
                 Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
                 Text(
-                    text = "Required fields for ${type.displayName}:",
+                    text = stringResource(R.string.channel_setup_step_required_fields_title, channelName),
                     style = MaterialTheme.typography.labelLarge,
                 )
                 Spacer(modifier = Modifier.height(FIELD_SPACING_DP.dp))
 
                 type.fields.filter { it.isRequired }.forEach { spec ->
+                    val fieldLabel = spec.localizedLabel()
                     val keyboardType =
                         when (spec.inputType) {
                             FieldInputType.NUMBER -> KeyboardType.Number
@@ -128,7 +132,7 @@ fun ChannelSetupStep(
                     OutlinedTextField(
                         value = channelFieldValues[spec.key].orEmpty(),
                         onValueChange = { onFieldChanged(spec.key, it) },
-                        label = { Text("${spec.label} *") },
+                        label = { Text(stringResource(R.string.channel_setup_required_field_label, fieldLabel)) },
                         singleLine = true,
                         visualTransformation =
                             if (spec.isSecret) {
@@ -147,7 +151,7 @@ fun ChannelSetupStep(
         }
 
         Text(
-            text = "You can skip this step and add channels later.",
+            text = stringResource(R.string.channel_setup_step_skip_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -23,10 +23,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.validation.ValidationResult
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
@@ -68,11 +70,13 @@ fun ValidationIndicator(
             Box(modifier = modifier)
         }
         is ValidationResult.Loading -> {
+            val loadingContentDescription =
+                stringResource(R.string.validation_indicator_validating_content_description)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     modifier.semantics(mergeDescendants = true) {
-                        contentDescription = "Validating"
+                        contentDescription = loadingContentDescription
                     },
             ) {
                 CircularProgressIndicator(
@@ -81,18 +85,27 @@ fun ValidationIndicator(
                 )
                 Spacer(modifier = Modifier.width(IconTextSpacing))
                 Text(
-                    text = "Validating\u2026",
+                    text = stringResource(R.string.validation_indicator_validating),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         is ValidationResult.Success -> {
+            val successText =
+                result.detailsResId?.let { resId ->
+                    stringResource(resId, *result.detailsArgs.toTypedArray())
+                } ?: result.details
+            val successContentDescription =
+                stringResource(
+                    R.string.validation_indicator_success_content_description,
+                    successText,
+                )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     modifier.semantics(mergeDescendants = true) {
-                        contentDescription = "Validation succeeded: ${result.details}"
+                        contentDescription = successContentDescription
                     },
             ) {
                 Icon(
@@ -103,18 +116,27 @@ fun ValidationIndicator(
                 )
                 Spacer(modifier = Modifier.width(IconTextSpacing))
                 Text(
-                    text = result.details,
+                    text = successText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
         is ValidationResult.Failure -> {
+            val failureText =
+                result.messageResId?.let { resId ->
+                    stringResource(resId, *result.messageArgs.toTypedArray())
+                } ?: result.message
+            val failureContentDescription =
+                stringResource(
+                    R.string.validation_indicator_failure_content_description,
+                    failureText,
+                )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     modifier.semantics(mergeDescendants = true) {
-                        contentDescription = "Validation failed: ${result.message}"
+                        contentDescription = failureContentDescription
                     },
             ) {
                 Icon(
@@ -125,18 +147,27 @@ fun ValidationIndicator(
                 )
                 Spacer(modifier = Modifier.width(IconTextSpacing))
                 Text(
-                    text = result.message,
+                    text = failureText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
             }
         }
         is ValidationResult.Offline -> {
+            val offlineText =
+                result.messageResId?.let { resId ->
+                    stringResource(resId, *result.messageArgs.toTypedArray())
+                } ?: result.message
+            val offlineContentDescription =
+                stringResource(
+                    R.string.validation_indicator_offline_content_description,
+                    offlineText,
+                )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     modifier.semantics(mergeDescendants = true) {
-                        contentDescription = "Offline: ${result.message}"
+                        contentDescription = offlineContentDescription
                     },
             ) {
                 Icon(
@@ -147,7 +178,7 @@ fun ValidationIndicator(
                 )
                 Spacer(modifier = Modifier.width(IconTextSpacing))
                 Text(
-                    text = result.message,
+                    text = offlineText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary,
                 )
@@ -174,7 +205,12 @@ private fun PreviewSuccess() {
     ZeroClawTheme {
         Surface {
             ValidationIndicator(
-                result = ValidationResult.Success(details = "3 models available"),
+                result =
+                    ValidationResult.Success(
+                        details = "",
+                        detailsResId = R.string.validation_provider_connected_models_plural,
+                        detailsArgs = listOf(3),
+                    ),
             )
         }
     }
@@ -186,7 +222,11 @@ private fun PreviewFailure() {
     ZeroClawTheme {
         Surface {
             ValidationIndicator(
-                result = ValidationResult.Failure(message = "Invalid API key"),
+                result =
+                    ValidationResult.Failure(
+                        message = "",
+                        messageResId = R.string.validation_provider_invalid_api_key,
+                    ),
             )
         }
     }
@@ -198,7 +238,11 @@ private fun PreviewOffline() {
     ZeroClawTheme {
         Surface {
             ValidationIndicator(
-                result = ValidationResult.Offline(message = "No internet connection"),
+                result =
+                    ValidationResult.Offline(
+                        message = "",
+                        messageResId = R.string.doctor_check_detail_no_internet_connection,
+                    ),
             )
         }
     }
@@ -222,7 +266,12 @@ private fun PreviewSuccessDark() {
     ZeroClawTheme {
         Surface {
             ValidationIndicator(
-                result = ValidationResult.Success(details = "3 models available"),
+                result =
+                    ValidationResult.Success(
+                        details = "",
+                        detailsResId = R.string.validation_provider_connected_models_plural,
+                        detailsArgs = listOf(3),
+                    ),
             )
         }
     }
@@ -234,7 +283,11 @@ private fun PreviewFailureDark() {
     ZeroClawTheme {
         Surface {
             ValidationIndicator(
-                result = ValidationResult.Failure(message = "Invalid API key"),
+                result =
+                    ValidationResult.Failure(
+                        message = "",
+                        messageResId = R.string.validation_provider_invalid_api_key,
+                    ),
             )
         }
     }
@@ -246,7 +299,11 @@ private fun PreviewOfflineDark() {
     ZeroClawTheme {
         Surface {
             ValidationIndicator(
-                result = ValidationResult.Offline(message = "No internet connection"),
+                result =
+                    ValidationResult.Offline(
+                        message = "",
+                        messageResId = R.string.doctor_check_detail_no_internet_connection,
+                    ),
             )
         }
     }

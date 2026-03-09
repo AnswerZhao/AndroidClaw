@@ -5,6 +5,7 @@ package com.zeroclaw.android.ui.screen.settings.memory
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.MemoryEntry
 import com.zeroclaw.android.service.MemoryBridge
@@ -152,7 +153,7 @@ class MemoryBrowserViewModel(
      */
     fun forgetMemory(key: String) {
         viewModelScope.launch {
-            runMutation("Memory entry deleted") {
+            runMutation(getString(R.string.memory_browser_snackbar_entry_deleted)) {
                 memoryBridge.forgetMemory(key)
             }
         }
@@ -172,7 +173,7 @@ class MemoryBrowserViewModel(
             _uiState.value = MemoryUiState.Content(entries)
         } catch (e: Exception) {
             _uiState.value =
-                MemoryUiState.Error(ErrorSanitizer.sanitizeForUi(e))
+                MemoryUiState.Error(ErrorSanitizer.sanitizeForUi(getApplication(), e))
         }
     }
 
@@ -183,7 +184,7 @@ class MemoryBrowserViewModel(
             _uiState.value = MemoryUiState.Content(entries)
         } catch (e: Exception) {
             _uiState.value =
-                MemoryUiState.Error(ErrorSanitizer.sanitizeForUi(e))
+                MemoryUiState.Error(ErrorSanitizer.sanitizeForUi(getApplication(), e))
         }
     }
 
@@ -207,7 +208,12 @@ class MemoryBrowserViewModel(
             loadMemoriesInternal()
             loadCountInternal()
         } catch (e: Exception) {
-            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(e)
+            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(getApplication(), e)
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 }

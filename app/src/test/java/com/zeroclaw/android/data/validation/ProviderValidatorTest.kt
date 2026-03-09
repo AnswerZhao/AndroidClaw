@@ -6,6 +6,7 @@
 
 package com.zeroclaw.android.data.validation
 
+import com.zeroclaw.android.R
 import java.io.IOException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -40,7 +41,8 @@ class ProviderValidatorTest {
                 )
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertTrue("2" in success.details)
+            assertEquals(R.string.validation_provider_connected_models_plural, success.detailsResId)
+            assertEquals(listOf(2), success.detailsArgs)
         }
 
         @Test
@@ -101,7 +103,8 @@ class ProviderValidatorTest {
                 )
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertTrue("0" in success.details)
+            assertEquals(R.string.validation_provider_connected_models_plural, success.detailsResId)
+            assertEquals(listOf(0), success.detailsArgs)
         }
 
         @Test
@@ -114,8 +117,8 @@ class ProviderValidatorTest {
                 )
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertTrue("1 model" in success.details)
-            assertFalse("models" in success.details)
+            assertEquals(R.string.validation_provider_connected_models_singular, success.detailsResId)
+            assertEquals(listOf(1), success.detailsArgs)
         }
 
         @Test
@@ -129,7 +132,7 @@ class ProviderValidatorTest {
             assertTrue(result is ValidationResult.Failure)
             val failure = result as ValidationResult.Failure
             assertFalse(failure.retryable)
-            assertTrue("Unknown provider" in failure.message)
+            assertEquals(R.string.validation_provider_unknown_provider, failure.messageResId)
         }
 
         @Test
@@ -142,7 +145,8 @@ class ProviderValidatorTest {
                 )
             assertTrue(result is ValidationResult.Success)
             val success = result as ValidationResult.Success
-            assertTrue("0" in success.details)
+            assertEquals(R.string.validation_provider_connected_models_plural, success.detailsResId)
+            assertEquals(listOf(0), success.detailsArgs)
         }
     }
 }

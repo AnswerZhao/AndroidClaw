@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -71,7 +73,7 @@ fun TunnelScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Tunnel Provider")
+        SectionHeader(title = stringResource(R.string.tunnel_section_provider))
 
         ExposedDropdownMenuBox(
             expanded = providerExpanded,
@@ -81,7 +83,7 @@ fun TunnelScreen(
                 value = settings.tunnelProvider,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Provider") },
+                label = { Text(stringResource(R.string.common_provider)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(providerExpanded) },
                 modifier =
                     Modifier
@@ -126,11 +128,11 @@ private fun CloudflareSection(
     settings: com.zeroclaw.android.model.AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Cloudflare")
+    SectionHeader(title = stringResource(R.string.tunnel_section_cloudflare))
     SecretTextField(
         value = settings.tunnelCloudflareToken,
         onValueChange = { viewModel.updateTunnelCloudflareToken(it) },
-        label = "Token",
+        label = stringResource(R.string.tunnel_token_label),
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -146,17 +148,19 @@ private fun TailscaleSection(
     settings: com.zeroclaw.android.model.AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Tailscale")
+    val tailscaleFunnelContentDescription =
+        stringResource(R.string.tunnel_enable_tailscale_funnel_content_description)
+    SectionHeader(title = stringResource(R.string.tunnel_section_tailscale))
     Switch(
         checked = settings.tunnelTailscaleFunnel,
         onCheckedChange = { viewModel.updateTunnelTailscaleFunnel(it) },
-        modifier = Modifier.semantics { contentDescription = "Enable Tailscale Funnel" },
+        modifier = Modifier.semantics { contentDescription = tailscaleFunnelContentDescription },
     )
-    Text("Enable Funnel")
+    Text(stringResource(R.string.tunnel_enable_funnel))
     OutlinedTextField(
         value = settings.tunnelTailscaleHostname,
         onValueChange = { viewModel.updateTunnelTailscaleHostname(it) },
-        label = { Text("Hostname (optional)") },
+        label = { Text(stringResource(R.string.tunnel_hostname_optional_label)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -173,17 +177,17 @@ private fun NgrokSection(
     settings: com.zeroclaw.android.model.AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "ngrok")
+    SectionHeader(title = stringResource(R.string.tunnel_section_ngrok))
     SecretTextField(
         value = settings.tunnelNgrokAuthToken,
         onValueChange = { viewModel.updateTunnelNgrokAuthToken(it) },
-        label = "Auth token",
+        label = stringResource(R.string.tunnel_auth_token_label),
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(
         value = settings.tunnelNgrokDomain,
         onValueChange = { viewModel.updateTunnelNgrokDomain(it) },
-        label = { Text("Domain (optional)") },
+        label = { Text(stringResource(R.string.tunnel_domain_optional_label)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -200,26 +204,26 @@ private fun CustomTunnelSection(
     settings: com.zeroclaw.android.model.AppSettings,
     viewModel: SettingsViewModel,
 ) {
-    SectionHeader(title = "Custom Tunnel")
+    SectionHeader(title = stringResource(R.string.tunnel_section_custom))
     OutlinedTextField(
         value = settings.tunnelCustomCommand,
         onValueChange = { viewModel.updateTunnelCustomCommand(it) },
-        label = { Text("Start command") },
-        supportingText = { Text("e.g. bore local {port} --to bore.pub") },
+        label = { Text(stringResource(R.string.tunnel_start_command_label)) },
+        supportingText = { Text(stringResource(R.string.tunnel_start_command_hint)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(
         value = settings.tunnelCustomHealthUrl,
         onValueChange = { viewModel.updateTunnelCustomHealthUrl(it) },
-        label = { Text("Health URL (optional)") },
+        label = { Text(stringResource(R.string.tunnel_health_url_optional_label)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(
         value = settings.tunnelCustomUrlPattern,
         onValueChange = { viewModel.updateTunnelCustomUrlPattern(it) },
-        label = { Text("URL pattern (optional)") },
+        label = { Text(stringResource(R.string.tunnel_url_pattern_optional_label)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )

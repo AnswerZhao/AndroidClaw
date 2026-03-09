@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -37,7 +38,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.ChannelType
+import com.zeroclaw.android.ui.i18n.localizedDisplayName
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Number of columns in the channel selection grid. */
@@ -96,16 +99,14 @@ fun ChannelSelectionGrid(
 
     Column(modifier = modifier) {
         Text(
-            text = "Connect Channels",
+            text = stringResource(R.string.channel_selection_title),
             style = MaterialTheme.typography.headlineMedium,
         )
 
         Spacer(modifier = Modifier.height(TitleSpacing))
 
         Text(
-            text =
-                "Choose messaging platforms for your agent. " +
-                    "You can add more later.",
+            text = stringResource(R.string.channel_selection_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -146,9 +147,7 @@ fun ChannelSelectionGrid(
         if (showSkipHint) {
             Spacer(modifier = Modifier.height(HintSpacing))
             Text(
-                text =
-                    "You can skip this and add channels later " +
-                        "in Settings",
+                text = stringResource(R.string.channel_selection_skip_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -182,11 +181,15 @@ private fun ChannelCard(
     onToggle: () -> Unit,
 ) {
     val hasVisualEmphasis = isSelected || isConfigured
+    val channelName = type.localizedDisplayName()
+    val configuredState = stringResource(R.string.channel_selection_state_configured)
+    val selectedState = stringResource(R.string.common_state_selected)
+    val notSelectedState = stringResource(R.string.common_state_not_selected)
     val cardStateDescription =
         when {
-            isConfigured -> "configured"
-            isSelected -> "selected"
-            else -> "not selected"
+            isConfigured -> configuredState
+            isSelected -> selectedState
+            else -> notSelectedState
         }
 
     Card(
@@ -213,7 +216,7 @@ private fun ChannelCard(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription = type.displayName
+                    contentDescription = channelName
                     role = Role.Checkbox
                     stateDescription = cardStateDescription
                 },
@@ -227,7 +230,7 @@ private fun ChannelCard(
                     .padding(CardPadding),
         ) {
             Text(
-                text = type.displayName,
+                text = channelName,
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
             )
@@ -235,7 +238,7 @@ private fun ChannelCard(
             if (isConfigured) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Already configured",
+                    contentDescription = stringResource(R.string.channel_selection_already_configured),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(CheckIconSize),
                 )

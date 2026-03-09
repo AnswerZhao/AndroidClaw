@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -39,6 +40,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 
 /** Spacing after the title text. */
@@ -73,8 +75,8 @@ private val IconTextSpacing = 12.dp
  */
 private data class AutonomyOption(
     val id: String,
-    val title: String,
-    val description: String,
+    val titleRes: Int,
+    val descriptionRes: Int,
     val icon: ImageVector,
     val isWarning: Boolean = false,
 )
@@ -84,20 +86,20 @@ private val AUTONOMY_OPTIONS =
     listOf(
         AutonomyOption(
             id = "supervised",
-            title = "Supervised",
-            description = "Agent asks before taking actions. Recommended for most users.",
+            titleRes = R.string.autonomy_option_supervised_title,
+            descriptionRes = R.string.autonomy_option_supervised_description,
             icon = Icons.Filled.Shield,
         ),
         AutonomyOption(
             id = "constrained",
-            title = "Constrained",
-            description = "Agent acts within defined boundaries without asking.",
+            titleRes = R.string.autonomy_option_constrained_title,
+            descriptionRes = R.string.autonomy_option_constrained_description,
             icon = Icons.Filled.Security,
         ),
         AutonomyOption(
             id = "unconstrained",
-            title = "Unconstrained",
-            description = "Agent acts freely with no restrictions.",
+            titleRes = R.string.autonomy_option_unconstrained_title,
+            descriptionRes = R.string.autonomy_option_unconstrained_description,
             icon = Icons.Filled.Warning,
             isWarning = true,
         ),
@@ -129,14 +131,14 @@ fun AutonomyPicker(
         modifier = modifier.verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = "Security & Autonomy",
+            text = stringResource(R.string.autonomy_picker_title),
             style = MaterialTheme.typography.headlineMedium,
         )
 
         Spacer(modifier = Modifier.height(TitleSpacing))
 
         Text(
-            text = "Control how independently your agent can act.",
+            text = stringResource(R.string.autonomy_picker_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -174,6 +176,21 @@ private fun AutonomyOptionCard(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val title = stringResource(option.titleRes)
+    val description = stringResource(option.descriptionRes)
+    val selectionState =
+        if (isSelected) {
+            stringResource(R.string.common_state_selected)
+        } else {
+            stringResource(R.string.common_state_not_selected)
+        }
+    val optionContentDescription =
+        stringResource(
+            R.string.autonomy_option_content_description,
+            title,
+            selectionState,
+        )
+
     val borderColor =
         when {
             isSelected && option.isWarning -> MaterialTheme.colorScheme.error
@@ -208,8 +225,7 @@ private fun AutonomyOptionCard(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "${option.title}, ${if (isSelected) "selected" else "not selected"}"
+                    contentDescription = optionContentDescription
                     role = Role.RadioButton
                     selected = isSelected
                 },
@@ -227,11 +243,11 @@ private fun AutonomyOptionCard(
             Spacer(modifier = Modifier.width(IconTextSpacing))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = option.title,
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = option.description,
+                    text = description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

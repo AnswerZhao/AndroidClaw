@@ -56,10 +56,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -67,6 +69,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.StorageHealth
 import com.zeroclaw.android.data.validation.ProviderValidator
 import com.zeroclaw.android.data.validation.ValidationResult
@@ -223,6 +226,9 @@ internal fun ApiKeysContent(
     onImportCredentials: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val addApiKeyDescription = stringResource(R.string.api_keys_fab_add_description)
+    val addIconDescription = stringResource(R.string.api_keys_fab_add_icon_description)
     var deleteTarget by remember { mutableStateOf<ApiKey?>(null) }
     var deleteTargetAgentCount by remember { mutableStateOf(0) }
     var rotatingKeyId by remember { mutableStateOf<String?>(null) }
@@ -280,9 +286,9 @@ internal fun ApiKeysContent(
                 onImportKeys(payload, passphrase) { count ->
                     onShowSnackbar(
                         if (count > 0) {
-                            "$count key(s) imported"
+                            context.getString(R.string.api_keys_import_success_count, count)
                         } else {
-                            "Import failed: wrong passphrase or invalid data"
+                            context.getString(R.string.api_keys_import_failed)
                         },
                     )
                 }
@@ -298,12 +304,12 @@ internal fun ApiKeysContent(
                 onClick = { onNavigateToDetail(null) },
                 modifier =
                     Modifier.semantics {
-                        contentDescription = "Add API key"
+                        contentDescription = addApiKeyDescription
                     },
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "Add",
+                    contentDescription = addIconDescription,
                 )
             }
         },
@@ -315,7 +321,7 @@ internal fun ApiKeysContent(
         ) {
             EmptyState(
                 icon = Icons.Outlined.Key,
-                message = "No API keys stored",
+                message = stringResource(R.string.api_keys_empty_state_no_keys),
                 modifier = Modifier.padding(innerPadding),
             )
         } else {
@@ -333,9 +339,9 @@ internal fun ApiKeysContent(
                     item {
                         ErrorCard(
                             message =
-                                "Encrypted storage unavailable. Keys are " +
-                                    "stored in memory only and will be lost when " +
-                                    "the app restarts.",
+                                stringResource(
+                                    R.string.api_keys_storage_degraded_message,
+                                ),
                             onRetry = null,
                         )
                     }
@@ -345,8 +351,9 @@ internal fun ApiKeysContent(
                     item {
                         ErrorCard(
                             message =
-                                "Encrypted storage was corrupted and has " +
-                                    "been reset. Previously stored keys were lost.",
+                                stringResource(
+                                    R.string.api_keys_storage_recovered_message,
+                                ),
                             onRetry = null,
                         )
                     }
@@ -356,8 +363,10 @@ internal fun ApiKeysContent(
                     item {
                         ErrorCard(
                             message =
-                                "${state.corruptCount} stored key(s) could not " +
-                                    "be read and may be corrupted.",
+                                stringResource(
+                                    R.string.api_keys_corrupt_count_message,
+                                    state.corruptCount,
+                                ),
                             onRetry = null,
                         )
                     }
@@ -432,6 +441,10 @@ private fun ExportImportRow(
     onImport: () -> Unit,
     onImportCredentials: () -> Unit,
 ) {
+    val exportDescription = stringResource(R.string.api_keys_export_button_desc)
+    val importDescription = stringResource(R.string.api_keys_import_button_desc)
+    val credentialsDescription = stringResource(R.string.api_keys_credentials_button_desc)
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -441,7 +454,7 @@ private fun ExportImportRow(
             enabled = hasKeys,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Export API keys"
+                    contentDescription = exportDescription
                 },
         ) {
             Icon(
@@ -449,13 +462,13 @@ private fun ExportImportRow(
                 contentDescription = null,
                 modifier = Modifier.padding(end = 4.dp),
             )
-            Text("Export")
+            Text(stringResource(R.string.api_keys_export_button_text))
         }
         TextButton(
             onClick = onImport,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Import API keys"
+                    contentDescription = importDescription
                 },
         ) {
             Icon(
@@ -463,13 +476,13 @@ private fun ExportImportRow(
                 contentDescription = null,
                 modifier = Modifier.padding(end = 4.dp),
             )
-            Text("Import")
+            Text(stringResource(R.string.api_keys_import_button_text))
         }
         TextButton(
             onClick = onImportCredentials,
             modifier =
                 Modifier.semantics {
-                    contentDescription = "Import credentials file"
+                    contentDescription = credentialsDescription
                 },
         ) {
             Icon(
@@ -477,7 +490,7 @@ private fun ExportImportRow(
                 contentDescription = null,
                 modifier = Modifier.padding(end = 4.dp),
             )
-            Text("Credentials")
+            Text(stringResource(R.string.api_keys_credentials_button_text))
         }
     }
 }
@@ -505,19 +518,17 @@ private fun ExportPassphraseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Encrypt Export") },
+        title = { Text(stringResource(R.string.api_keys_export_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text =
-                        "Enter a passphrase to encrypt your API keys. " +
-                            "You will need this passphrase to import them later.",
+                    text = stringResource(R.string.api_keys_export_dialog_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedTextField(
                     value = passphrase,
                     onValueChange = { passphrase = it },
-                    label = { Text("Passphrase") },
+                    label = { Text(stringResource(R.string.api_keys_passphrase_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions =
@@ -529,7 +540,12 @@ private fun ExportPassphraseDialog(
                         if (passphrase.isNotEmpty() &&
                             passphrase.length < MIN_PASSPHRASE_LENGTH
                         ) {
-                            Text("At least $MIN_PASSPHRASE_LENGTH characters")
+                            Text(
+                                stringResource(
+                                    R.string.api_keys_passphrase_min_error,
+                                    MIN_PASSPHRASE_LENGTH,
+                                ),
+                            )
                         }
                     },
                     isError =
@@ -540,7 +556,7 @@ private fun ExportPassphraseDialog(
                 OutlinedTextField(
                     value = confirm,
                     onValueChange = { confirm = it },
-                    label = { Text("Confirm passphrase") },
+                    label = { Text(stringResource(R.string.api_keys_confirm_passphrase_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions =
@@ -550,7 +566,7 @@ private fun ExportPassphraseDialog(
                         ),
                     supportingText = {
                         if (confirm.isNotEmpty() && passphrase != confirm) {
-                            Text("Passphrases do not match")
+                            Text(stringResource(R.string.api_keys_passphrase_mismatch_error))
                         }
                     },
                     isError = confirm.isNotEmpty() && passphrase != confirm,
@@ -563,12 +579,12 @@ private fun ExportPassphraseDialog(
                 onClick = { onConfirm(passphrase) },
                 enabled = matchesAndValid,
             ) {
-                Text("Encrypt & Export")
+                Text(stringResource(R.string.api_keys_encrypt_export_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.api_keys_cancel_button))
             }
         },
     )
@@ -595,19 +611,17 @@ private fun ImportPassphraseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Import Keys") },
+        title = { Text(stringResource(R.string.api_keys_import_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text =
-                        "Paste the encrypted export data and enter the " +
-                            "passphrase that was used during export.",
+                    text = stringResource(R.string.api_keys_import_dialog_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedTextField(
                     value = payload,
                     onValueChange = { payload = it },
-                    label = { Text("Encrypted data") },
+                    label = { Text(stringResource(R.string.api_keys_encrypted_data_label)) },
                     minLines = 3,
                     maxLines = 5,
                     keyboardOptions =
@@ -619,7 +633,7 @@ private fun ImportPassphraseDialog(
                 OutlinedTextField(
                     value = passphrase,
                     onValueChange = { passphrase = it },
-                    label = { Text("Passphrase") },
+                    label = { Text(stringResource(R.string.api_keys_passphrase_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions =
@@ -636,12 +650,12 @@ private fun ImportPassphraseDialog(
                 onClick = { onConfirm(payload.trim(), passphrase) },
                 enabled = importEnabled,
             ) {
-                Text("Decrypt & Import")
+                Text(stringResource(R.string.api_keys_decrypt_import_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.api_keys_cancel_button))
             }
         },
     )
@@ -682,6 +696,12 @@ private fun ApiKeyItem(
     onDelete: () -> Unit,
     onValidate: () -> Unit,
 ) {
+    val revealKeyDescription = stringResource(R.string.api_keys_reveal_key_desc)
+    val hideKeyDescription = stringResource(R.string.api_keys_hide_key_desc)
+    val rotateKeyDescription = stringResource(R.string.api_keys_rotate_key_desc, apiKey.provider)
+    val deleteKeyDescription = stringResource(R.string.api_keys_delete_key_desc, apiKey.provider)
+    val validateKeyDescription = stringResource(R.string.api_keys_validate_key_desc, apiKey.provider)
+
     Card(
         modifier =
             Modifier
@@ -715,20 +735,20 @@ private fun ApiKeyItem(
                     if (apiKey.status == KeyStatus.INVALID) {
                         Icon(
                             imageVector = Icons.Filled.Warning,
-                            contentDescription = "Key may be invalid",
+                            contentDescription = stringResource(R.string.api_keys_invalid_key_desc),
                             tint = MaterialTheme.colorScheme.error,
                         )
                     }
                     if (isUnreachable) {
                         Text(
-                            text = "Offline",
+                            text = stringResource(R.string.api_keys_offline_label),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                     if (isUnused) {
                         Text(
-                            text = "Unused",
+                            text = stringResource(R.string.api_keys_unused_label),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
@@ -740,7 +760,7 @@ private fun ApiKeyItem(
                         modifier =
                             Modifier.semantics {
                                 contentDescription =
-                                    if (isRevealed) "Hide key" else "Reveal key"
+                                    if (isRevealed) hideKeyDescription else revealKeyDescription
                             },
                     ) {
                         Icon(
@@ -757,8 +777,7 @@ private fun ApiKeyItem(
                         onClick = onRotate,
                         modifier =
                             Modifier.semantics {
-                                contentDescription =
-                                    "Rotate ${apiKey.provider} key"
+                                contentDescription = rotateKeyDescription
                             },
                     ) {
                         Icon(
@@ -770,8 +789,7 @@ private fun ApiKeyItem(
                         onClick = onDelete,
                         modifier =
                             Modifier.semantics {
-                                contentDescription =
-                                    "Delete ${apiKey.provider} key"
+                                contentDescription = deleteKeyDescription
                             },
                     ) {
                         Icon(
@@ -784,7 +802,7 @@ private fun ApiKeyItem(
             Spacer(modifier = Modifier.height(4.dp))
             if (apiKey.isOAuthToken) {
                 Text(
-                    text = "ChatGPT Login",
+                    text = stringResource(R.string.api_keys_chatgpt_login_label),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -808,8 +826,7 @@ private fun ApiKeyItem(
                     enabled = validationResult !is ValidationResult.Loading,
                     modifier =
                         Modifier.semantics {
-                            contentDescription =
-                                "Validate ${apiKey.provider} key"
+                            contentDescription = validateKeyDescription
                         },
                 ) {
                     Icon(
@@ -820,9 +837,9 @@ private fun ApiKeyItem(
                     Text(
                         text =
                             if (validationResult is ValidationResult.Loading) {
-                                "Validating\u2026"
+                                stringResource(R.string.api_keys_validating)
                             } else {
-                                "Validate"
+                                stringResource(R.string.api_keys_validate)
                             },
                     )
                 }
@@ -851,22 +868,29 @@ private fun KeyRotateDialog(
     onDismiss: () -> Unit,
 ) {
     var newKey by remember { mutableStateOf("") }
+    val newKeyDescription = stringResource(R.string.api_keys_new_key_desc, providerName)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rotate $providerName Key") },
+        title = {
+            Text(
+                stringResource(
+                    R.string.api_keys_rotate_dialog_title,
+                    providerName,
+                ),
+            )
+        },
         text = {
             SecretTextField(
                 value = newKey,
                 onValueChange = { newKey = it },
-                label = "New key",
+                label = stringResource(R.string.api_keys_new_key_label),
                 imeAction = ImeAction.Done,
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .semantics {
-                            contentDescription =
-                                "Enter new API key for $providerName"
+                            contentDescription = newKeyDescription
                         },
             )
         },
@@ -875,12 +899,12 @@ private fun KeyRotateDialog(
                 onClick = { onConfirm(newKey) },
                 enabled = newKey.isNotBlank(),
             ) {
-                Text("Rotate")
+                Text(stringResource(R.string.api_keys_rotate_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.api_keys_cancel_button))
             }
         },
     )
@@ -897,7 +921,7 @@ private fun KeyRotateDialog(
  */
 @Composable
 private fun ExpiryLabel(expiresAt: Long) {
-    val expiryText =
+    val remainingTime =
         remember(expiresAt) {
             val now = System.currentTimeMillis()
             val remainingMs = expiresAt - now
@@ -907,20 +931,30 @@ private fun ExpiryLabel(expiresAt: Long) {
                 val totalMinutes = remainingMs / MILLIS_PER_MINUTE
                 val hours = totalMinutes / MINUTES_PER_HOUR
                 val minutes = totalMinutes % MINUTES_PER_HOUR
-                when {
-                    hours > 0 -> "Expires in ${hours}h ${minutes}m"
-                    else -> "Expires in ${minutes}m"
-                }
+                Pair(hours, minutes)
             }
         }
 
-    if (expiryText == null) {
+    if (remainingTime == null) {
         Text(
-            text = "Expired",
+            text = stringResource(R.string.api_keys_expired),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.error,
         )
     } else {
+        val expiryText =
+            if (remainingTime.first > 0) {
+                stringResource(
+                    R.string.api_keys_expires_in_hours_minutes,
+                    remainingTime.first,
+                    remainingTime.second,
+                )
+            } else {
+                stringResource(
+                    R.string.api_keys_expires_in_minutes,
+                    remainingTime.second,
+                )
+            }
         Text(
             text = expiryText,
             style = MaterialTheme.typography.labelSmall,
@@ -954,13 +988,15 @@ private fun ApiKeyDeleteDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        title = { Text("Delete API Key") },
+        title = { Text(stringResource(R.string.api_keys_delete_dialog_title)) },
         text = {
             Column {
                 Text(
                     text =
-                        "Delete the $providerName key? " +
-                            "This action cannot be undone.",
+                        stringResource(
+                            R.string.api_keys_delete_dialog_body,
+                            providerName,
+                        ),
                 )
                 if (agentCount > 0) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -977,8 +1013,10 @@ private fun ApiKeyDeleteDialog(
                         )
                         Text(
                             text =
-                                "Also delete $agentCount agent(s) " +
-                                    "using this provider",
+                                stringResource(
+                                    R.string.api_keys_delete_agents_option,
+                                    agentCount,
+                                ),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -988,14 +1026,14 @@ private fun ApiKeyDeleteDialog(
         confirmButton = {
             TextButton(onClick = { onConfirm(alsoDeleteAgents) }) {
                 Text(
-                    text = "Delete",
+                    text = stringResource(R.string.api_keys_delete_button),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.api_keys_cancel_button))
             }
         },
     )

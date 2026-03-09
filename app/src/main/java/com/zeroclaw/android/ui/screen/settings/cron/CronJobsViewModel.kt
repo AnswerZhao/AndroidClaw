@@ -5,6 +5,7 @@ package com.zeroclaw.android.ui.screen.settings.cron
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.CronJob
 import com.zeroclaw.android.service.CronBridge
@@ -96,7 +97,7 @@ class CronJobsViewModel(
         command: String,
     ) {
         viewModelScope.launch {
-            runMutation("Job added") {
+            runMutation(getString(R.string.cron_snackbar_job_added)) {
                 cronBridge.addJob(expression, command)
             }
         }
@@ -113,7 +114,7 @@ class CronJobsViewModel(
         command: String,
     ) {
         viewModelScope.launch {
-            runMutation("One-shot job added") {
+            runMutation(getString(R.string.cron_snackbar_one_shot_job_added)) {
                 cronBridge.addOneShot(delay, command)
             }
         }
@@ -130,7 +131,7 @@ class CronJobsViewModel(
         command: String,
     ) {
         viewModelScope.launch {
-            runMutation("Scheduled job added") {
+            runMutation(getString(R.string.cron_snackbar_scheduled_job_added)) {
                 cronBridge.addJobAt(timestampRfc3339, command)
             }
         }
@@ -147,7 +148,7 @@ class CronJobsViewModel(
         command: String,
     ) {
         viewModelScope.launch {
-            runMutation("Interval job added") {
+            runMutation(getString(R.string.cron_snackbar_interval_job_added)) {
                 cronBridge.addJobEvery(intervalMs, command)
             }
         }
@@ -160,7 +161,7 @@ class CronJobsViewModel(
      */
     fun pauseJob(id: String) {
         viewModelScope.launch {
-            runMutation("Job paused") {
+            runMutation(getString(R.string.cron_snackbar_job_paused)) {
                 cronBridge.pauseJob(id)
             }
         }
@@ -173,7 +174,7 @@ class CronJobsViewModel(
      */
     fun resumeJob(id: String) {
         viewModelScope.launch {
-            runMutation("Job resumed") {
+            runMutation(getString(R.string.cron_snackbar_job_resumed)) {
                 cronBridge.resumeJob(id)
             }
         }
@@ -186,7 +187,7 @@ class CronJobsViewModel(
      */
     fun removeJob(id: String) {
         viewModelScope.launch {
-            runMutation("Job removed") {
+            runMutation(getString(R.string.cron_snackbar_job_removed)) {
                 cronBridge.removeJob(id)
             }
         }
@@ -205,7 +206,7 @@ class CronJobsViewModel(
         } catch (e: Exception) {
             _uiState.value =
                 CronJobsUiState.Error(
-                    ErrorSanitizer.sanitizeForUi(e),
+                    ErrorSanitizer.sanitizeForUi(getApplication(), e),
                 )
         }
     }
@@ -220,7 +221,12 @@ class CronJobsViewModel(
             _snackbarMessage.value = successMessage
             loadJobsInternal()
         } catch (e: Exception) {
-            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(e)
+            _snackbarMessage.value = ErrorSanitizer.sanitizeForUi(getApplication(), e)
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 }

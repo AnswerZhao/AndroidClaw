@@ -35,11 +35,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.channel.InstructionItem
 import com.zeroclaw.android.ui.theme.ZeroClawTheme
 import com.zeroclaw.android.util.LocalPowerSaveMode
@@ -81,12 +83,32 @@ fun InstructionsList(
     ) {
         items.forEach { item ->
             when (item) {
-                is InstructionItem.Text -> InstructionText(content = item.content)
+                is InstructionItem.Text ->
+                    InstructionText(
+                        content =
+                            item.contentResId?.let { stringResource(it) }
+                                ?: item.content,
+                    )
                 is InstructionItem.NumberedStep ->
-                    InstructionNumberedStep(number = item.number, content = item.content)
-                is InstructionItem.Warning -> InstructionWarning(content = item.content)
+                    InstructionNumberedStep(
+                        number = item.number,
+                        content =
+                            item.contentResId?.let { stringResource(it) }
+                                ?: item.content,
+                    )
+                is InstructionItem.Warning ->
+                    InstructionWarning(
+                        content =
+                            item.contentResId?.let { stringResource(it) }
+                                ?: item.content,
+                    )
                 is InstructionItem.Hint ->
-                    InstructionHint(content = item.content, expandable = item.expandable)
+                    InstructionHint(
+                        content =
+                            item.contentResId?.let { stringResource(it) }
+                                ?: item.content,
+                        expandable = item.expandable,
+                    )
             }
         }
     }
@@ -117,11 +139,17 @@ private fun InstructionNumberedStep(
     number: Int,
     content: String,
 ) {
+    val numberedStepContentDescription =
+        stringResource(
+            R.string.instructions_numbered_step_content_description,
+            number,
+            content,
+        )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier.semantics(mergeDescendants = true) {
-                contentDescription = "Step $number: $content"
+                contentDescription = numberedStepContentDescription
             },
     ) {
         Box(
@@ -155,11 +183,16 @@ private fun InstructionNumberedStep(
  */
 @Composable
 private fun InstructionWarning(content: String) {
+    val warningContentDescription =
+        stringResource(
+            R.string.instructions_warning_content_description,
+            content,
+        )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier.semantics(mergeDescendants = true) {
-                contentDescription = "Warning: $content"
+                contentDescription = warningContentDescription
             },
     ) {
         Icon(
@@ -216,7 +249,18 @@ private fun InstructionHint(
 private fun ExpandableHint(content: String) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val isPowerSave = LocalPowerSaveMode.current
-    val toggleLabel = if (expanded) "Hide hint" else "Show hint"
+    val toggleLabel =
+        if (expanded) {
+            stringResource(R.string.instructions_hide_hint)
+        } else {
+            stringResource(R.string.instructions_show_hint)
+        }
+    val toggleContentDescription =
+        if (expanded) {
+            stringResource(R.string.instructions_hide_hint_currently_showing)
+        } else {
+            stringResource(R.string.instructions_show_hint)
+        }
 
     Column {
         Text(
@@ -227,8 +271,7 @@ private fun ExpandableHint(content: String) {
                 Modifier
                     .clickable { expanded = !expanded }
                     .semantics {
-                        contentDescription =
-                            if (expanded) "Hide hint, currently showing" else "Show hint"
+                        contentDescription = toggleContentDescription
                     },
         )
         AnimatedVisibility(
@@ -253,13 +296,13 @@ private fun PreviewInstructionsList() {
             InstructionsList(
                 items =
                     listOf(
-                        InstructionItem.Text("Create a new bot using Telegram's BotFather."),
-                        InstructionItem.NumberedStep(number = 1, content = "Open BotFather using the link below."),
-                        InstructionItem.NumberedStep(number = 2, content = "Send /newbot and follow the prompts."),
-                        InstructionItem.NumberedStep(number = 3, content = "Copy the API token BotFather gives you."),
-                        InstructionItem.Warning(content = "Keep your bot token secret."),
-                        InstructionItem.Hint(content = "You can add multiple IDs separated by commas.", expandable = true),
-                        InstructionItem.Hint(content = "This is a non-expandable hint.", expandable = false),
+                        InstructionItem.Text(stringResource(R.string.instructions_preview_create_telegram_bot)),
+                        InstructionItem.NumberedStep(number = 1, content = stringResource(R.string.instructions_preview_open_botfather_link)),
+                        InstructionItem.NumberedStep(number = 2, content = stringResource(R.string.instructions_preview_send_newbot_follow_prompts)),
+                        InstructionItem.NumberedStep(number = 3, content = stringResource(R.string.instructions_preview_copy_api_token)),
+                        InstructionItem.Warning(content = stringResource(R.string.instructions_preview_warning_keep_token_secret)),
+                        InstructionItem.Hint(content = stringResource(R.string.instructions_preview_hint_add_multiple_ids), expandable = true),
+                        InstructionItem.Hint(content = stringResource(R.string.instructions_preview_hint_non_expandable), expandable = false),
                     ),
             )
         }
@@ -277,13 +320,13 @@ private fun PreviewInstructionsListDark() {
             InstructionsList(
                 items =
                     listOf(
-                        InstructionItem.Text(content = "Create a new bot using Telegram's BotFather."),
-                        InstructionItem.NumberedStep(number = 1, content = "Open BotFather using the link below."),
-                        InstructionItem.NumberedStep(number = 2, content = "Send /newbot and follow the prompts."),
-                        InstructionItem.NumberedStep(number = 3, content = "Copy the API token BotFather gives you."),
-                        InstructionItem.Warning(content = "Keep your bot token secret."),
-                        InstructionItem.Hint(content = "You can add multiple IDs separated by commas.", expandable = true),
-                        InstructionItem.Hint(content = "This is a non-expandable hint.", expandable = false),
+                        InstructionItem.Text(content = stringResource(R.string.instructions_preview_create_telegram_bot)),
+                        InstructionItem.NumberedStep(number = 1, content = stringResource(R.string.instructions_preview_open_botfather_link)),
+                        InstructionItem.NumberedStep(number = 2, content = stringResource(R.string.instructions_preview_send_newbot_follow_prompts)),
+                        InstructionItem.NumberedStep(number = 3, content = stringResource(R.string.instructions_preview_copy_api_token)),
+                        InstructionItem.Warning(content = stringResource(R.string.instructions_preview_warning_keep_token_secret)),
+                        InstructionItem.Hint(content = stringResource(R.string.instructions_preview_hint_add_multiple_ids), expandable = true),
+                        InstructionItem.Hint(content = stringResource(R.string.instructions_preview_hint_non_expandable), expandable = false),
                     ),
             )
         }

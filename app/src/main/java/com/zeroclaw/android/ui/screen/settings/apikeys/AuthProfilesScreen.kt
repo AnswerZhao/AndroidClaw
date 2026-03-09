@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings.apikeys
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -110,7 +112,7 @@ fun AuthProfilesScreen(
                     if (state.data.isEmpty()) {
                         EmptyState(
                             icon = Icons.Outlined.AccountCircle,
-                            message = "No auth profiles stored yet.",
+                            message = stringResource(R.string.auth_profiles_empty_message),
                         )
                     } else {
                         AuthProfilesList(
@@ -188,6 +190,26 @@ private fun AuthProfileCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val activeLabel = stringResource(R.string.auth_profiles_active)
+    val profileContentDescription =
+        if (profile.isActive) {
+            stringResource(
+                R.string.auth_profiles_profile_content_description_active,
+                profile.provider,
+                profile.profileName,
+                profile.kind,
+            )
+        } else {
+            stringResource(
+                R.string.auth_profiles_profile_content_description,
+                profile.provider,
+                profile.profileName,
+                profile.kind,
+            )
+        }
+    val deleteProfileContentDescription =
+        stringResource(R.string.auth_profiles_delete_profile_content_description)
+
     val kindColor =
         when (profile.kind) {
             "OAuth" -> MaterialTheme.colorScheme.primary
@@ -199,10 +221,7 @@ private fun AuthProfileCard(
             modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
-                    contentDescription =
-                        "Profile: ${profile.provider} ${profile.profileName}, " +
-                        "kind: ${profile.kind}" +
-                        if (profile.isActive) ", active" else ""
+                    contentDescription = profileContentDescription
                 },
         colors =
             CardDefaults.cardColors(
@@ -234,7 +253,7 @@ private fun AuthProfileCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (profile.isActive) {
                         Text(
-                            text = "Active",
+                            text = activeLabel,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -258,18 +277,30 @@ private fun AuthProfileCard(
                 Column {
                     profile.expiryLabel?.let { expiry ->
                         Text(
-                            text = "Expires: $expiry",
+                            text =
+                                stringResource(
+                                    R.string.auth_profiles_expires_label,
+                                    expiry,
+                                ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Text(
-                        text = "Created: ${profile.createdLabel}",
+                        text =
+                            stringResource(
+                                R.string.auth_profiles_created_label,
+                                profile.createdLabel,
+                            ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = "Updated: ${profile.updatedLabel}",
+                        text =
+                            stringResource(
+                                R.string.auth_profiles_updated_label,
+                                profile.updatedLabel,
+                            ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -280,7 +311,7 @@ private fun AuthProfileCard(
                     modifier =
                         Modifier
                             .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .semantics { contentDescription = "Delete profile" },
+                            .semantics { contentDescription = deleteProfileContentDescription },
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
@@ -311,21 +342,24 @@ private fun DeleteProfileDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Profile?") },
+        title = { Text(stringResource(R.string.auth_profiles_delete_profile_title)) },
         text = {
             Text(
-                "Remove the \"${profile.profileName}\" profile for " +
-                    "${profile.provider}? This action cannot be undone.",
+                stringResource(
+                    R.string.auth_profiles_delete_profile_message,
+                    profile.profileName,
+                    profile.provider,
+                ),
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete")
+                Text(stringResource(R.string.common_delete))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )

@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -72,17 +74,17 @@ fun AutonomyScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        SectionHeader(title = "Autonomy Level")
+        SectionHeader(title = stringResource(R.string.autonomy_section_level))
 
         ExposedDropdownMenuBox(
             expanded = levelExpanded,
             onExpandedChange = { levelExpanded = it },
         ) {
             OutlinedTextField(
-                value = settings.autonomyLevel,
+                value = autonomyLevelLabel(settings.autonomyLevel),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Level") },
+                label = { Text(stringResource(R.string.autonomy_level_label)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(levelExpanded) },
                 modifier =
                     Modifier
@@ -95,7 +97,7 @@ fun AutonomyScreen(
             ) {
                 for (level in AUTONOMY_LEVELS) {
                     DropdownMenuItem(
-                        text = { Text(level) },
+                        text = { Text(autonomyLevelLabel(level)) },
                         onClick = {
                             settingsViewModel.updateAutonomyLevel(level)
                             levelExpanded = false
@@ -108,31 +110,31 @@ fun AutonomyScreen(
         Text(
             text =
                 when (settings.autonomyLevel) {
-                    "readonly" -> "Agent can only read files and answer questions."
-                    "full" -> "Agent has unrestricted access to tools and commands."
-                    else -> "Agent asks for approval on risky actions."
+                    "readonly" -> stringResource(R.string.autonomy_level_readonly_description)
+                    "full" -> stringResource(R.string.autonomy_level_full_description)
+                    else -> stringResource(R.string.autonomy_level_supervised_description)
                 },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        SectionHeader(title = "Workspace")
+        SectionHeader(title = stringResource(R.string.autonomy_section_workspace))
 
         SettingsToggleRow(
-            title = "Workspace only",
-            subtitle = "Restrict file access to the project workspace directory",
+            title = stringResource(R.string.autonomy_workspace_only_title),
+            subtitle = stringResource(R.string.autonomy_workspace_only_subtitle),
             checked = settings.workspaceOnly,
             onCheckedChange = { settingsViewModel.updateWorkspaceOnly(it) },
-            contentDescription = "Workspace only restriction",
+            contentDescription = stringResource(R.string.autonomy_workspace_only_content_description),
         )
 
-        SectionHeader(title = "Commands")
+        SectionHeader(title = stringResource(R.string.autonomy_section_commands))
 
         OutlinedTextField(
             value = settings.allowedCommands,
             onValueChange = { settingsViewModel.updateAllowedCommands(it) },
-            label = { Text("Allowed commands") },
-            supportingText = { Text("Comma-separated (e.g. git, npm, cargo)") },
+            label = { Text(stringResource(R.string.autonomy_allowed_commands_label)) },
+            supportingText = { Text(stringResource(R.string.autonomy_allowed_commands_hint)) },
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -140,18 +142,18 @@ fun AutonomyScreen(
         OutlinedTextField(
             value = settings.forbiddenPaths,
             onValueChange = { settingsViewModel.updateForbiddenPaths(it) },
-            label = { Text("Forbidden paths") },
-            supportingText = { Text("Comma-separated (e.g. /etc, ~/.ssh)") },
+            label = { Text(stringResource(R.string.autonomy_forbidden_paths_label)) },
+            supportingText = { Text(stringResource(R.string.autonomy_forbidden_paths_hint)) },
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Limits")
+        SectionHeader(title = stringResource(R.string.autonomy_section_limits))
 
         OutlinedTextField(
             value = settings.maxActionsPerHour.toString(),
             onValueChange = { v -> v.toIntOrNull()?.let { settingsViewModel.updateMaxActionsPerHour(it) } },
-            label = { Text("Max actions per hour") },
+            label = { Text(stringResource(R.string.autonomy_max_actions_per_hour_label)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
@@ -162,33 +164,42 @@ fun AutonomyScreen(
             onValueChange = { v ->
                 v.toIntOrNull()?.let { settingsViewModel.updateMaxCostPerDayCents(it) }
             },
-            label = { Text("Max cost per day (cents)") },
+            label = { Text(stringResource(R.string.autonomy_max_cost_per_day_label)) },
             supportingText = {
-                Text("Hard limit \u2014 blocks actions when exceeded")
+                Text(stringResource(R.string.autonomy_max_cost_hint))
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionHeader(title = "Risk Management")
+        SectionHeader(title = stringResource(R.string.autonomy_section_risk_management))
 
         SettingsToggleRow(
-            title = "Require approval for medium risk",
-            subtitle = "Prompt the user before executing medium-risk actions",
+            title = stringResource(R.string.autonomy_require_approval_medium_title),
+            subtitle = stringResource(R.string.autonomy_require_approval_medium_subtitle),
             checked = settings.requireApprovalMediumRisk,
             onCheckedChange = { settingsViewModel.updateRequireApprovalMediumRisk(it) },
-            contentDescription = "Require approval for medium risk",
+            contentDescription = stringResource(R.string.autonomy_require_approval_medium_content_description),
         )
 
         SettingsToggleRow(
-            title = "Block high-risk commands",
-            subtitle = "Prevent execution of dangerous shell commands entirely",
+            title = stringResource(R.string.autonomy_block_high_risk_title),
+            subtitle = stringResource(R.string.autonomy_block_high_risk_subtitle),
             checked = settings.blockHighRiskCommands,
             onCheckedChange = { settingsViewModel.updateBlockHighRiskCommands(it) },
-            contentDescription = "Block high-risk commands",
+            contentDescription = stringResource(R.string.autonomy_block_high_risk_content_description),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+@Composable
+private fun autonomyLevelLabel(level: String): String =
+    when (level) {
+        "readonly" -> stringResource(R.string.autonomy_level_readonly_label)
+        "supervised" -> stringResource(R.string.autonomy_level_supervised_label)
+        "full" -> stringResource(R.string.autonomy_level_full_label)
+        else -> level
+    }

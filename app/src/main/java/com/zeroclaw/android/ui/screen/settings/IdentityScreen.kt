@@ -6,6 +6,8 @@
 
 package com.zeroclaw.android.ui.screen.settings
 
+import com.zeroclaw.android.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -62,6 +64,8 @@ fun IdentityScreen(
     modifier: Modifier = Modifier,
 ) {
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+    val invalidJsonError = stringResource(R.string.identity_invalid_json_error)
+    val saveIdentityContentDescription = stringResource(R.string.identity_save_content_description)
     var jsonText by remember(settings.identityJson) {
         mutableStateOf(settings.identityJson)
     }
@@ -74,7 +78,7 @@ fun IdentityScreen(
                     JSONObject(jsonText)
                     null
                 } catch (_: JSONException) {
-                    "Invalid JSON format"
+                    invalidJsonError
                 }
             }
         }
@@ -90,16 +94,13 @@ fun IdentityScreen(
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
 
         Text(
-            text = "Agent Identity",
+            text = stringResource(R.string.settings_item_agent_identity),
             style = MaterialTheme.typography.headlineSmall,
         )
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
 
         Text(
-            text =
-                "Paste an AIEOS v1.1 identity JSON document below. " +
-                    "This defines your agent's personality, name, and capabilities " +
-                    "for upstream identity resolution.",
+            text = stringResource(R.string.identity_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -108,7 +109,7 @@ fun IdentityScreen(
         OutlinedTextField(
             value = jsonText,
             onValueChange = { jsonText = it },
-            label = { Text("AIEOS JSON") },
+            label = { Text(stringResource(R.string.identity_aieos_json_label)) },
             isError = jsonError != null,
             supportingText = jsonError?.let { msg -> { Text(msg) } },
             minLines = JSON_FIELD_MIN_LINES,
@@ -123,9 +124,9 @@ fun IdentityScreen(
                 Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = MIN_TOUCH_TARGET_DP.dp)
-                    .semantics { contentDescription = "Save identity" },
+                    .semantics { contentDescription = saveIdentityContentDescription },
         ) {
-            Text("Save")
+            Text(stringResource(R.string.common_save))
         }
         Spacer(modifier = Modifier.height(SECTION_SPACING_DP.dp))
     }

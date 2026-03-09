@@ -5,6 +5,7 @@ package com.zeroclaw.android.ui.screen.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zeroclaw.android.R
 import com.zeroclaw.android.ZeroClawApplication
 import com.zeroclaw.android.model.CostSummary
 import com.zeroclaw.android.service.CostBridge
@@ -107,19 +108,32 @@ class CostDetailViewModel(
             try {
                 val summary = costBridge.getCostSummary()
                 val breakdown = parseModelBreakdown(summary.modelBreakdownJson)
+                val unknownModelLabel = getString(R.string.common_unknown)
                 _uiState.value =
                     CostDetailUiState.Content(
                         CostDetailData(
                             summary = summary,
-                            modelBreakdown = breakdown,
+                            modelBreakdown =
+                                breakdown.map { entry ->
+                                    if (entry.model == UNKNOWN_MODEL_SENTINEL) {
+                                        entry.copy(model = unknownModelLabel)
+                                    } else {
+                                        entry
+                                    }
+                                },
                         ),
                     )
             } catch (e: Exception) {
                 _uiState.value =
-                    CostDetailUiState.Error(ErrorSanitizer.sanitizeForUi(e))
+                    CostDetailUiState.Error(ErrorSanitizer.sanitizeForUi(getApplication(), e))
             }
         }
     }
+
+    private fun getString(
+        resId: Int,
+        vararg args: Any,
+    ): String = getApplication<Application>().getString(resId, *args)
 
     /** Constants for [CostDetailViewModel]. */
     companion object {
@@ -141,7 +155,7 @@ class CostDetailViewModel(
                         val obj = array.getJSONObject(i)
                         add(
                             ModelCostEntry(
-                                model = obj.optString("model", "unknown"),
+                                model = obj.optString("model", UNKNOWN_MODEL_SENTINEL),
                                 costUsd = obj.optDouble("cost_usd", 0.0),
                                 tokens = obj.optLong("tokens", 0),
                                 requests = obj.optInt("requests", 0),
@@ -181,5 +195,7 @@ class CostDetailViewModel(
             } catch (_: Exception) {
                 emptyList()
             }
+
+        private const val UNKNOWN_MODEL_SENTINEL = "__unknown_model__"
     }
 }

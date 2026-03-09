@@ -8,6 +8,7 @@ package com.zeroclaw.android.data.remote
 
 import android.content.Context
 import android.net.ConnectivityManager
+import com.zeroclaw.android.R
 import com.zeroclaw.android.model.DiscoveredServer
 import com.zeroclaw.android.model.LocalServerType
 import com.zeroclaw.android.model.ScanState
@@ -79,7 +80,7 @@ object NetworkScanner {
         channelFlow {
             val subnet = getLocalSubnet(context)
             if (subnet == null) {
-                send(ScanState.Error("Not connected to a local network"))
+                send(ScanState.Error(context.getString(R.string.network_scanner_not_connected_local_network)))
                 return@channelFlow
             }
 

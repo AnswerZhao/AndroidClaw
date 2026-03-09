@@ -14,7 +14,9 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
+import com.zeroclaw.android.R
 import com.zeroclaw.android.data.ProviderRegistry
 import com.zeroclaw.android.data.repository.AgentRepository
 import com.zeroclaw.android.data.repository.ApiKeyRepository
@@ -114,10 +116,10 @@ class DoctorValidator(
                 DiagnosticCheck(
                     id = "apikey-none",
                     category = DiagnosticCategory.API_KEYS,
-                    title = "No enabled connections",
+                    title = s(R.string.doctor_check_title_no_enabled_connections),
                     status = CheckStatus.WARN,
-                    detail = "Enable at least one connection to validate API keys",
-                    actionLabel = "Connections",
+                    detail = s(R.string.doctor_check_detail_enable_connection_for_api_validation),
+                    actionLabel = s(R.string.doctor_action_connections),
                     actionRoute = "agents",
                 ),
             )
@@ -141,17 +143,17 @@ class DoctorValidator(
 
         val detail =
             when {
-                !hasInternet -> "No internet connection available"
+                !hasInternet -> s(R.string.doctor_check_detail_no_internet_connection)
                 capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ->
-                    "Connected via Wi-Fi"
-                else -> "Connected via cellular"
+                    s(R.string.doctor_check_detail_connected_wifi)
+                else -> s(R.string.doctor_check_detail_connected_cellular)
             }
 
         return listOf(
             DiagnosticCheck(
                 id = "connectivity-network",
                 category = DiagnosticCategory.CONNECTIVITY,
-                title = "Network connectivity",
+                title = s(R.string.doctor_check_title_network_connectivity),
                 status = if (hasInternet) CheckStatus.PASS else CheckStatus.FAIL,
                 detail = detail,
             ),
@@ -169,9 +171,9 @@ class DoctorValidator(
             val json = withContext(ioDispatcher) { getStatus() }
             parseDaemonStatus(JSONObject(json))
         } catch (e: FfiException) {
-            listOf(daemonErrorCheck("Failed to query status: ${e.message}"))
+            listOf(daemonErrorCheck(s(R.string.doctor_check_detail_failed_query_status, e.message.orEmpty())))
         } catch (e: Exception) {
-            listOf(daemonErrorCheck("Unexpected error: ${e.message}"))
+            listOf(daemonErrorCheck(s(R.string.doctor_check_detail_unexpected_error, e.message.orEmpty())))
         }
 
     /**
@@ -201,9 +203,9 @@ class DoctorValidator(
                 DiagnosticCheck(
                     id = "channels-error",
                     category = DiagnosticCategory.CHANNELS,
-                    title = "Channel diagnostics",
+                    title = s(R.string.doctor_check_title_channel_diagnostics),
                     status = CheckStatus.FAIL,
-                    detail = "Failed to run channel checks: ${e.message}",
+                    detail = s(R.string.doctor_check_detail_failed_run_channel_checks, e.message.orEmpty()),
                 ),
             )
         }
@@ -230,21 +232,21 @@ class DoctorValidator(
                     DiagnosticCheck(
                         id = "traces-errors",
                         category = DiagnosticCategory.RUNTIME_TRACES,
-                        title = "Recent errors",
+                        title = s(R.string.doctor_check_title_recent_errors),
                         status = CheckStatus.PASS,
-                        detail = "No error events in runtime traces",
+                        detail = s(R.string.doctor_check_detail_no_runtime_trace_errors),
                     ),
                 )
             } else {
                 val latest = array.getJSONObject(array.length() - 1)
-                val msg = latest.optString("message", "Unknown error")
+                val msg = latest.optString("message", s(R.string.doctor_unknown_error))
                 listOf(
                     DiagnosticCheck(
                         id = "traces-errors",
                         category = DiagnosticCategory.RUNTIME_TRACES,
-                        title = "Recent errors",
+                        title = s(R.string.doctor_check_title_recent_errors),
                         status = CheckStatus.WARN,
-                        detail = "${array.length()} error event(s). Latest: $msg",
+                        detail = s(R.string.doctor_check_detail_runtime_trace_error_count_latest, array.length(), msg),
                     ),
                 )
             }
@@ -253,9 +255,9 @@ class DoctorValidator(
                 DiagnosticCheck(
                     id = "traces-errors",
                     category = DiagnosticCategory.RUNTIME_TRACES,
-                    title = "Runtime traces",
+                    title = s(R.string.doctor_check_title_runtime_traces),
                     status = CheckStatus.PASS,
-                    detail = "Tracing not available: ${e.message}",
+                    detail = s(R.string.doctor_check_detail_tracing_unavailable, e.message.orEmpty()),
                 ),
             )
         }
@@ -279,21 +281,21 @@ class DoctorValidator(
         val array = JSONArray(json)
         return (0 until array.length()).map { i ->
             val obj = array.getJSONObject(i)
-            val name = obj.optString("name", "unknown")
+            val name = obj.optString("name", s(R.string.doctor_unknown))
             val status = obj.optString("status", "unhealthy")
             val detail = obj.optString("detail", "")
             val healthy = status == "healthy"
             DiagnosticCheck(
                 id = "channel-$name",
                 category = DiagnosticCategory.CHANNELS,
-                title = "Channel: $name",
+                title = s(R.string.doctor_check_title_channel_name, name),
                 status = if (healthy) CheckStatus.PASS else CheckStatus.FAIL,
                 detail =
                     when {
-                        healthy -> "Connected"
-                        status == "timeout" -> "Health check timed out"
+                        healthy -> s(R.string.doctor_check_detail_connected)
+                        status == "timeout" -> s(R.string.doctor_check_detail_health_check_timed_out)
                         detail.isNotBlank() -> detail
-                        else -> "Not responding"
+                        else -> s(R.string.doctor_check_detail_not_responding)
                     },
             )
         }
@@ -310,19 +312,19 @@ class DoctorValidator(
             DiagnosticCheck(
                 id = "config-duplicate-names",
                 category = DiagnosticCategory.CONFIG,
-                title = "Connection nickname uniqueness",
+                title = s(R.string.doctor_check_title_connection_nickname_uniqueness),
                 status = CheckStatus.FAIL,
-                detail = "Duplicate connection nicknames: ${duplicates.joinToString()}",
-                actionLabel = "Edit Connections",
+                detail = s(R.string.doctor_check_detail_duplicate_connection_nicknames, duplicates.joinToString()),
+                actionLabel = s(R.string.doctor_action_edit_connections),
                 actionRoute = "agents",
             )
         } else {
             DiagnosticCheck(
                 id = "config-duplicate-names",
                 category = DiagnosticCategory.CONFIG,
-                title = "Connection nickname uniqueness",
+                title = s(R.string.doctor_check_title_connection_nickname_uniqueness),
                 status = CheckStatus.PASS,
-                detail = "${agents.size} connections, all nicknames unique",
+                detail = s(R.string.doctor_check_detail_connections_nicknames_unique, agents.size),
             )
         }
     }
@@ -334,18 +336,18 @@ class DoctorValidator(
             DiagnosticCheck(
                 id = "config-agent-${agent.id}",
                 category = DiagnosticCategory.CONFIG,
-                title = "Connection: ${agent.name}",
+                title = s(R.string.doctor_check_title_connection_name, agent.name),
                 status = CheckStatus.PASS,
-                detail = "TOML config parses successfully",
+                detail = s(R.string.doctor_check_detail_toml_parses_successfully),
             )
         } else {
             DiagnosticCheck(
                 id = "config-agent-${agent.id}",
                 category = DiagnosticCategory.CONFIG,
-                title = "Connection: ${agent.name}",
+                title = s(R.string.doctor_check_title_connection_name, agent.name),
                 status = CheckStatus.FAIL,
                 detail = result,
-                actionLabel = "Edit Connection",
+                actionLabel = s(R.string.doctor_action_edit_connection),
                 actionRoute = "agent-detail/${agent.id}",
             )
         }
@@ -365,7 +367,7 @@ class DoctorValidator(
                 category = DiagnosticCategory.API_KEYS,
                 title = "${agent.name} (${agent.provider})",
                 status = CheckStatus.PASS,
-                detail = "Self-hosted provider, no API key required",
+                detail = s(R.string.doctor_check_detail_self_hosted_no_api_key_required),
             )
         }
 
@@ -385,8 +387,8 @@ class DoctorValidator(
                     category = DiagnosticCategory.API_KEYS,
                     title = title,
                     status = CheckStatus.FAIL,
-                    detail = "No API key found for provider \"${agent.provider}\"",
-                    actionLabel = "Add Key",
+                    detail = s(R.string.doctor_check_detail_no_api_key_for_provider, agent.provider),
+                    actionLabel = s(R.string.doctor_action_add_key),
                     actionRoute = "api-keys",
                 )
             key.status == KeyStatus.INVALID ->
@@ -395,8 +397,8 @@ class DoctorValidator(
                     category = DiagnosticCategory.API_KEYS,
                     title = title,
                     status = CheckStatus.FAIL,
-                    detail = "API key marked as invalid by provider",
-                    actionLabel = "Edit Key",
+                    detail = s(R.string.doctor_check_detail_api_key_marked_invalid),
+                    actionLabel = s(R.string.doctor_action_edit_key),
                     actionRoute = "api-key-detail/${key.id}",
                 )
             key.isOAuthToken && key.isExpired() ->
@@ -405,8 +407,8 @@ class DoctorValidator(
                     category = DiagnosticCategory.API_KEYS,
                     title = title,
                     status = CheckStatus.WARN,
-                    detail = "OAuth token expired or expiring soon",
-                    actionLabel = "Refresh",
+                    detail = s(R.string.doctor_check_detail_oauth_expired_or_expiring),
+                    actionLabel = s(R.string.doctor_action_refresh),
                     actionRoute = "api-key-detail/${key.id}",
                 )
             else ->
@@ -415,7 +417,7 @@ class DoctorValidator(
                     category = DiagnosticCategory.API_KEYS,
                     title = title,
                     status = CheckStatus.PASS,
-                    detail = "Key present and active",
+                    detail = s(R.string.doctor_check_detail_key_present_active),
                 )
         }
     }
@@ -428,9 +430,14 @@ class DoctorValidator(
             DiagnosticCheck(
                 id = "daemon-running",
                 category = DiagnosticCategory.DAEMON_HEALTH,
-                title = "Daemon process",
+                title = s(R.string.doctor_check_title_daemon_process),
                 status = if (daemonRunning) CheckStatus.PASS else CheckStatus.WARN,
-                detail = if (daemonRunning) "Daemon is running" else "Daemon is not running",
+                detail =
+                    if (daemonRunning) {
+                        s(R.string.doctor_check_detail_daemon_running)
+                    } else {
+                        s(R.string.doctor_check_detail_daemon_not_running)
+                    },
             ),
         )
 
@@ -439,7 +446,7 @@ class DoctorValidator(
                 DiagnosticCheck(
                     id = "daemon-uptime",
                     category = DiagnosticCategory.DAEMON_HEALTH,
-                    title = "Daemon uptime",
+                    title = s(R.string.doctor_check_title_daemon_uptime),
                     status = CheckStatus.PASS,
                     detail = formatUptime(obj.optLong("uptime_seconds", 0)),
                 ),
@@ -456,13 +463,15 @@ class DoctorValidator(
             .keys()
             .asSequence()
             .map { key ->
-                val status = componentsObj.optJSONObject(key)?.optString("status", "unknown") ?: "unknown"
+                val status =
+                    componentsObj.optJSONObject(key)?.optString("status", s(R.string.doctor_unknown))
+                        ?: s(R.string.doctor_unknown)
                 DiagnosticCheck(
                     id = "daemon-component-$key",
                     category = DiagnosticCategory.DAEMON_HEALTH,
-                    title = "Component: $key",
+                    title = s(R.string.doctor_check_title_component_name, key),
                     status = if (status == "ok") CheckStatus.PASS else CheckStatus.FAIL,
-                    detail = "Status: $status",
+                    detail = s(R.string.doctor_check_detail_status_value, status),
                 )
             }.toList()
     }
@@ -471,7 +480,7 @@ class DoctorValidator(
         DiagnosticCheck(
             id = "daemon-error",
             category = DiagnosticCategory.DAEMON_HEALTH,
-            title = "Daemon health check",
+            title = s(R.string.doctor_check_title_daemon_health_check),
             status = CheckStatus.FAIL,
             detail = detail,
         )
@@ -481,15 +490,15 @@ class DoctorValidator(
         return DiagnosticCheck(
             id = "system-battery-exempt",
             category = DiagnosticCategory.SYSTEM,
-            title = "Battery optimization",
+            title = s(R.string.doctor_check_title_battery_optimization),
             status = if (isExempt) CheckStatus.PASS else CheckStatus.WARN,
             detail =
                 if (isExempt) {
-                    "App is exempt from battery optimization"
+                    s(R.string.doctor_check_detail_battery_exempt)
                 } else {
-                    "App is not exempt; service may be killed"
+                    s(R.string.doctor_check_detail_battery_not_exempt)
                 },
-            actionLabel = if (!isExempt) "Fix" else null,
+            actionLabel = if (!isExempt) s(R.string.doctor_action_fix) else null,
             actionRoute = if (!isExempt) "battery-settings" else null,
         )
     }
@@ -500,19 +509,19 @@ class DoctorValidator(
             DiagnosticCheck(
                 id = "system-oem",
                 category = DiagnosticCategory.SYSTEM,
-                title = "OEM battery management",
+                title = s(R.string.doctor_check_title_oem_battery_management),
                 status = CheckStatus.WARN,
-                detail = "Device uses aggressive battery management (${aggressiveOem.name})",
-                actionLabel = "Instructions",
+                detail = s(R.string.doctor_check_detail_oem_aggressive_management, aggressiveOem.name),
+                actionLabel = s(R.string.doctor_action_instructions),
                 actionRoute = "battery-settings",
             )
         } else {
             DiagnosticCheck(
                 id = "system-oem",
                 category = DiagnosticCategory.SYSTEM,
-                title = "OEM battery management",
+                title = s(R.string.doctor_check_title_oem_battery_management),
                 status = CheckStatus.PASS,
-                detail = "No aggressive OEM battery management detected",
+                detail = s(R.string.doctor_check_detail_oem_no_aggressive_management),
             )
         }
     }
@@ -531,17 +540,17 @@ class DoctorValidator(
             DiagnosticCheck(
                 id = "system-storage",
                 category = DiagnosticCategory.SYSTEM,
-                title = "Available storage",
+                title = s(R.string.doctor_check_title_available_storage),
                 status = storageStatus,
-                detail = "${availableMb}MB available",
+                detail = s(R.string.doctor_check_detail_storage_available_mb, availableMb),
             )
         } catch (_: Exception) {
             DiagnosticCheck(
                 id = "system-storage",
                 category = DiagnosticCategory.SYSTEM,
-                title = "Available storage",
+                title = s(R.string.doctor_check_title_available_storage),
                 status = CheckStatus.WARN,
-                detail = "Could not determine available storage",
+                detail = s(R.string.doctor_check_detail_storage_unknown),
             )
         }
 
@@ -557,13 +566,13 @@ class DoctorValidator(
                 DiagnosticCheck(
                     id = "system-notification",
                     category = DiagnosticCategory.SYSTEM,
-                    title = "Notification permission",
+                    title = s(R.string.doctor_check_title_notification_permission),
                     status = if (granted) CheckStatus.PASS else CheckStatus.WARN,
                     detail =
                         if (granted) {
-                            "Notification permission granted"
+                            s(R.string.doctor_check_detail_notification_permission_granted)
                         } else {
-                            "Notifications disabled; service status won't show"
+                            s(R.string.doctor_check_detail_notification_permission_disabled)
                         },
                 )
             } else {
@@ -591,6 +600,11 @@ class DoctorValidator(
             )
         return "default_temperature = 0.7\n" + ConfigTomlBuilder.buildAgentsToml(listOf(entry))
     }
+
+    private fun s(
+        @StringRes resId: Int,
+        vararg args: Any,
+    ): String = context.getString(resId, *args)
 
     /** Constants for [DoctorValidator]. */
     companion object {
